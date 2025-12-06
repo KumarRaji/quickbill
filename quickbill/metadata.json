@@ -1,0 +1,5 @@
+{
+  "name": "QuickBill - Professional Billing App",
+  "description": "A comprehensive billing and inventory management application designed for small businesses. Features include invoice generation, party management, inventory tracking, and sales reporting. Currently runs with a local storage database, ready for backend integration.",
+  "requestFramePermissions": []
+}
