@@ -174,7 +174,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right whitespace-nowrap">
-                    <div className="flex justify-end space-x-2">
+                    <div className="flex justify-end space-x-2"> 
                         <button 
                           onClick={() => handleEdit(item)}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"

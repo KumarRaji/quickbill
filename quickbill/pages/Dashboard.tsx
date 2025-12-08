@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { 
   BarChart, 
@@ -20,6 +19,10 @@ interface DashboardProps {
   items: Item[];
 }
 
+// ✅ Helper to safely show party name or "Unknown"
+const getPartyName = (name?: string | null) =>
+  name && name.trim().length > 0 ? name : 'Unknown';
+
 const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items }) => {
   
   const stats = useMemo(() => {
@@ -38,13 +41,10 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items }) => {
     return { totalSales, totalInvoices, totalParties, lowStockItems };
   }, [invoices, parties, items]);
 
-  // Mock data for charts generated from invoices
   const chartData = useMemo(() => {
-    // Group sales by date (simplified for demo)
     const salesByDate: Record<string, number> = {};
     
     invoices.forEach(inv => {
-      // Only process Sales and Returns for the chart
       if (inv.type !== 'SALE' && inv.type !== 'RETURN') return;
 
       const date = new Date(inv.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -57,7 +57,6 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items }) => {
       }
     });
     
-    // If no data, provide dummy data for visualization
     if (Object.keys(salesByDate).length === 0) {
       return [
         { name: 'Mon', sales: 4000 },
@@ -157,7 +156,9 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items }) => {
               <tbody>
                 {invoices.slice(0, 5).map(inv => (
                   <tr key={inv.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-800">{inv.partyName}</td>
+                    <td className="px-4 py-3 font-medium text-slate-800">
+                      {getPartyName(inv.partyName)}
+                    </td>
                     <td className={`px-4 py-3 text-right font-medium ${
                       inv.type.includes('RETURN') ? 'text-red-600' : 'text-slate-800'
                     }`}>

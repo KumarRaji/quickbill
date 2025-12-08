@@ -1,9 +1,99 @@
+CREATE DATABASE IF NOT EXISTS quickbilldb;
+USE quickbilldb;
+
 CREATE TABLE users (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(100) NOT NULL,
   username VARCHAR(50) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('SUPER_ADMIN', 'ADMIN', 'STAFF') NOT NULL DEFAULT 'STAFF',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+);
+select * from users;
+
+INSERT INTO users (name, username, password_hash, role) VALUES
+('Super Admin', 'superadmin', '$2a$10$rZ5YhJKvXqKqJqKqJqKqJuN5YhJKvXqKqJqKqJqKqJqKqJqKqJqKq', 'SUPER_ADMIN');
+
+CREATE TABLE items (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(150) NOT NULL,
+  code VARCHAR(50) NULL,
+  barcode VARCHAR(50) NULL,
+  selling_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+  purchase_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+  stock DECIMAL(10,2) NOT NULL DEFAULT 0,
+  unit VARCHAR(20) NOT NULL DEFAULT 'pcs',
+  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_barcode (barcode)
+);
+
+-- PARTIES (Customers / Suppliers)
+CREATE TABLE parties (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  name VARCHAR(150) NOT NULL,
+  phone VARCHAR(20),
+  gstin VARCHAR(20),
+  balance DECIMAL(12,2) NOT NULL DEFAULT 0, -- +ve = they owe us, -ve = we owe them
+  address VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+);
+
+
+-- INVOICES
+CREATE TABLE invoices (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  party_id INT UNSIGNED NOT NULL,
+  invoice_no VARCHAR(50),
+  type ENUM('SALE','RETURN','PURCHASE','PURCHASE_RETURN') NOT NULL,
+  total_amount DECIMAL(12,2) NOT NULL,
+  invoice_date DATETIME NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  CONSTRAINT fk_invoices_party FOREIGN KEY (party_id) REFERENCES parties(id)
+);
+
+-- INVOICE ITEMS
+CREATE TABLE invoice_items (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  invoice_id INT UNSIGNED NOT NULL,
+  item_id INT UNSIGNED NOT NULL,
+  name VARCHAR(150),
+  quantity DECIMAL(12,2) NOT NULL,
+  price DECIMAL(12,2) NOT NULL,
+  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+  total DECIMAL(12,2) NOT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT fk_invoice_items_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id),
+  CONSTRAINT fk_invoice_items_item FOREIGN KEY (item_id) REFERENCES items(id)
+);
+
+-- PAYMENTS
+CREATE TABLE payments (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  party_id INT UNSIGNED NOT NULL,
+  type ENUM('IN','OUT') NOT NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  payment_date DATETIME NOT NULL,
+  mode VARCHAR(50),
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  CONSTRAINT fk_payments_party FOREIGN KEY (party_id) REFERENCES parties(id)
+);
+
+-- EXPENSES
+CREATE TABLE expenses (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  category VARCHAR(100),
+  amount DECIMAL(12,2) NOT NULL,
+  expense_date DATETIME NOT NULL,
+  notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 );

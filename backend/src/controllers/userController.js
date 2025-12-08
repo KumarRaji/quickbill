@@ -5,85 +5,109 @@ const bcrypt = require('bcryptjs');
 // GET /api/users
 exports.getUsers = (req, res) => {
   const sql = 'SELECT id, name, username, role, created_at FROM users ORDER BY id DESC';
-
   pool.query(sql, (err, rows) => {
     if (err) {
       console.error('Error fetching users:', err);
       return res.status(500).json({ message: 'Failed to fetch users' });
     }
-    res.json(rows);
+    // stringify id as string to match frontend type if needed
+    const users = rows.map((u) => ({
+      ...u,
+      id: u.id.toString(),
+    }));
+    res.json(users);
   });
 };
 
 // POST /api/users
-exports.createUser = async (req, res) => {
-  try {
-    const { name, username, password, role } = req.body;
+exports.createUser = (req, res) => {
+  const { name, username, password, role } = req.body;
+  if (!name || !username || !password || !role) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
 
-    if (!name || !username || !password || !role) {
-      return res.status(400).json({ message: 'All fields are required' });
+  const checkSql = 'SELECT id FROM users WHERE username = ? LIMIT 1';
+  pool.query(checkSql, [username], async (checkErr, rows) => {
+    if (checkErr) {
+      console.error('Error checking username:', checkErr);
+      return res.status(500).json({ message: 'Failed to create user' });
     }
 
-    // Check username exists
-    const checkSql = 'SELECT id FROM users WHERE username = ? LIMIT 1';
-    pool.query(checkSql, [username], async (checkErr, rows) => {
-      if (checkErr) {
-        console.error('Error checking username:', checkErr);
-        return res.status(500).json({ message: 'Failed to create user' });
-      }
+    if (rows.length > 0) {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
 
-      if (rows.length > 0) {
-        return res.status(400).json({ message: 'Username already exists' });
-      }
+    const passwordHash = await bcrypt.hash(password, 10);
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(password, 10);
-
-      const insertSql =
-        'INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)';
-      pool.query(
-        insertSql,
-        [name, username, passwordHash, role],
-        (insertErr, result) => {
-          if (insertErr) {
-            console.error('Error inserting user:', insertErr);
-            return res.status(500).json({ message: 'Failed to create user' });
-          }
-
-          return res.status(201).json({
-            id: result.insertId,
-            name,
-            username,
-            role,
-          });
+    const insertSql =
+      'INSERT INTO users (name, username, password_hash, role) VALUES (?, ?, ?, ?)';
+    pool.query(
+      insertSql,
+      [name, username, passwordHash, role],
+      (insertErr, result) => {
+        if (insertErr) {
+          console.error('Error inserting user:', insertErr);
+          return res.status(500).json({ message: 'Failed to create user' });
         }
-      );
-    });
-  } catch (err) {
-    console.error('Create user error:', err);
-    res.status(500).json({ message: 'Failed to create user' });
-  }
+
+        res.status(201).json({
+          id: result.insertId.toString(),
+          name,
+          username,
+          role,
+        });
+      }
+    );
+  });
 };
 
 // DELETE /api/users/:id
 exports.deleteUser = (req, res) => {
   const { id } = req.params;
 
-  if (!id) return res.status(400).json({ message: 'User ID is required' });
-
-  // Extra safety: do not delete SUPER_ADMIN (even if called directly)
-  const sql = 'DELETE FROM users WHERE id = ? AND role != "SUPER_ADMIN"';
-
-  pool.query(sql, [id], (err, result) => {
-    if (err) {
-      console.error('Error deleting user:', err);
+  // Prevent deleting the last SUPER_ADMIN
+  const countSql =
+    'SELECT COUNT(*) AS count FROM users WHERE role = "SUPER_ADMIN"';
+  pool.query(countSql, (countErr, rows) => {
+    if (countErr) {
+      console.error('Error counting super admins:', countErr);
       return res.status(500).json({ message: 'Failed to delete user' });
     }
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'User not found or cannot be deleted' });
-    }
+    const superAdminCount = rows[0].count;
 
-    res.json({ message: 'User deleted successfully' });
+    const findSql = 'SELECT role FROM users WHERE id = ? LIMIT 1';
+    pool.query(findSql, [id], (findErr, userRows) => {
+      if (findErr) {
+        console.error('Error fetching user:', findErr);
+        return res.status(500).json({ message: 'Failed to delete user' });
+      }
+
+      if (userRows.length === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const userRole = userRows[0].role;
+
+      if (userRole === 'SUPER_ADMIN' && superAdminCount <= 1) {
+        return res
+          .status(400)
+          .json({ message: 'Cannot delete the only Super Admin' });
+      }
+
+      const delSql = 'DELETE FROM users WHERE id = ?';
+      pool.query(delSql, [id], (delErr, result) => {
+        if (delErr) {
+          console.error('Error deleting user:', delErr);
+          return res.status(500).json({ message: 'Failed to delete user' });
+        }
+
+        if (result.affectedRows === 0) {
+          return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({ message: 'User deleted successfully' });
+      });
+    });
   });
 };

@@ -60,7 +60,7 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
   };
 
   const filteredPayments = payments.filter(p => 
-    p.partyName.toLowerCase().includes(searchTerm.toLowerCase())
+    p.partyName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
