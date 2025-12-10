@@ -64,6 +64,71 @@ exports.updateParty = (req, res) => {
   );
 };
 
+// DELETE /api/parties/:id
+exports.deleteParty = (req, res) => {
+  const { id } = req.params;
+
+  // First check if party has any invoices or payments
+  const checkSql = `
+    SELECT 
+      (SELECT COUNT(*) FROM invoices WHERE party_id = ?) as invoice_count,
+      (SELECT COUNT(*) FROM payments WHERE party_id = ?) as payment_count
+  `;
+  
+  pool.query(checkSql, [id, id], (checkErr, checkResult) => {
+    if (checkErr) {
+      console.error('Error checking party references:', checkErr);
+      return res.status(500).json({ message: 'Failed to delete party' });
+    }
+
+    const { invoice_count, payment_count } = checkResult[0];
+    
+    if (invoice_count > 0) {
+      return res.status(400).json({ 
+        message: `Cannot delete party. It has ${invoice_count} invoices. Delete those invoices first.` 
+      });
+    }
+    
+    // If only payments exist, delete them first (cascade delete)
+    if (payment_count > 0) {
+      const deletePaymentsSql = 'DELETE FROM payments WHERE party_id = ?';
+      pool.query(deletePaymentsSql, [id], (paymentErr) => {
+        if (paymentErr) {
+          console.error('Error deleting payments:', paymentErr);
+          return res.status(500).json({ message: 'Failed to delete party payments' });
+        }
+        
+        // Now delete the party
+        const deleteSql = 'DELETE FROM parties WHERE id = ?';
+        pool.query(deleteSql, [id], (err, result) => {
+          if (err) {
+            console.error('Error deleting party:', err);
+            return res.status(500).json({ message: 'Failed to delete party' });
+          }
+          if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Party not found' });
+          }
+          res.status(204).end();
+        });
+      });
+      return;
+    }
+
+    // Safe to delete
+    const deleteSql = 'DELETE FROM parties WHERE id = ?';
+    pool.query(deleteSql, [id], (err, result) => {
+      if (err) {
+        console.error('Error deleting party:', err);
+        return res.status(500).json({ message: 'Failed to delete party' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Party not found' });
+      }
+      res.status(204).end();
+    });
+  });
+};
+
 // PATCH /api/parties/:id/balance
 exports.updateBalance = (req, res) => {
   const { id } = req.params;

@@ -4,7 +4,7 @@ const pool = require('../config/db');
 // 👇 Make sure you have a "Cash Customer" in `parties` with this ID
 // INSERT INTO parties (name, phone, gstin, balance, address)
 // VALUES ('Cash Customer', NULL, NULL, 0, NULL);
-const CASH_PARTY_ID = 1;
+const CASH_PARTY_ID = 1; // Use existing party ID
 
 // Helper: apply stock impact based on invoice type
 function getStockDelta(type, qty) {
@@ -42,7 +42,12 @@ function getBalanceDelta(type, total) {
 // GET /api/invoices
 // ==============================
 exports.getInvoices = (req, res) => {
-  const sql = 'SELECT * FROM invoices ORDER BY id DESC';
+  const sql = `
+    SELECT i.*, p.name as party_name 
+    FROM invoices i 
+    LEFT JOIN parties p ON i.party_id = p.id 
+    ORDER BY i.id DESC
+  `;
   pool.query(sql, (err, invoices) => {
     if (err) {
       console.error('Error fetching invoices:', err);
@@ -74,24 +79,36 @@ exports.getInvoices = (req, res) => {
         grouped[it.invoice_id].push({
           id: it.id.toString(),
           itemId: it.item_id.toString(),
-          name: it.name,
+          itemName: it.name,
           quantity: Number(it.quantity),
           price: Number(it.price),
           taxRate: Number(it.tax_rate),
-          total: Number(it.total),
+          amount: Number(it.total),
         });
       });
 
-      const response = invoices.map((inv) => ({
-        id: inv.id.toString(),
-        partyId: inv.party_id.toString(),
-        invoiceNo: inv.invoice_no,
-        type: inv.type,
-        totalAmount: Number(inv.total_amount),
-        date: inv.invoice_date,
-        notes: inv.notes,
-        items: grouped[inv.id] || [],
-      }));
+      const response = invoices.map((inv) => {
+        const invoiceItems = grouped[inv.id] || [];
+        const totalTax = invoiceItems.reduce((sum, item) => {
+          const taxAmount = (item.price * item.quantity * item.taxRate) / 100;
+          return sum + taxAmount;
+        }, 0);
+        
+        return {
+          id: inv.id.toString(),
+          partyId: inv.party_id.toString(),
+          invoiceNumber: inv.invoice_no,
+          type: inv.type,
+          totalAmount: Number(inv.total_amount),
+          totalTax: totalTax,
+          date: inv.invoice_date,
+          notes: inv.notes,
+          paymentMode: inv.payment_mode,
+          status: 'PAID', // Default status
+          partyName: inv.party_name || 'Cash Customer',
+          items: invoiceItems,
+        };
+      });
 
       res.json(response);
     });
@@ -136,14 +153,15 @@ exports.getInvoiceById = (req, res) => {
         totalAmount: Number(inv.total_amount),
         date: inv.invoice_date,
         notes: inv.notes,
+        paymentMode: inv.payment_mode,
         items: items.map((it) => ({
           id: it.id.toString(),
           itemId: it.item_id.toString(),
-          name: it.name || 'Unknown',
+          itemName: it.name || 'Unknown',
           quantity: Number(it.quantity),
           price: Number(it.price),
           taxRate: Number(it.tax_rate),
-          total: Number(it.total),
+          amount: Number(it.total),
         })),
       };
 
@@ -155,22 +173,23 @@ exports.getInvoiceById = (req, res) => {
 // ==============================
 // POST /api/invoices
 // ==============================
-exports.createInvoice = (req, res) => {
-  let { partyId, type, date, items, totalAmount, invoiceNo, notes } = req.body;
+exports.createInvoice = async (req, res) => {
+  let { partyId, type, date, items, totalAmount, invoiceNo, notes, paymentMode } = req.body;
 
   console.log(
     '📥 Incoming invoice payload:',
     JSON.stringify(req.body, null, 2)
   );
 
-  // Map special CASH value to numeric ID
-  if (partyId === 'CASH' || partyId === 'cash') {
-    partyId = CASH_PARTY_ID;
-  }
-
-  const partyIdNum = Number(partyId);
-  if (!partyIdNum) {
-    return res.status(400).json({ message: 'Invalid partyId' });
+  // Handle walk-in customers (empty partyId)
+  let partyIdNum;
+  if (!partyId || partyId === 'CASH' || partyId === 'cash' || partyId === '') {
+    partyIdNum = CASH_PARTY_ID;
+  } else {
+    partyIdNum = Number(partyId);
+    if (!partyIdNum) {
+      return res.status(400).json({ message: 'Invalid partyId' });
+    }
   }
 
   if (!type || !items || !Array.isArray(items) || !items.length) {
@@ -221,17 +240,18 @@ exports.createInvoice = (req, res) => {
       }
 
       const invSql =
-        'INSERT INTO invoices (party_id, invoice_no, type, total_amount, invoice_date, notes) VALUES (?, ?, ?, ?, ?, ?)';
+        'INSERT INTO invoices (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?)';
 
       conn.query(
         invSql,
         [
           partyIdNum,
-          invoiceNo || null,
+          invoiceNo || `${type === 'RETURN' || type === 'PURCHASE_RETURN' ? 'CN' : 'TXN'}-${Date.now().toString().slice(-6)}`,
           type,
           total,
           date ? new Date(date) : new Date(),
           notes || null,
+          paymentMode || 'CASH',
         ],
         (invErr, invResult) => {
           if (invErr) {
@@ -330,7 +350,7 @@ exports.createInvoice = (req, res) => {
               [
                 invoiceId,
                 it.itemId,
-                it.name || null,
+                it.itemName || it.name || null,
                 qty,
                 price,
                 taxRate,

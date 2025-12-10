@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Invoice } from '../types';
+import { Invoice, Party } from '../types';
 import { Printer, ArrowLeft, Receipt, FileText } from 'lucide-react';
 
 interface InvoiceViewProps {
   invoice: Invoice;
   onBack: () => void;
   autoPrint?: boolean;
+  parties?: Party[];
 }
 
 // ✅ Safe money formatter
@@ -15,8 +16,10 @@ const formatMoney = (value: number | string | null | undefined): string => {
   return num.toFixed(2);
 };
 
-const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = false }) => {
+const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = false, parties = [] }) => {
   const [viewMode, setViewMode] = useState<'A4' | 'THERMAL'>('A4');
+  
+  console.log('InVoice',invoice);
 
   useEffect(() => {
     if (autoPrint) {
@@ -70,7 +73,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
             <p className="text-slate-500 text-sm">
               123 Business Hub, Tech City
               <br />
-              Gujarat, India - 380001
+              Salem, India - 603300
               <br />
               GSTIN: 24ABCDE1234F1Z5
               <br />
@@ -102,8 +105,9 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
             {invoice.type.includes('PURCHASE') ? 'Supplier' : 'Bill To'}
           </h3>
           <h2 className="text-xl font-bold text-slate-800 mb-1">
-            {(invoice as any).partyName || `Party #${invoice.partyId}`}
+            {parties.find(p => p.id === invoice.partyId)?.name || invoice.partyName || `Party #${invoice.partyId}`}
           </h2>
+         
           <p className="text-slate-500">Party ID: {invoice.partyId}</p>
         </div>
 
@@ -161,7 +165,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
             Terms & Conditions
           </h4>
           <ul className="text-xs text-slate-500 list-disc list-inside space-y-1">
-            <li>Goods once sold will not be taken back.</li>
+            <li>Product once sold can not be taken back.</li>
             <li>
               Interest @ 18% p.a. will be charged if payment is not made within
               the due date.
@@ -173,6 +177,10 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         <div className="mt-12 text-center text-xs text-slate-400">
           Authorized Signatory
         </div>
+        <div align="center" className="mt-2 text-center text-xs text-slate-400 font-bold">
+          QuickBill - shopping !!
+        </div>
+
       </div>
     );
   };
@@ -183,7 +191,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
     return (
       <div className="bg-white mx-auto p-2 shadow-xl print:shadow-none w-[300px] print:w-full font-mono text-sm text-black leading-tight">
         <div className="text-center mb-2">
-          <h2 className="text-lg font-bold uppercase">QuickBill Ent.</h2>
+          <h2 className="text-lg font-bold uppercase">QuickBill</h2>
           <p className="text-xs">123 Business Hub, Tech City</p>
           <p className="text-xs">Ph: 9876543210</p>
           <p className="text-xs">GST: 24ABCDE1234F1Z5</p>
@@ -215,7 +223,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         <div className="mb-2">
           <span className="text-xs font-bold">Party: </span>
           <span className="text-xs">
-            {(invoice as any).partyName || `#${invoice.partyId}`}
+            {parties.find(p => p.id === invoice.partyId)?.name || (invoice as any).partyName || `#${invoice.partyId}`}
           </span>
         </div>
 
@@ -283,22 +291,20 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         <div className="flex space-x-3 bg-white p-1 rounded-lg shadow-sm border border-slate-200">
           <button
             onClick={() => setViewMode('A4')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-              viewMode === 'A4'
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${viewMode === 'A4'
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-slate-600 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <FileText size={18} />
             <span className="text-sm font-medium">Standard A4</span>
           </button>
           <button
             onClick={() => setViewMode('THERMAL')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-              viewMode === 'THERMAL'
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${viewMode === 'THERMAL'
                 ? 'bg-blue-50 text-blue-700'
                 : 'text-slate-600 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <Receipt size={18} />
             <span className="text-sm font-medium">Thermal</span>

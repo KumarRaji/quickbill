@@ -13,6 +13,7 @@ export interface Item {
   name: string;
   code?: string;
   barcode?: string; // Scannable barcode (UPC/EAN)
+  mrp?: number;
   sellingPrice: number;
   purchasePrice: number;
   stock: number;
@@ -24,6 +25,7 @@ export interface InvoiceItem {
   itemId: string;
   itemName: string;
   quantity: number;
+  mrp?: number;
   price: number;
   taxRate: number;
   amount: number; // (price * quantity)
@@ -43,6 +45,7 @@ export interface Invoice {
   totalAmount: number;
   totalTax: number;
   status: 'PAID' | 'UNPAID';
+  paymentMode: 'CASH' | 'ONLINE' | 'CHEQUE' | 'CREDIT';
 }
 
 export interface Payment {

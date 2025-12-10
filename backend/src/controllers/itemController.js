@@ -4,7 +4,7 @@ const pool = require('../config/db');
 // GET /api/items
 exports.getItems = (req, res) => {
   const sql =
-    'SELECT id, name, code, barcode, selling_price, purchase_price, stock, unit, tax_rate FROM items ORDER BY id DESC';
+    'SELECT id, name, code, barcode, selling_price, purchase_price, stock, mrp, unit, tax_rate FROM items ORDER BY id DESC';
 
   pool.query(sql, (err, rows) => {
     if (err) {
@@ -22,6 +22,7 @@ exports.getItems = (req, res) => {
       stock: Number(i.stock),
       unit: i.unit,
       taxRate: Number(i.tax_rate),
+      mrp: Number(i.mrp)
     }));
 
     res.json(items);
@@ -39,6 +40,7 @@ exports.createItem = (req, res) => {
     stock,
     unit,
     taxRate,
+    mrp,
   } = req.body;
 
   if (!name || sellingPrice == null || purchasePrice == null) {
@@ -48,7 +50,7 @@ exports.createItem = (req, res) => {
   }
 
   const sql =
-    'INSERT INTO items (name, code, barcode, selling_price, purchase_price, stock, unit, tax_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    'INSERT INTO items (name, code, barcode, selling_price, purchase_price, stock, unit, tax_rate, mrp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
   pool.query(
     sql,
@@ -61,6 +63,7 @@ exports.createItem = (req, res) => {
       stock || 0,
       unit || 'pcs',
       taxRate || 0,
+      mrp || 0
     ],
     (err, result) => {
       if (err) {
@@ -78,6 +81,7 @@ exports.createItem = (req, res) => {
         stock: Number(stock || 0),
         unit: unit || 'pcs',
         taxRate: Number(taxRate || 0),
+        mrp: Number(mrp || 0) 
       });
     }
   );
@@ -95,10 +99,11 @@ exports.updateItem = (req, res) => {
     stock,
     unit,
     taxRate,
+    mrp,
   } = req.body;
 
   const sql =
-    'UPDATE items SET name=?, code=?, barcode=?, selling_price=?, purchase_price=?, stock=?, unit=?, tax_rate=? WHERE id = ?';
+    'UPDATE items SET name=?, code=?, barcode=?, selling_price=?, mrp=?, purchase_price=?, stock=?, unit=?, tax_rate=? WHERE id = ?';
 
   pool.query(
     sql,
@@ -112,6 +117,7 @@ exports.updateItem = (req, res) => {
       unit || 'pcs',
       taxRate || 0,
       id,
+      mrp || 0
     ],
     (err, result) => {
       if (err) {

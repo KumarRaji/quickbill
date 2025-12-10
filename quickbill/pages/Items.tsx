@@ -23,6 +23,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
     barcode: '',
     sellingPrice: 0,
     purchasePrice: 0,
+    mrp: 0,
     stock: 0,
     unit: 'pcs',
     taxRate: 0
@@ -61,7 +62,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
   const handleAddNew = () => {
     setEditingId(null);
     setFormData({ 
-      name: '', code: '', barcode: '', sellingPrice: 0, purchasePrice: 0, stock: 0, unit: 'pcs', taxRate: 0 
+      name: '', code: '', barcode: '', sellingPrice: 0, purchasePrice: 0, mrp: 0, stock: 0, unit: 'pcs', taxRate: 0 
     });
     setIsModalOpen(true);
   };
@@ -69,6 +70,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    console.log('Form data being sent:', formData);
     try {
       if (editingId) {
         await ItemService.update(editingId, formData);
@@ -144,6 +146,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">Item Name</th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">MRP</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">Selling Price</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">Purchase Price</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-center">Stock</th>
@@ -151,7 +154,9 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-100">
-              {filteredItems.map((item) => (
+              {filteredItems.map((item) => {
+                console.log('Item data:', item, 'MRP:', item.mrp, 'Type:', typeof item.mrp);
+                return (
                 <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="font-medium text-slate-900">{item.name}</div>
@@ -159,6 +164,9 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                       {item.code && <span>Code: {item.code}</span>}
                       {item.barcode && <span className="flex items-center"><ScanBarcode size={10} className="mr-1"/> {item.barcode}</span>}
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-right whitespace-nowrap text-slate-500">
+                    {item.mrp && item.mrp > 0 ? `₹${item.mrp}` : '-'}
                   </td>
                   <td className="px-6 py-4 text-right whitespace-nowrap text-slate-700">
                     ₹{item.sellingPrice}
@@ -194,10 +202,11 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {filteredItems.length === 0 && (
                 <tr>
-                   <td colSpan={5} className="px-6 py-12 text-center text-slate-400">No items found.</td>
+                   <td colSpan={6} className="px-6 py-12 text-center text-slate-400">No items found.</td>
                 </tr>
               )}
             </tbody>
@@ -217,7 +226,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               
-              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-2">
+              {/* <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-2">
                  <label className="block text-sm font-bold text-blue-800 mb-1 flex items-center">
                     <ScanBarcode size={16} className="mr-2" /> 
                     Scan Barcode
@@ -244,7 +253,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                  <p className="text-xs text-blue-600 mt-1">
                     Press Enter to auto-fill details if item exists.
                  </p>
-              </div>
+              </div> */}
 
               <div className="grid grid-cols-1 gap-4">
                 <div>
@@ -271,7 +280,16 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">MRP</label>
+                  <input 
+                    type="number" 
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.mrp || ''}
+                    onChange={e => setFormData({...formData, mrp: e.target.value ? parseFloat(e.target.value) : undefined})}
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Selling Price *</label>
                   <input 
@@ -297,10 +315,9 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                     {editingId ? 'Stock Qty' : 'Opening Stock *'}
+                     {editingId ? 'Stock Qty' : 'Opening Stock'}
                    </label>
                    <input 
-                    required
                     type="number" 
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.stock || ''}

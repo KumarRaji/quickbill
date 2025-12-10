@@ -19,10 +19,14 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [invoiceNumber, setInvoiceNumber] = useState(`${initialType === 'RETURN' || initialType === 'PURCHASE_RETURN' ? 'CN' : 'TXN'}-${Date.now().toString().slice(-6)}`);
   const [originalRefNumber, setOriginalRefNumber] = useState('');
+  const [paymentMode, setPaymentMode] = useState<'CASH' | 'ONLINE' | 'CHEQUE' | 'CREDIT'>('CASH');
   
   // Barcode Scanning State
   const [barcodeInput, setBarcodeInput] = useState('');
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   
   const [rows, setRows] = useState<InvoiceItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,6 +43,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
     itemId: '',
     itemName: '',
     quantity: 1,
+    mrp: 0,
     price: 0,
     taxRate: 0,
     amount: 0
@@ -81,26 +86,80 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
     setRows(newRows);
   };
 
-  // Logic to handle Barcode Scanning
-  const handleBarcodeScan = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        const scannedCode = barcodeInput.trim();
-        if (!scannedCode) return;
-
-        // Find item by barcode OR code
-        const foundItem = items.find(i => 
-            (i.barcode === scannedCode) || (i.code && i.code === scannedCode)
-        );
-
-        if (foundItem) {
-            addItemToCart(foundItem);
-            setBarcodeInput(''); // Clear input for next scan
-        } else {
-            alert('Item not found with barcode: ' + scannedCode);
-            setBarcodeInput('');
-        }
+  // Handle input change for suggestions
+  const handleInputChange = (value: string) => {
+    setBarcodeInput(value);
+    setSelectedSuggestionIndex(-1); // Reset selection when typing
+    
+    if (value.trim().length > 0) {
+      const filtered = items.filter(i => 
+        i.name.toLowerCase().includes(value.toLowerCase()) ||
+        (i.code && i.code.toLowerCase().includes(value.toLowerCase())) ||
+        (i.barcode && i.barcode.includes(value))
+      ).slice(0, 5); // Limit to 5 suggestions
+      
+      setFilteredItems(filtered);
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
     }
+  };
+
+  // Logic to handle Barcode Scanning with keyboard navigation
+  const handleBarcodeScan = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (showSuggestions && filteredItems.length > 0) {
+            setSelectedSuggestionIndex(prev => 
+                prev < filteredItems.length - 1 ? prev + 1 : 0
+            );
+        }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (showSuggestions && filteredItems.length > 0) {
+            setSelectedSuggestionIndex(prev => 
+                prev > 0 ? prev - 1 : filteredItems.length - 1
+            );
+        }
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        
+        if (showSuggestions && selectedSuggestionIndex >= 0 && filteredItems[selectedSuggestionIndex]) {
+            // Select highlighted suggestion
+            selectSuggestion(filteredItems[selectedSuggestionIndex]);
+        } else {
+            // Search by text
+            const searchTerm = barcodeInput.trim();
+            if (!searchTerm) return;
+
+            const foundItem = items.find(i => 
+                (i.barcode === searchTerm) || 
+                (i.code && i.code === searchTerm) ||
+                (i.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
+
+            if (foundItem) {
+                addItemToCart(foundItem);
+                setBarcodeInput('');
+                setShowSuggestions(false);
+            } else {
+                alert('Item not found: ' + searchTerm);
+                setBarcodeInput('');
+            }
+        }
+    } else if (e.key === 'Escape') {
+        setShowSuggestions(false);
+        setSelectedSuggestionIndex(-1);
+    }
+  };
+
+  // Select item from suggestions
+  const selectSuggestion = (item: Item) => {
+    addItemToCart(item);
+    setBarcodeInput('');
+    setShowSuggestions(false);
+    setSelectedSuggestionIndex(-1);
+    barcodeInputRef.current?.focus();
   };
 
   // Add or Update item in list
@@ -122,6 +181,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
             itemId: item.id,
             itemName: item.name,
             quantity: 1,
+            mrp: item.sellingPrice, // Use selling price as default MRP
             price: price,
             taxRate: item.taxRate,
             amount: price
@@ -154,7 +214,8 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
       items: rows.filter(r => r.itemId), // Remove empty rows
       totalAmount: totals.total,
       totalTax: totals.tax,
-      status: selectedPartyId ? 'UNPAID' : 'PAID' // Default to PAID for cash sales (no party)
+      status: selectedPartyId ? 'UNPAID' : 'PAID', // Default to PAID for cash sales (no party)
+      paymentMode
     };
 
     try {
@@ -223,7 +284,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
       <div className="flex-1 overflow-auto p-6 space-y-8">
         
         {/* Top Section: Party & Details */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <div className="md:col-span-1">
             <label className="block text-sm font-bold text-slate-700 mb-1">
               {isPurchase ? 'Supplier (Optional)' : 'Customer (Optional)'}
@@ -233,7 +294,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
               value={selectedPartyId}
               onChange={(e) => setSelectedPartyId(e.target.value)}
             >
-              <option value="">Cash / Walk-in</option>
+              <option value="">Walk-in Customer</option>
               {parties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
@@ -260,6 +321,20 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
              />
           </div>
 
+          <div className="md:col-span-1">
+             <label className="block text-sm font-bold text-slate-700 mb-1">Payment Mode</label>
+             <select
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                value={paymentMode}
+                onChange={(e) => setPaymentMode(e.target.value as any)}
+             >
+                <option value="CASH">Cash</option>
+                <option value="ONLINE">Online Payment</option>
+                <option value="CHEQUE">Cheque</option>
+                <option value="CREDIT">Credit</option>
+             </select>
+          </div>
+
           {/* Original Invoice Reference for Returns */}
           {isReturn && (
             <div className="md:col-span-1">
@@ -280,17 +355,41 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
             <div className={`p-2 bg-${getColor()}-100 rounded-full text-${getColor()}-600`}>
                 <ScanBarcode size={24} />
             </div>
-            <div className="flex-1">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Scan Barcode / Quick Add</label>
+            <div className="flex-1 relative">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Scan Barcode / Item Name</label>
                 <input 
                     ref={barcodeInputRef}
                     type="text" 
-                    placeholder="Scan barcode or type code and press Enter..." 
+                    placeholder="Scan barcode, type item name/code..." 
                     className="w-full bg-white border border-slate-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                     value={barcodeInput}
-                    onChange={(e) => setBarcodeInput(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value)}
                     onKeyDown={handleBarcodeScan}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 />
+                
+                {/* Suggestions Dropdown */}
+                {showSuggestions && filteredItems.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 bg-white border border-slate-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                    {filteredItems.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className={`px-4 py-2 cursor-pointer border-b border-slate-100 last:border-b-0 ${
+                          index === selectedSuggestionIndex 
+                            ? 'bg-blue-100 text-blue-900' 
+                            : 'hover:bg-blue-50'
+                        }`}
+                        onClick={() => selectSuggestion(item)}
+                      >
+                        <div className="font-medium text-slate-800">{item.name}</div>
+                        <div className="text-xs text-slate-500">
+                          Stock: {item.stock} {item.unit} • Price: ₹{item.sellingPrice}
+                          {item.code && ` • Code: ${item.code}`}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
             </div>
         </div>
 
@@ -303,7 +402,8 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
                 <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">
                     {isReturn ? 'Return Qty' : 'Qty'}
                 </th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Price</th>
+                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">MRP</th>
+                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Rate</th>
                 <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Amount</th>
                 <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12"></th>
               </tr>
@@ -330,6 +430,15 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
                       className="w-full p-2 border border-slate-300 rounded text-right text-sm"
                       value={row.quantity}
                       onChange={(e) => updateRow(index, 'quantity', parseFloat(e.target.value) || 0)}
+                    />
+                  </td>
+                  <td className="py-3 px-2">
+                    <input 
+                      type="number" 
+                      className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                      value={row.mrp || ''}
+                      onChange={(e) => updateRow(index, 'mrp', parseFloat(e.target.value) || 0)}
+                      placeholder="MRP"
                     />
                   </td>
                   <td className="py-3 px-2">

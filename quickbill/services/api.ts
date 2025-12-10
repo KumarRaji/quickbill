@@ -10,7 +10,7 @@ import {
 // ========================
 // CONFIG
 // ========================
-const API_BASE = 'http://192.168.1.4:4000/api'; // change if needed
+const API_BASE = 'http://localhost:4000/api'; // change if needed
 
 const KEYS = {
   SESSION: 'quickbill_session',
@@ -122,6 +122,13 @@ export const PartyService = {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
+    });
+    await handleResponse(res);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/parties/${id}`, {
+      method: 'DELETE',
     });
     await handleResponse(res);
   },

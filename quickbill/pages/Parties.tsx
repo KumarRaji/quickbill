@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Party } from '../types';
-import { Search, Plus, Phone, MapPin, MoreHorizontal } from 'lucide-react';
+import { Search, Plus, Phone, MapPin, Edit2, Trash2 } from 'lucide-react';
 import { PartyService } from '../services/api';
 
 interface PartiesProps {
@@ -19,6 +19,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
     balance: 0
   });
   const [loading, setLoading] = useState(false);
+  const [editingParty, setEditingParty] = useState<Party | null>(null);
 
   const filteredParties = parties.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -29,8 +30,13 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await PartyService.create(formData as Party);
+      if (editingParty) {
+        await PartyService.update(editingParty.id, formData);
+      } else {
+        await PartyService.create(formData as Party);
+      }
       setFormData({ name: '', phone: '', gstin: '', address: '', balance: 0 });
+      setEditingParty(null);
       setIsModalOpen(false);
       onRefresh();
     } catch (error) {
@@ -38,6 +44,31 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (party: Party) => {
+    setEditingParty(party);
+    setFormData(party);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (party: Party) => {
+    if (confirm(`Are you sure you want to delete ${party.name}?`)) {
+      try {
+        await PartyService.delete(party.id);
+        onRefresh();
+      } catch (error: any) {
+        console.error(error);
+        const message = error.message || 'Failed to delete party';
+        alert(message);
+      }
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingParty(null);
+    setFormData({ name: '', phone: '', gstin: '', address: '', balance: 0 });
   };
 
   return (
@@ -94,9 +125,22 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
                     ₹{Math.abs(party.balance).toLocaleString()} {party.balance > 0 ? 'Cr' : party.balance < 0 ? 'Dr' : ''}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <button className="text-slate-400 hover:text-blue-600">
-                      <MoreHorizontal size={20} />
-                    </button>
+                    <div className="flex justify-end space-x-2">
+                      <button 
+                        onClick={() => handleEdit(party)}
+                        className="text-blue-600 hover:text-blue-800 p-1"
+                        title="Edit"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(party)}
+                        className="text-red-600 hover:text-red-800 p-1"
+                        title="Delete"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -117,8 +161,8 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800">Add New Party</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <h2 className="text-lg font-bold text-slate-800">{editingParty ? 'Edit Party' : 'Add New Party'}</h2>
+              <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -167,7 +211,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
               <div className="pt-4 flex justify-end space-x-3">
                 <button 
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={handleCloseModal}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
                   Cancel
@@ -177,7 +221,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
                   disabled={loading}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : 'Save Party'}
+                  {loading ? 'Saving...' : (editingParty ? 'Update Party' : 'Save Party')}
                 </button>
               </div>
             </form>

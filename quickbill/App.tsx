@@ -103,6 +103,7 @@ const App: React.FC = () => {
   };
 
   const handleCreateInvoiceSuccess = (newInvoice: Invoice, shouldPrint: boolean = false) => {
+    console.log('Created Invoice:', newInvoice);
     refreshData();
     setSelectedInvoice(newInvoice);
     setAutoPrint(shouldPrint);
@@ -118,6 +119,8 @@ const App: React.FC = () => {
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
+    console.log('Viewing Invoice:', invoice);
+    console.log('Current View:', currentView);
     setAutoPrint(false);
     setPreviousView(currentView); // Remember where we came from
     setCurrentView('VIEW_INVOICE');
@@ -240,6 +243,7 @@ const App: React.FC = () => {
             invoice={selectedInvoice} 
             onBack={handleBackFromInvoice} 
             autoPrint={autoPrint}
+            parties={parties}
           />
         );
       default:
