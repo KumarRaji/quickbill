@@ -36,7 +36,7 @@ const App: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [autoPrint, setAutoPrint] = useState(false);
 
-  // ===================== AUTH + DATA =====================
+  // ===================== AUTH =====================
 
   useEffect(() => {
     const currentUser = AuthService.getCurrentUser();
@@ -45,6 +45,8 @@ const App: React.FC = () => {
     }
     setLoadingAuth(false);
   }, []);
+
+  // ===================== DATA HELPERS =====================
 
   const refreshData = async () => {
     try {
@@ -63,11 +65,60 @@ const App: React.FC = () => {
     }
   };
 
+  // 🔹 Load data based on current route (first load / when URL changes)
   useEffect(() => {
-    if (user) {
-      refreshData();
-    }
-  }, [user]);
+    if (!user) return;
+
+    const loadForRoute = async () => {
+      try {
+        const path = location.pathname;
+
+        // Dashboard + Reports → need everything
+        if (path === '/' || path === '/reports') {
+          await refreshData();
+        }
+        // Quick Sale → needs parties + items
+        else if (path === '/quick-sale') {
+          const [p, i] = await Promise.all([
+            PartyService.getAll(),
+            ItemService.getAll(),
+          ]);
+          setParties(p);
+          setItems(i);
+        }
+        // Parties page
+        else if (path.startsWith('/parties')) {
+          const p = await PartyService.getAll();
+          setParties(p);
+        }
+        // Items / Stock pages
+        else if (path.startsWith('/items') || path.startsWith('/stock')) {
+          const i = await ItemService.getAll();
+          setItems(i);
+        }
+        // Sales / Purchase pages -> need invoices + parties
+        else if (path.startsWith('/sales') || path.startsWith('/purchases')) {
+          const [inv, p] = await Promise.all([
+            InvoiceService.getAll(),
+            PartyService.getAll(),
+          ]);
+          setInvoices(inv);
+          setParties(p);
+        }
+        // Expenses page
+        else if (path.startsWith('/expenses')) {
+          const exp = await ExpenseService.getAll();
+          setExpenses(exp);
+        }
+      } catch (error) {
+        console.error('Failed to fetch data for route', location.pathname, error);
+      }
+    };
+
+    loadForRoute();
+  }, [user, location.pathname]);
+
+  // ===================== AUTH HANDLERS =====================
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
@@ -115,17 +166,15 @@ const App: React.FC = () => {
       USERS: '/users',
     };
 
-    // ✅ Do NOT change URL for these special screens
+    // Do NOT change URL for these special screens
     if (view !== 'CREATE_TRANSACTION' && view !== 'VIEW_INVOICE') {
       navigate(routes[view] || '/');
     }
   };
 
-  // Helper to start a specific transaction (New Sale Invoice, Purchase invoice, etc.)
   const startTransaction = (type: TransactionType) => {
     setCreationType(type);
-    // ❗ no route change → URL stays like /sales/invoices or /purchases/bills
-    setCurrentView('CREATE_TRANSACTION');
+    setCurrentView('CREATE_TRANSACTION'); // no route change
   };
 
   const handleCreateInvoiceSuccess = (newInvoice: Invoice, shouldPrint: boolean = false) => {
@@ -133,30 +182,27 @@ const App: React.FC = () => {
     refreshData();
     setSelectedInvoice(newInvoice);
     setAutoPrint(shouldPrint);
-    // ❗ no route change
-    setCurrentView('VIEW_INVOICE');
+    setCurrentView('VIEW_INVOICE'); // no route change
   };
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setAutoPrint(false);
-    setCurrentView('VIEW_INVOICE'); // ❗ no route change
+    setCurrentView('VIEW_INVOICE');
   };
 
   const handlePrintInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setAutoPrint(true);
-    setCurrentView('VIEW_INVOICE'); // ❗ no route change
+    setCurrentView('VIEW_INVOICE');
   };
 
   const handleBackFromInvoice = () => {
-    // Simple behaviour: always go back to Sales Invoices
     changeView('SALES_INVOICES');
   };
 
   const canManageData = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
-  // Map current URL → logical view for Layout highlight
   const getCurrentViewFromPath = (): ViewState => {
     const pathMap: Record<string, ViewState> = {
       '/': 'DASHBOARD',
@@ -174,7 +220,6 @@ const App: React.FC = () => {
       '/users': 'USERS',
     };
 
-    // For special modes, show them instead of base route
     if (currentView === 'CREATE_TRANSACTION' || currentView === 'VIEW_INVOICE') {
       return currentView;
     }
@@ -185,7 +230,7 @@ const App: React.FC = () => {
   // ===================== RENDER =====================
 
   const renderContent = () => {
-    // 🔹 Special screens with NO route change
+    // Special screens with NO route change
     if (currentView === 'CREATE_TRANSACTION') {
       return (
         <InvoiceCreate
@@ -225,7 +270,7 @@ const App: React.FC = () => {
       );
     }
 
-    // 🔹 Normal pages controlled by URL (BrowserRouter)
+    // Normal pages controlled by URL (BrowserRouter)
     return (
       <Routes>
         <Route
@@ -265,6 +310,7 @@ const App: React.FC = () => {
           path="/stock"
           element={<Stock items={items} onRefresh={refreshData} userRole={user?.role} />}
         />
+
         {/* Sales */}
         <Route
           path="/sales/invoices"
@@ -332,6 +378,7 @@ const App: React.FC = () => {
             !canManageData ? (
               <div className="p-8 text-center text-red-500">Access Denied</div>
             ) : (
+              // if your component needs expenses, add: expenses={expenses}
               <Expenses onRefresh={refreshData} />
             )
           }
