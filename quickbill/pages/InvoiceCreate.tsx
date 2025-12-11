@@ -382,7 +382,9 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
                             ? 'bg-blue-100 text-blue-900' 
                             : 'hover:bg-blue-50'
                         }`}
-                        onClick={() => selectSuggestion(item)}
+                        onMouseDown={(e) => { e.preventDefault(); selectSuggestion(item); }}
+                        role="button"
+                        tabIndex={0}
                       >
                         <div className="font-medium text-slate-800">{item.name}</div>
                         <div className="text-xs text-slate-500">
