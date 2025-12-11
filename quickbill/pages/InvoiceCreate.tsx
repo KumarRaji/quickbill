@@ -68,6 +68,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
       if (selectedItem) {
         row.itemId = selectedItem.id;
         row.itemName = selectedItem.name;
+        row.mrp = selectedItem.mrp || 0;
         // Use purchase price for purchases, selling price for sales
         // For Returns, we typically use the same price as the original transaction
         if (transactionType === 'PURCHASE' || transactionType === 'PURCHASE_RETURN') {
@@ -181,7 +182,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
             itemId: item.id,
             itemName: item.name,
             quantity: 1,
-            mrp: item.sellingPrice, // Use selling price as default MRP
+            mrp: item.mrp || 0,
             price: price,
             taxRate: item.taxRate,
             amount: price
@@ -191,12 +192,14 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
 
   const totals = rows.reduce((acc, row) => {
     const taxAmount = (row.amount * row.taxRate) / 100;
+    const saving = Math.max(0, (Number(row.mrp || 0) - Number(row.price || 0)) * Number(row.quantity || 0));
     return {
       subtotal: acc.subtotal + row.amount,
       tax: acc.tax + taxAmount,
-      total: acc.total + row.amount + taxAmount
-    };
-  }, { subtotal: 0, tax: 0, total: 0 });
+      total: acc.total + row.amount + taxAmount,
+      savings: acc.savings + saving
+    } as { subtotal: number; tax: number; total: number; savings: number };
+  }, { subtotal: 0, tax: 0, total: 0, savings: 0 });
 
   const handleSave = async (shouldPrint: boolean = false) => {
     if (rows.length === 0) return;
@@ -404,6 +407,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
                 </th>
                 <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">MRP</th>
                 <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Rate</th>
+                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Save</th>
                 <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Amount</th>
                 <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12"></th>
               </tr>
@@ -442,16 +446,22 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
                     />
                   </td>
                   <td className="py-3 px-2">
-                    <input 
-                      type="number" 
-                      className="w-full p-2 border border-slate-300 rounded text-right text-sm"
-                      value={row.price}
-                      onChange={(e) => updateRow(index, 'price', parseFloat(e.target.value) || 0)}
-                    />
-                  </td>
-                  <td className="py-3 px-2 text-right font-medium text-slate-700">
-                    ₹{row.amount.toFixed(2)}
-                  </td>
+                      <input 
+                        type="number" 
+                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        value={row.price}
+                        onChange={(e) => updateRow(index, 'price', parseFloat(e.target.value) || 0)}
+                      />
+                    </td>
+                    <td className="py-3 px-2 text-right text-slate-600">
+                      {(() => {
+                        const saving = Math.max(0, (Number(row.mrp || 0) - Number(row.price || 0)) * Number(row.quantity || 0));
+                        return `₹${saving.toFixed(2)}`;
+                      })()}
+                    </td>
+                    <td className="py-3 px-2 text-right font-medium text-slate-700">
+                      ₹{row.amount.toFixed(2)}
+                    </td>
                   <td className="py-3 pl-2 text-right">
                     <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600">
                       <Trash2 size={18} />
@@ -484,6 +494,11 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
              <div className="flex justify-between text-xl font-bold text-slate-800 border-t border-slate-300 pt-3">
                <span>Total</span>
                <span>₹{totals.total.toFixed(2)}</span>
+             </div>
+             <div className="text-center mt-2">
+               <div className="inline-block bg-green-100 text-green-800 font-semibold px-3 py-1 rounded">
+                 You Have Saved : ₹{(totals as any).savings.toFixed(2)}
+               </div>
              </div>
           </div>
         </div>

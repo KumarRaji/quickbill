@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -14,30 +14,30 @@ import PaymentOut from './pages/PaymentOut';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
 import UsersPage from './pages/Users';
-import { Party, Item, Invoice, ViewState, TransactionType, User } from './types';
-import { PartyService, ItemService, InvoiceService, AuthService } from './services/api';
+import { Party, Item, Invoice, ViewState, TransactionType, User, Expense } from './types';
+import { PartyService, ItemService, InvoiceService, AuthService, ExpenseService } from './services/api';
 
 const App: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [user, setUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
+  // Used ONLY for special modes (CREATE_TRANSACTION, VIEW_INVOICE)
   const [currentView, setCurrentView] = useState<ViewState>('DASHBOARD');
-  // Track previous view for better "Back" navigation from InvoiceView
-  const [previousView, setPreviousView] = useState<ViewState>('DASHBOARD');
-  
-  // Track which type of transaction we are creating
   const [creationType, setCreationType] = useState<TransactionType>('SALE');
 
   const [parties, setParties] = useState<Party[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  
-  // Selected invoice for viewing
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  // Auto print flag
   const [autoPrint, setAutoPrint] = useState(false);
 
-  // Auth & Init
+  // ===================== AUTH + DATA =====================
+
   useEffect(() => {
     const currentUser = AuthService.getCurrentUser();
     if (currentUser) {
@@ -48,16 +48,18 @@ const App: React.FC = () => {
 
   const refreshData = async () => {
     try {
-      const [p, i, inv] = await Promise.all([
+      const [p, i, inv, exp] = await Promise.all([
         PartyService.getAll(),
         ItemService.getAll(),
-        InvoiceService.getAll()
+        InvoiceService.getAll(),
+        ExpenseService.getAll(),
       ]);
       setParties(p);
       setItems(i);
       setInvoices(inv);
+      setExpenses(exp);
     } catch (error) {
-      console.error("Failed to fetch data", error);
+      console.error('Failed to fetch data', error);
     }
   };
 
@@ -69,6 +71,7 @@ const App: React.FC = () => {
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
+    navigate('/', { replace: true });
     setCurrentView('DASHBOARD');
   };
 
@@ -77,28 +80,51 @@ const App: React.FC = () => {
     setUser(null);
   };
 
+  // ===================== VIEW / ROUTING =====================
+
   const changeView = (view: ViewState) => {
     // Role Protection
     if (view === 'REPORTS' || view === 'EXPENSES') {
-       if (user?.role === 'STAFF') {
-          alert('Access Denied: Admins only');
-          return;
-       }
+      if (user?.role === 'STAFF') {
+        alert('Access Denied: Admins only');
+        return;
+      }
     }
     if (view === 'USERS') {
-       if (user?.role !== 'SUPER_ADMIN') {
-          alert('Access Denied: Super Admin only');
-          return;
-       }
+      if (user?.role !== 'SUPER_ADMIN') {
+        alert('Access Denied: Super Admin only');
+        return;
+      }
     }
-    setPreviousView(currentView);
+
     setCurrentView(view);
+
+    const routes: Record<string, string> = {
+      DASHBOARD: '/',
+      PARTIES: '/parties',
+      ITEMS: '/items',
+      STOCK: '/stock',
+      SALES_INVOICES: '/sales/invoices',
+      SALES_RETURNS: '/sales/returns',
+      PAYMENT_IN: '/sales/payment-in',
+      PURCHASE_INVOICES: '/purchases/bills',
+      PURCHASE_RETURNS: '/purchases/returns',
+      PAYMENT_OUT: '/purchases/payment-out',
+      EXPENSES: '/expenses',
+      REPORTS: '/reports',
+      USERS: '/users',
+    };
+
+    // ✅ Do NOT change URL for these special screens
+    if (view !== 'CREATE_TRANSACTION' && view !== 'VIEW_INVOICE') {
+      navigate(routes[view] || '/');
+    }
   };
 
-  // Helper to start a specific transaction
+  // Helper to start a specific transaction (New Sale Invoice, Purchase invoice, etc.)
   const startTransaction = (type: TransactionType) => {
     setCreationType(type);
-    setPreviousView(currentView);
+    // ❗ no route change → URL stays like /sales/invoices or /purchases/bills
     setCurrentView('CREATE_TRANSACTION');
   };
 
@@ -107,152 +133,243 @@ const App: React.FC = () => {
     refreshData();
     setSelectedInvoice(newInvoice);
     setAutoPrint(shouldPrint);
-    
-    // Determine logical back path
-    if (newInvoice.type === 'SALE') setPreviousView('SALES_INVOICES');
-    else if (newInvoice.type === 'RETURN') setPreviousView('SALES_RETURNS');
-    else if (newInvoice.type === 'PURCHASE') setPreviousView('PURCHASE_INVOICES');
-    else if (newInvoice.type === 'PURCHASE_RETURN') setPreviousView('PURCHASE_RETURNS');
-
+    // ❗ no route change
     setCurrentView('VIEW_INVOICE');
   };
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
-    console.log('Viewing Invoice:', invoice);
-    console.log('Current View:', currentView);
     setAutoPrint(false);
-    setPreviousView(currentView); // Remember where we came from
-    setCurrentView('VIEW_INVOICE');
+    setCurrentView('VIEW_INVOICE'); // ❗ no route change
   };
 
   const handlePrintInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setAutoPrint(true);
-    setPreviousView(currentView); // Remember where we came from
-    setCurrentView('VIEW_INVOICE');
+    setCurrentView('VIEW_INVOICE'); // ❗ no route change
   };
 
   const handleBackFromInvoice = () => {
-    // If previous view was create, go to list instead to avoid loop/confusion
-    if (previousView === 'CREATE_TRANSACTION' || previousView === 'VIEW_INVOICE') {
-      // Default fallback
-      setCurrentView('SALES_INVOICES');
-    } else {
-      setCurrentView(previousView);
-    }
+    // Simple behaviour: always go back to Sales Invoices
+    changeView('SALES_INVOICES');
   };
 
-  // Render logic based on state
-  const renderContent = () => {
-    const canManageData = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const canManageData = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
 
-    switch (currentView) {
-      case 'DASHBOARD':
-        return <Dashboard invoices={invoices} parties={parties} items={items} />;
-      case 'PARTIES':
-        return <Parties parties={parties} onRefresh={refreshData} />;
-      case 'ITEMS':
-        return <Items items={items} onRefresh={refreshData} userRole={user?.role} />;
-      case 'STOCK':
-        return <Stock items={items} onRefresh={refreshData} userRole={user?.role} />;
-      
-      // Sales Routes
-      case 'SALES_INVOICES':
-        return (
-          <InvoiceList 
-            invoices={invoices} 
-            onView={handleViewInvoice} 
-            onPrint={handlePrintInvoice} 
-            onCreate={() => startTransaction('SALE')}
-            type="SALE" 
-          />
-        );
-      case 'SALES_RETURNS':
-        return (
-          <InvoiceList 
-            invoices={invoices} 
-            onView={handleViewInvoice} 
-            onPrint={handlePrintInvoice} 
-            onCreate={() => startTransaction('RETURN')}
-            type="RETURN" 
-          />
-        );
-      case 'PAYMENT_IN':
-        return <PaymentIn parties={parties} onRefresh={refreshData} />;
+  // Map current URL → logical view for Layout highlight
+  const getCurrentViewFromPath = (): ViewState => {
+    const pathMap: Record<string, ViewState> = {
+      '/': 'DASHBOARD',
+      '/parties': 'PARTIES',
+      '/items': 'ITEMS',
+      '/stock': 'STOCK',
+      '/sales/invoices': 'SALES_INVOICES',
+      '/sales/returns': 'SALES_RETURNS',
+      '/sales/payment-in': 'PAYMENT_IN',
+      '/purchases/bills': 'PURCHASE_INVOICES',
+      '/purchases/returns': 'PURCHASE_RETURNS',
+      '/purchases/payment-out': 'PAYMENT_OUT',
+      '/expenses': 'EXPENSES',
+      '/reports': 'REPORTS',
+      '/users': 'USERS',
+    };
 
-      // Purchase Routes
-      case 'PURCHASE_INVOICES':
-         return (
-          <InvoiceList 
-            invoices={invoices} 
-            onView={handleViewInvoice} 
-            onPrint={handlePrintInvoice} 
-            onCreate={() => startTransaction('PURCHASE')}
-            type="PURCHASE" 
-          />
-        );
-      case 'PURCHASE_RETURNS':
-         return (
-          <InvoiceList 
-            invoices={invoices} 
-            onView={handleViewInvoice} 
-            onPrint={handlePrintInvoice} 
-            onCreate={() => startTransaction('PURCHASE_RETURN')}
-            type="PURCHASE_RETURN" 
-          />
-        );
-      case 'PAYMENT_OUT':
-         return <PaymentOut parties={parties} onRefresh={refreshData} />;
-      
-      case 'EXPENSES':
-         if (!canManageData) return <div className="p-8 text-center text-red-500">Access Denied</div>;
-         return <Expenses onRefresh={refreshData} />;
-
-      // Reports
-      case 'REPORTS':
-        if (!canManageData) return <div className="p-8 text-center text-red-500">Access Denied</div>;
-        return <Reports invoices={invoices} parties={parties} items={items} />;
-
-      // Super Admin Only
-      case 'USERS':
-        if (user?.role !== 'SUPER_ADMIN') return <div className="p-8 text-center text-red-500">Access Denied</div>;
-        return <UsersPage />;
-
-      // Transaction Create Routes
-      case 'CREATE_TRANSACTION':
-        return (
-          <InvoiceCreate 
-            parties={parties} 
-            items={items} 
-            onCancel={() => {
-              // Go back to the list relevant to the type we were creating
-              if (creationType === 'RETURN') changeView('SALES_RETURNS');
-              else if (creationType === 'PURCHASE') changeView('PURCHASE_INVOICES');
-              else if (creationType === 'PURCHASE_RETURN') changeView('PURCHASE_RETURNS');
-              else changeView('SALES_INVOICES');
-            }}
-            onSuccess={handleCreateInvoiceSuccess}
-            initialType={creationType}
-          />
-        );
-      case 'VIEW_INVOICE':
-        if (!selectedInvoice) return <InvoiceList invoices={invoices} onView={handleViewInvoice} onPrint={handlePrintInvoice} type="SALE" onCreate={() => startTransaction('SALE')} />;
-        return (
-          <InvoiceView 
-            invoice={selectedInvoice} 
-            onBack={handleBackFromInvoice} 
-            autoPrint={autoPrint}
-            parties={parties}
-          />
-        );
-      default:
-        return <Dashboard invoices={invoices} parties={parties} items={items} />;
+    // For special modes, show them instead of base route
+    if (currentView === 'CREATE_TRANSACTION' || currentView === 'VIEW_INVOICE') {
+      return currentView;
     }
+
+    return pathMap[location.pathname] || 'DASHBOARD';
+  };
+
+  // ===================== RENDER =====================
+
+  const renderContent = () => {
+    // 🔹 Special screens with NO route change
+    if (currentView === 'CREATE_TRANSACTION') {
+      return (
+        <InvoiceCreate
+          parties={parties}
+          items={items}
+          onCancel={() => {
+            if (creationType === 'RETURN') changeView('SALES_RETURNS');
+            else if (creationType === 'PURCHASE') changeView('PURCHASE_INVOICES');
+            else if (creationType === 'PURCHASE_RETURN') changeView('PURCHASE_RETURNS');
+            else changeView('SALES_INVOICES');
+          }}
+          onSuccess={handleCreateInvoiceSuccess}
+          initialType={creationType}
+        />
+      );
+    }
+
+    if (currentView === 'VIEW_INVOICE') {
+      if (!selectedInvoice) {
+        return (
+          <InvoiceList
+            invoices={invoices}
+            onView={handleViewInvoice}
+            onPrint={handlePrintInvoice}
+            type="SALE"
+            onCreate={() => startTransaction('SALE')}
+          />
+        );
+      }
+      return (
+        <InvoiceView
+          invoice={selectedInvoice}
+          onBack={handleBackFromInvoice}
+          autoPrint={autoPrint}
+          parties={parties}
+        />
+      );
+    }
+
+    // 🔹 Normal pages controlled by URL (BrowserRouter)
+    return (
+      <Routes>
+        <Route
+          path="/"
+          element={<Dashboard invoices={invoices} parties={parties} items={items} expenses={expenses} />}
+        />
+        <Route
+          path="/quick-sale"
+          element={
+            <InvoiceCreate
+              parties={parties}
+              items={items}
+              onCancel={() => navigate('/')}
+              onSuccess={(invoice, shouldPrint) => {
+                refreshData();
+                if (shouldPrint) {
+                  setSelectedInvoice(invoice);
+                  setAutoPrint(true);
+                  setCurrentView('VIEW_INVOICE');
+                } else {
+                  navigate('/');
+                }
+              }}
+              initialType="SALE"
+            />
+          }
+        />
+        <Route
+          path="/parties"
+          element={<Parties parties={parties} onRefresh={refreshData} />}
+        />
+        <Route
+          path="/items"
+          element={<Items items={items} onRefresh={refreshData} userRole={user?.role} />}
+        />
+        <Route
+          path="/stock"
+          element={<Stock items={items} onRefresh={refreshData} userRole={user?.role} />}
+        />
+        {/* Sales */}
+        <Route
+          path="/sales/invoices"
+          element={
+            <InvoiceList
+              invoices={invoices}
+              onView={handleViewInvoice}
+              onPrint={handlePrintInvoice}
+              onCreate={() => startTransaction('SALE')}
+              type="SALE"
+            />
+          }
+        />
+        <Route
+          path="/sales/returns"
+          element={
+            <InvoiceList
+              invoices={invoices}
+              onView={handleViewInvoice}
+              onPrint={handlePrintInvoice}
+              onCreate={() => startTransaction('RETURN')}
+              type="RETURN"
+            />
+          }
+        />
+        <Route
+          path="/sales/payment-in"
+          element={<PaymentIn parties={parties} onRefresh={refreshData} />}
+        />
+
+        {/* Purchases */}
+        <Route
+          path="/purchases/bills"
+          element={
+            <InvoiceList
+              invoices={invoices}
+              onView={handleViewInvoice}
+              onPrint={handlePrintInvoice}
+              onCreate={() => startTransaction('PURCHASE')}
+              type="PURCHASE"
+            />
+          }
+        />
+        <Route
+          path="/purchases/returns"
+          element={
+            <InvoiceList
+              invoices={invoices}
+              onView={handleViewInvoice}
+              onPrint={handlePrintInvoice}
+              onCreate={() => startTransaction('PURCHASE_RETURN')}
+              type="PURCHASE_RETURN"
+            />
+          }
+        />
+        <Route
+          path="/purchases/payment-out"
+          element={<PaymentOut parties={parties} onRefresh={refreshData} />}
+        />
+
+        {/* Expenses */}
+        <Route
+          path="/expenses"
+          element={
+            !canManageData ? (
+              <div className="p-8 text-center text-red-500">Access Denied</div>
+            ) : (
+              <Expenses onRefresh={refreshData} />
+            )
+          }
+        />
+
+        {/* Reports */}
+        <Route
+          path="/reports"
+          element={
+            !canManageData ? (
+              <div className="p-8 text-center text-red-500">Access Denied</div>
+            ) : (
+              <Reports invoices={invoices} parties={parties} items={items} />
+            )
+          }
+        />
+
+        {/* Users */}
+        <Route
+          path="/users"
+          element={
+            user?.role !== 'SUPER_ADMIN' ? (
+              <div className="p-8 text-center text-red-500">Access Denied</div>
+            ) : (
+              <UsersPage />
+            )
+          }
+        />
+      </Routes>
+    );
   };
 
   if (loadingAuth) {
-    return <div className="flex h-screen items-center justify-center bg-slate-100">Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-100">
+        Loading...
+      </div>
+    );
   }
 
   if (!user) {
@@ -260,7 +377,12 @@ const App: React.FC = () => {
   }
 
   return (
-    <Layout currentView={currentView} onChangeView={changeView} user={user} onLogout={handleLogout}>
+    <Layout
+      currentView={getCurrentViewFromPath()}
+      onChangeView={changeView}
+      user={user}
+      onLogout={handleLogout}
+    >
       {renderContent()}
     </Layout>
   );

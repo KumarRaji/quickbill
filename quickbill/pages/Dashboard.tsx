@@ -10,20 +10,21 @@ import {
   LineChart,
   Line
 } from 'recharts';
-import { Invoice, Item, Party } from '../types';
+import { Invoice, Item, Party, Expense } from '../types';
 import { TrendingUp, Users, Package, CreditCard } from 'lucide-react';
 
 interface DashboardProps {
   invoices: Invoice[];
   parties: Party[];
   items: Item[];
+  expenses: Expense[];
 }
 
 // ✅ Helper to safely show party name or "Unknown"
 const getPartyName = (name?: string | null) =>
   name && name.trim().length > 0 ? name : 'Unknown';
 
-const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items }) => {
+const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expenses }) => {
   
   const stats = useMemo(() => {
     // Calculate Net Sales (Sales - Returns)
@@ -33,13 +34,16 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items }) => {
       return sum;
     }, 0);
 
+    // Calculate Total Expenses
+    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+
     // Count only Sales invoices for "Invoices Created" metric
     const totalInvoices = invoices.filter(i => i.type === 'SALE').length;
     const totalParties = parties.length;
     const lowStockItems = items.filter(i => i.stock < 10).length;
 
-    return { totalSales, totalInvoices, totalParties, lowStockItems };
-  }, [invoices, parties, items]);
+    return { totalSales, totalExpenses, totalInvoices, totalParties, lowStockItems };
+  }, [invoices, parties, items, expenses]);
 
   const chartData = useMemo(() => {
     const salesByDate: Record<string, number> = {};
@@ -101,6 +105,13 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items }) => {
           subText="Sales - Returns"
         />
         <StatCard 
+          title="Total Expenses" 
+          value={`₹${stats.totalExpenses.toLocaleString()}`} 
+          icon={CreditCard} 
+          color="bg-red-500"
+          subText="All expenses"
+        />
+        <StatCard 
           title="Total Parties" 
           value={stats.totalParties} 
           icon={Users} 
@@ -113,13 +124,6 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items }) => {
           icon={Package} 
           color="bg-orange-500"
           subText="Items below 10 units"
-        />
-        <StatCard 
-          title="Sale Invoices" 
-          value={stats.totalInvoices} 
-          icon={CreditCard} 
-          color="bg-purple-500"
-          subText="This financial year"
         />
       </div>
 

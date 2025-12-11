@@ -54,15 +54,23 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
   const StandardLayout: React.FC = () => {
     const items = invoice.items || [];
 
+    const savings = items.reduce((acc: number, item: any) => {
+      const mrp = Number(item.mrp || 0);
+      const price = Number(item.price || item.rate || 0);
+      const qty = Number(item.quantity || 0);
+      const save = Math.max(0, (mrp - price) * qty);
+      return acc + save;
+    }, 0);
+
     // If you have invoice.totalTax, subtotal = totalAmount - totalTax
     const totalAmountNum = Number(invoice.totalAmount || 0);
     const totalTaxNum = Number((invoice as any).totalTax || 0); // adjust if totalTax is on Invoice type
     const subTotal = totalAmountNum - totalTaxNum;
 
     return (
-      <div className="bg-white max-w-4xl mx-auto shadow-xl p-8 min-h-[1100px] print:shadow-none print:min-h-0 print:p-0">
+      <div className="bg-white max-w-4xl mx-auto shadow-xl p-6 min-h-[1100px] print:shadow-none print:min-h-0 print:p-0">
         {/* Invoice Header */}
-        <div className="flex justify-between items-start border-b-2 border-slate-100 pb-8 mb-8">
+        <div className="flex justify-between items-start border-b-2 border-slate-100 pb-4 mb-4">
           <div>
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
@@ -89,6 +97,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
               <span className="font-bold"># {(invoice as any).invoiceNumber || (invoice as any).invoiceNo}</span>
               <br />
               Date: {new Date(invoice.date).toLocaleDateString()}
+              <br />
+              <span className="text-sm">Time : {new Date().toLocaleTimeString('en-GB')}</span>
               {(invoice as any).originalRefNumber && (
                 <>
                   <br />
@@ -100,7 +110,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         </div>
 
         {/* Bill To */}
-        <div className="mb-8 p-6 bg-slate-50 rounded-lg border border-slate-100">
+        <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
             {invoice.type.includes('PURCHASE') ? 'Supplier' : 'Bill To'}
           </h3>
@@ -112,11 +122,12 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         </div>
 
         {/* Table */}
-        <table className="w-full mb-8">
+        <table className="w-full mb-4">
           <thead>
             <tr className="bg-slate-800 text-white">
               <th className="px-4 py-3 text-left rounded-l-lg text-sm font-medium">Item Description</th>
               <th className="px-4 py-3 text-right text-sm font-medium">Qty</th>
+              <th className="px-4 py-3 text-right text-sm font-medium">MRP</th>
               <th className="px-4 py-3 text-right text-sm font-medium">Rate</th>
               <th className="px-4 py-3 text-right rounded-r-lg text-sm font-medium">Amount</th>
             </tr>
@@ -131,6 +142,9 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
                   {item.quantity}
                 </td>
                 <td className="px-4 py-3 text-right text-slate-600">
+                  ₹{formatMoney(item.mrp || 0)}
+                </td>
+                <td className="px-4 py-3 text-right text-slate-600">
                   ₹{formatMoney(item.price)}
                 </td>
                 <td className="px-4 py-3 text-right text-slate-800 font-bold">
@@ -142,7 +156,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         </table>
 
         {/* Totals */}
-        <div className="flex justify-end mb-12">
+        <div className="flex justify-end mb-6">
           <div className="w-64">
             <div className="flex justify-between py-2 text-slate-600 border-b border-slate-100">
               <span>Subtotal</span>
@@ -152,32 +166,30 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
               <span>Tax Total</span>
               <span>₹{formatMoney((invoice as any).totalTax)}</span>
             </div>
-            <div className="flex justify-between py-4 text-xl font-bold text-slate-800">
+            <div className="flex justify-between py-2 text-lg font-bold text-slate-800">
               <span>Total</span>
               <span>₹{formatMoney(invoice.totalAmount)}</span>
             </div>
           </div>
         </div>
 
-        {/* Terms */}
-        <div className="border-t border-slate-100 pt-8">
-          <h4 className="text-sm font-bold text-slate-800 mb-2">
-            Terms & Conditions
-          </h4>
-          <ul className="text-xs text-slate-500 list-disc list-inside space-y-1">
-            <li>Product once sold can not be taken back.</li>
-            <li>
-              Interest @ 18% p.a. will be charged if payment is not made within
-              the due date.
-            </li>
-            <li>Subject to local jurisdiction only.</li>
-          </ul>
+        {/* Saved summary (centered above footer/terms) */}
+        <div className="mt-4 mb-4 text-center">
+          <div className="inline-block bg-green-100 text-green-800 font-semibold px-4 py-2 rounded text-lg">
+            You Have Saved : ₹{formatMoney(savings)}
+          </div>
         </div>
 
-        <div className="mt-12 text-center text-xs text-slate-400">
+        {/* Terms removed as requested */}
+
+        <div className="mt-4 text-center text-sm text-slate-600 font-medium">
+          Product once sold can not be taken back.
+        </div>
+
+        <div className="mt-6 text-center text-xs text-slate-400">
           Authorized Signatory
         </div>
-        <div align="center" className="mt-2 text-center text-xs text-slate-400 font-bold">
+        <div className="mt-1 text-center text-xs text-slate-400 font-bold">
           QuickBill - shopping !!
         </div>
 
@@ -187,6 +199,14 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
 
   const ThermalLayout: React.FC = () => {
     const items = invoice.items || [];
+
+    const savings = items.reduce((acc: number, item: any) => {
+      const mrp = Number(item.mrp || 0);
+      const price = Number(item.price || item.rate || 0);
+      const qty = Number(item.quantity || 0);
+      const save = Math.max(0, (mrp - price) * qty);
+      return acc + save;
+    }, 0);
 
     return (
       <div className="bg-white mx-auto p-2 shadow-xl print:shadow-none w-[300px] print:w-full font-mono text-sm text-black leading-tight">
@@ -213,9 +233,15 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
             <span>{(invoice as any).originalRefNumber}</span>
           </div>
         )}
-        <div className="flex justify-between text-xs mb-2">
-          <span>Date:</span>
-          <span>{new Date(invoice.date).toLocaleDateString()}</span>
+        <div className="text-xs mb-2">
+          <div className="flex justify-between">
+            <span>Date:</span>
+            <span>{new Date(invoice.date).toLocaleDateString()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Time :</span>
+            <span>{new Date().toLocaleTimeString('en-GB')}</span>
+          </div>
         </div>
 
         <div className="border-b border-dashed border-black my-2" />
@@ -231,24 +257,31 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
 
         {/* Items Header */}
         <div className="flex font-bold text-xs mb-1">
-          <div className="w-1/2">Item</div>
-          <div className="w-1/4 text-center">Qty</div>
-          <div className="w-1/4 text-right">Amt</div>
+          <div className="w-1/3">Item</div>
+          <div className="w-1/6 text-center">Qty</div>
+          <div className="w-1/6 text-center">MRP</div>
+          <div className="w-1/6 text-center">Rate</div>
+          <div className="w-1/6 text-right">Amt</div>
         </div>
 
         {/* Items List */}
         <div className="mb-2">
           {items.map((item: any, idx: number) => (
             <div key={idx} className="mb-1">
-              <div className="text-xs truncate">
-                {item.itemName || item.name}
-              </div>
-              <div className="flex text-xs text-slate-600">
-                <div className="w-1/2" />
-                <div className="w-1/4 text-center">
-                  {item.quantity} x {formatMoney(item.price)}
+              <div className="flex text-xs">
+                <div className="w-1/3 truncate">
+                  {item.itemName || item.name}
                 </div>
-                <div className="w-1/4 text-right text-black">
+                <div className="w-1/6 text-center">
+                  {item.quantity}
+                </div>
+                <div className="w-1/6 text-center text-slate-600">
+                  ₹{formatMoney(item.mrp || 0)}
+                </div>
+                <div className="w-1/6 text-center text-slate-600">
+                  ₹{formatMoney(item.price)}
+                </div>
+                <div className="w-1/6 text-right text-black">
                   ₹{formatMoney(item.amount ?? item.total)}
                 </div>
               </div>
@@ -258,20 +291,28 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
 
         <div className="border-b border-dashed border-black my-2" />
 
-        <div className="flex justify-between font-bold text-sm mb-1">
-          <span>TOTAL:</span>
-          <span>₹{formatMoney(invoice.totalAmount)}</span>
-        </div>
         <div className="flex justify-between text-xs mb-4">
           <span>(Inc. Taxes)</span>
           <span>₹{formatMoney((invoice as any).totalTax)}</span>
         </div>
+        <div className="flex justify-between font-bold text-sm mb-1">
+          <span>TOTAL:</span>
+          <span>₹{formatMoney(invoice.totalAmount)}</span>
+        </div>
+        <div className="text-center mt-2 mb-2">
+          <div className="inline-block bg-green-100 text-green-800 font-semibold px-3 py-1 rounded">
+            You Have Saved : ₹{formatMoney(savings)}
+          </div>
+        </div>
 
         <div className="border-b border-dashed border-black my-2" />
 
+        <div className="mt-4 text-center text-sm text-slate-600 font-medium">
+          Product once sold can not be taken back.
+        </div>
+
         <div className="text-center text-xs mt-2">
-          <p>Thank you for your business!</p>
-          <p className="mt-1">Visit Again</p>
+          Thank you ! Visit Again !
         </div>
       </div>
     );
