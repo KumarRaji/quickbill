@@ -252,6 +252,7 @@ const SaleReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSucces
             <table className="w-full text-left">
               <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
                 <tr>
+                  <th className="px-6 py-3">Invoice No</th>
                   <th className="px-6 py-3">Item</th>
                   <th className="px-6 py-3 text-center">Sold Qty</th>
                   <th className="px-6 py-3 text-right">Price</th>
@@ -263,6 +264,7 @@ const SaleReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSucces
               <tbody className="divide-y divide-slate-100">
                 {returnRows.map((r) => (
                   <tr key={r.itemId} className="hover:bg-slate-50">
+                    <td className="px-6 py-4 font-medium text-slate-600">{selectedInvoice?.invoiceNumber || 'N/A'}</td>
                     <td className="px-6 py-4 font-medium text-slate-800">{r.itemName}</td>
                     <td className="px-6 py-4 text-center text-slate-700">{r.soldQty}</td>
                     <td className="px-6 py-4 text-right text-slate-700">₹{r.price}</td>
@@ -285,7 +287,7 @@ const SaleReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSucces
 
                 {returnRows.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
+                    <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
                       No items found in invoice.
                     </td>
                   </tr>

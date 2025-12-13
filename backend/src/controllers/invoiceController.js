@@ -43,9 +43,10 @@ function getBalanceDelta(type, total) {
 // ==============================
 exports.getInvoices = (req, res) => {
   const sql = `
-    SELECT i.*, p.name as party_name 
+    SELECT i.*, p.name as party_name, orig.invoice_no as original_invoice_no
     FROM invoices i 
     LEFT JOIN parties p ON i.party_id = p.id 
+    LEFT JOIN invoices orig ON i.original_invoice_id = orig.id
     ORDER BY i.id DESC
   `;
   pool.query(sql, (err, invoices) => {
@@ -104,8 +105,9 @@ exports.getInvoices = (req, res) => {
           date: inv.invoice_date,
           notes: inv.notes,
           paymentMode: inv.payment_mode,
-          status: 'PAID', // Default status
+          status: 'PAID',
           partyName: inv.party_name || "Cash Customer",
+          originalRefNumber: inv.original_invoice_no || null,
           items: invoiceItems,
         };
       });
