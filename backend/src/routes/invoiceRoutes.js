@@ -1,14 +1,17 @@
 // src/routes/invoiceRoutes.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const {
-  getInvoices,
-  getInvoiceById,
-  createInvoice,
-} = require('../controllers/invoiceController');
 
-router.get('/', getInvoices);
-router.get('/:id', getInvoiceById);
-router.post('/', createInvoice);
+// ✅ import controller
+const invoiceController = require("../controllers/invoiceController");
 
+// routes
+router.get("/", invoiceController.getInvoices);
+router.get("/:id", invoiceController.getInvoiceById);
+router.post("/", invoiceController.createInvoice);
+
+// ✅ sale return route
+router.post("/:id/sale-return", invoiceController.applySaleReturn);
+// ✅ purchase return route
+router.post("/:id/purchase-return", invoiceController.applyPurchaseReturn);
 module.exports = router;

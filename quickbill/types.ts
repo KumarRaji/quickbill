@@ -1,52 +1,69 @@
-
 export interface Party {
   id: string;
   name: string;
-  phone: string;
+  phone?: string;          // ✅ optional (because DB allows NULL)
   gstin?: string;
   address?: string;
-  balance: number; // Positive for receivable, negative for payable
+  balance: number;         // +ve = receivable, -ve = payable
 }
 
 export interface Item {
   id: string;
   name: string;
   code?: string;
-  barcode?: string; // Scannable barcode (UPC/EAN)
+  barcode?: string;        // Scannable barcode (UPC/EAN)
   mrp?: number;
   sellingPrice: number;
   purchasePrice: number;
   stock: number;
   unit: string;
-  taxRate: number; // Percentage
+  taxRate: number;         // Percentage
 }
 
 export interface InvoiceItem {
+  id?: string;             // ✅ backend returns id sometimes
   itemId: string;
   itemName: string;
   quantity: number;
   mrp?: number;
   price: number;
   taxRate: number;
-  amount: number; // (price * quantity)
+  amount: number;          // line total (your backend uses `total`)
 }
 
-export type TransactionType = 'SALE' | 'RETURN' | 'PURCHASE' | 'PURCHASE_RETURN';
+export type TransactionType = "SALE" | "RETURN" | "PURCHASE" | "PURCHASE_RETURN";
+
+export type PaymentMode = "CASH" | "ONLINE" | "CHEQUE" | "CREDIT";
+
+export type InvoiceStatus = "PAID" | "UNPAID" | "PENDING"; // ✅ allow pending (failed payment scenario)
 
 export interface Invoice {
   id: string;
   type: TransactionType;
   invoiceNumber: string;
   date: string;
+
   partyId: string;
   partyName: string;
-  originalRefNumber?: string; // Reference to original invoice for returns
+
+  // ✅ ADD THIS LINE (FOR RETURNS)
+  originalRefNumber?: string | null;
+
   items: InvoiceItem[];
+
   totalAmount: number;
   totalTax: number;
-  status: 'PAID' | 'UNPAID';
-  paymentMode: 'CASH' | 'ONLINE' | 'CHEQUE' | 'CREDIT';
+
+  status: InvoiceStatus;
+  paymentMode: PaymentMode;
+
+  notes?: string | null;
 }
+
+
+export type PaymentType = "IN" | "OUT";
+
+export type PaymentModeSimple = "CASH" | "ONLINE" | "CHEQUE"; // payments table uses varchar but UI usually these
 
 export interface Payment {
   id: string;
@@ -54,8 +71,8 @@ export interface Payment {
   partyId: string;
   partyName: string;
   amount: number;
-  type: 'IN' | 'OUT';
-  mode: 'CASH' | 'ONLINE' | 'CHEQUE';
+  type: PaymentType;
+  mode: PaymentModeSimple;
   note?: string;
 }
 
@@ -67,7 +84,7 @@ export interface Expense {
   note?: string;
 }
 
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'STAFF';
+export type UserRole = "SUPER_ADMIN" | "ADMIN" | "STAFF";
 
 export interface User {
   id: string;
@@ -76,19 +93,19 @@ export interface User {
   role: UserRole;
 }
 
-export type ViewState = 
-  | 'DASHBOARD' 
-  | 'PARTIES' 
-  | 'ITEMS' 
-  | 'STOCK'
-  | 'SALES_INVOICES' 
-  | 'SALES_RETURNS' 
-  | 'PAYMENT_IN' 
-  | 'PURCHASE_INVOICES' 
-  | 'PURCHASE_RETURNS'
-  | 'PAYMENT_OUT'
-  | 'EXPENSES'
-  | 'CREATE_TRANSACTION' 
-  | 'VIEW_INVOICE'
-  | 'REPORTS'
-  | 'USERS';
+export type ViewState =
+  | "DASHBOARD"
+  | "PARTIES"
+  | "ITEMS"
+  | "STOCK"
+  | "SALES_INVOICES"
+  | "SALE_RETURN_NEW"
+  | "PAYMENT_IN"
+  | "PURCHASE_INVOICES"
+  | "PURCHASE_RETURNS"
+  | "PAYMENT_OUT"
+  | "EXPENSES"
+  | "CREATE_TRANSACTION"
+  | "VIEW_INVOICE"
+  | "REPORTS"
+  | "USERS";

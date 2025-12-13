@@ -2,8 +2,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Party, Item, InvoiceItem, Invoice, TransactionType } from '../types';
-import { InvoiceService } from '../services/api';
-import { Plus, Trash2, Save, ArrowLeft, Printer, ScanBarcode } from 'lucide-react';
+import { InvoiceService, ItemService } from '../services/api';
+import { Plus, Trash2, Save, ArrowLeft, Printer, ScanBarcode, X } from 'lucide-react';
 
 interface InvoiceCreateProps {
   parties: Party[];
@@ -11,9 +11,10 @@ interface InvoiceCreateProps {
   onCancel: () => void;
   onSuccess: (invoice: Invoice, shouldPrint?: boolean) => void;
   initialType?: TransactionType;
+  hideAddItemButton?: boolean;
 }
 
-const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel, onSuccess, initialType = 'SALE' }) => {
+const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel, onSuccess, initialType = 'SALE', hideAddItemButton = false }) => {
   const [transactionType, setTransactionType] = useState<TransactionType>(initialType);
   const [selectedPartyId, setSelectedPartyId] = useState<string>('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -30,6 +31,20 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
   
   const [rows, setRows] = useState<InvoiceItem[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Add New Item Modal State
+  const [showItemModal, setShowItemModal] = useState(false);
+  const [itemFormData, setItemFormData] = useState<Partial<Item>>({
+    name: '',
+    code: '',
+    barcode: '',
+    sellingPrice: 0,
+    purchasePrice: 0,
+    mrp: 0,
+    stock: 0,
+    unit: 'pcs',
+    taxRate: 0,
+  });
 
   // Focus barcode input on mount
   useEffect(() => {
@@ -353,8 +368,18 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
           )}
         </div>
 
-        {/* Barcode Scanner Input */}
+        {/* Barcode Scanner Input with Add Item Button */}
         <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex items-center space-x-3">
+            {!hideAddItemButton && (
+              <button
+                onClick={() => setShowItemModal(true)}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center space-x-2 transition-colors font-medium"
+                type="button"
+              >
+                <Plus size={18} />
+                <span>Add New Item</span>
+              </button>
+            )}
             <div className={`p-2 bg-${getColor()}-100 rounded-full text-${getColor()}-600`}>
                 <ScanBarcode size={24} />
             </div>
@@ -537,6 +562,213 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
            </button>
          </div>
       </div>
+
+      {/* Add New Item Modal */}
+      {showItemModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-lg font-bold text-slate-800">Add New Item</h2>
+              <button
+                onClick={() => setShowItemModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setLoading(true);
+              try {
+                await ItemService.create(itemFormData as Item);
+                alert('Item added successfully!');
+                setShowItemModal(false);
+                setItemFormData({
+                  name: '',
+                  code: '',
+                  barcode: '',
+                  sellingPrice: 0,
+                  purchasePrice: 0,
+                  mrp: 0,
+                  stock: 0,
+                  unit: 'pcs',
+                  taxRate: 0,
+                });
+                window.location.reload();
+              } catch (error) {
+                console.error(error);
+                alert('Error adding item');
+              } finally {
+                setLoading(false);
+              }
+            }} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Item Name *
+                </label>
+                <input
+                  required
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={itemFormData.name || ''}
+                  onChange={(e) =>
+                    setItemFormData({ ...itemFormData, name: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Item Code
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={itemFormData.code || ''}
+                    onChange={(e) =>
+                      setItemFormData({ ...itemFormData, code: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Barcode
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={itemFormData.barcode || ''}
+                    onChange={(e) =>
+                      setItemFormData({ ...itemFormData, barcode: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    MRP
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={itemFormData.mrp || 0}
+                    onChange={(e) =>
+                      setItemFormData({ ...itemFormData, mrp: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Selling Price *
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={itemFormData.sellingPrice || 0}
+                    onChange={(e) =>
+                      setItemFormData({ ...itemFormData, sellingPrice: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Purchase Price *
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={itemFormData.purchasePrice || 0}
+                    onChange={(e) =>
+                      setItemFormData({ ...itemFormData, purchasePrice: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Stock (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={itemFormData.stock || 0}
+                    onChange={(e) =>
+                      setItemFormData({ ...itemFormData, stock: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Unit *
+                  </label>
+                  <select
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={itemFormData.unit || 'pcs'}
+                    onChange={(e) =>
+                      setItemFormData({ ...itemFormData, unit: e.target.value })
+                    }
+                  >
+                    <option value="pcs">Pieces</option>
+                    <option value="kg">Kilogram</option>
+                    <option value="ltr">Liter</option>
+                    <option value="box">Box</option>
+                    <option value="mtr">Meter</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Tax Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={itemFormData.taxRate || 0}
+                    onChange={(e) =>
+                      setItemFormData({ ...itemFormData, taxRate: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowItemModal(false)}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {loading ? 'Saving...' : 'Save Item'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

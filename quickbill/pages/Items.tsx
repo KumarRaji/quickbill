@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Item, UserRole } from '../types';
-import { Search, Plus, Edit2, Trash2, ScanBarcode, X } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ScanBarcode, X, Upload } from 'lucide-react';
 import { ItemService } from '../services/api';
 
 interface ItemsProps {
@@ -28,10 +28,13 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
   const [loading, setLoading] = useState(false);
 
-  // Both Admin and Super Admin can manage items fully
+  // ✅ Bulk upload states
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
   const canDelete = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
-  // ✅ Filter first (so pagination can use it)
   const filteredItems = items.filter(
     (i) =>
       i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -39,10 +42,9 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
       (i.barcode && i.barcode.includes(searchTerm))
   );
 
-  // ✅ Pagination after filteredItems
+  // ✅ Pagination
   const [page, setPage] = useState(1);
- const [pageSize, setPageSize] = useState(10);
- 
+  const [pageSize, setPageSize] = useState(10);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -99,10 +101,51 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
       }
       setIsModalOpen(false);
       onRefresh();
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      alert(error.message || 'Failed to save item');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ Download sample CSV
+  const downloadSampleCSV = () => {
+    const header =
+      'name,code,barcode,sellingPrice,purchasePrice,mrp,stock,unit,taxRate\n';
+    const sample =
+      'Pen,PEN-01,8901234567890,10,6,12,100,pcs,0\n';
+    const blob = new Blob([header + sample], {
+      type: 'text/csv;charset=utf-8;',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'items_sample.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ✅ Bulk Upload submit
+  const handleBulkUpload = async () => {
+    if (!bulkFile) return alert('Please choose a file');
+
+    setBulkLoading(true);
+    try {
+      const result = await ItemService.bulkUpload(bulkFile);
+
+      alert(
+        `${result?.message || 'Upload completed'}\nRows: ${
+          result?.totalRows ?? '-'
+        }\nAffected: ${result?.affectedRows ?? '-'}`
+      );
+
+      setBulkOpen(false);
+      setBulkFile(null);
+      onRefresh();
+    } catch (e: any) {
+      alert(e.message || 'Bulk upload failed');
+    } finally {
+      setBulkLoading(false);
     }
   };
 
@@ -110,59 +153,68 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
     <div className="max-w-7xl mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Items / Inventory</h1>
-        <button
-          onClick={handleAddNew}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-        >
-          <Plus size={18} />
-          <span>Add Item</span>
-        </button>
+
+        {/* ✅ Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setBulkOpen(true)}
+            className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <Upload size={18} />
+            <span>Bulk Upload</span>
+          </button>
+
+          <button
+            onClick={handleAddNew}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <Plus size={18} />
+            <span>Add Item</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-       <div className="p-4 border-b border-slate-200 bg-slate-50">
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    
-    {/* Search */}
-    <div className="relative w-full sm:max-w-md">
-      <Search
-        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-        size={18}
-      />
-      <input
-        type="text"
-        placeholder="Search by Name, Code or Barcode..."
-        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        value={searchTerm}
-        onChange={(e) => {
-          setSearchTerm(e.target.value);
-          setPage(1); // ✅ reset to first page on search
-        }}
-      />
-    </div>
+        <div className="p-4 border-b border-slate-200 bg-slate-50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            {/* Search */}
+            <div className="relative w-full sm:max-w-md">
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
+                size={18}
+              />
+              <input
+                type="text"
+                placeholder="Search by Name, Code or Barcode..."
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
 
-    {/* Rows dropdown */}
-    <div className="flex items-center gap-2 justify-end">
-      <span className="text-xs font-medium text-slate-600">Rows:</span>
-      <select
-        value={pageSize}
-        onChange={(e) => {
-          setPageSize(Number(e.target.value));
-          setPage(1); // ✅ reset to first page when pageSize changes
-        }}
-        className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        {[10, 20, 50, 100].map((n) => (
-          <option key={n} value={n}>
-            {n}
-          </option>
-        ))}
-      </select>
-    </div>
-
-  </div>
-</div>
-
+            {/* Rows dropdown */}
+            <div className="flex items-center gap-2 justify-end">
+              <span className="text-xs font-medium text-slate-600">Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {[10, 20, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
 
         <div className="overflow-auto flex-1">
           <table className="w-full text-left border-collapse">
@@ -262,7 +314,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
             </tbody>
           </table>
 
-          {/* ✅ Pagination bar (same style as Parties) */}
+          {/* Pagination */}
           {filteredItems.length > 0 && (
             <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
               <p className="text-xs text-slate-500">
@@ -278,7 +330,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 <button
                   onClick={handlePrevious}
                   disabled={currentPage === 1}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
@@ -290,7 +342,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 <button
                   onClick={handleNext}
                   disabled={currentPage === totalPages}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Next
                 </button>
@@ -300,7 +352,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Item Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
@@ -316,25 +368,150 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 gap-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Item Name *
+                </label>
+                <input
+                  required
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Item Name *
+                    Item Code
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.code || ''}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Barcode
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.barcode || ''}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    MRP
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.mrp || 0}
+                    onChange={(e) =>
+                      setFormData({ ...formData, mrp: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Selling Price *
                   </label>
                   <input
                     required
-                    type="text"
+                    type="number"
+                    step="0.01"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.name || ''}
+                    value={formData.sellingPrice || 0}
                     onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
+                      setFormData({
+                        ...formData,
+                        sellingPrice: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Purchase Price *
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.purchasePrice || 0}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        purchasePrice: parseFloat(e.target.value) || 0,
+                      })
                     }
                   />
                 </div>
               </div>
 
-              {/* keep your other fields as-is */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Stock (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.stock || 0}
+                    onChange={(e) =>
+                      setFormData({ ...formData, stock: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Unit *
+                  </label>
+                  <select
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.unit || 'pcs'}
+                    onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                  >
+                    <option value="pcs">Pieces</option>
+                    <option value="kg">Kilogram</option>
+                    <option value="ltr">Liter</option>
+                    <option value="box">Box</option>
+                    <option value="mtr">Meter</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Tax Rate (%)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.taxRate || 0}
+                    onChange={(e) =>
+                      setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 0 })
+                    }
+                  />
+                </div>
+              </div>
 
               <div className="pt-4 flex justify-end space-x-3">
                 <button
@@ -353,6 +530,81 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Bulk Upload Modal */}
+      {bulkOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-lg font-bold text-slate-800">Bulk Upload Items</h2>
+              <button
+                onClick={() => {
+                  if (!bulkLoading) {
+                    setBulkOpen(false);
+                    setBulkFile(null);
+                  }
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="text-sm text-slate-600">
+                Upload <b>.csv</b> or <b>.xlsx</b> with columns:
+                <div className="mt-2 text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono">
+                  name, code, barcode, sellingPrice, purchasePrice, mrp, stock, unit, taxRate
+                </div>
+              </div>
+
+              <button
+                onClick={downloadSampleCSV}
+                className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm w-fit"
+              >
+                Download Sample CSV
+              </button>
+
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                disabled={bulkLoading}
+              />
+
+              {bulkFile && (
+                <p className="text-xs text-slate-500">
+                  Selected: <span className="font-medium">{bulkFile.name}</span>
+                </p>
+              )}
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    if (!bulkLoading) {
+                      setBulkOpen(false);
+                      setBulkFile(null);
+                    }
+                  }}
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                  disabled={bulkLoading}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  disabled={bulkLoading || !bulkFile}
+                  onClick={handleBulkUpload}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {bulkLoading ? 'Uploading...' : 'Upload'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

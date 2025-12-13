@@ -93,7 +93,7 @@ exports.getInvoices = (req, res) => {
           const taxAmount = (item.price * item.quantity * item.taxRate) / 100;
           return sum + taxAmount;
         }, 0);
-        
+
         return {
           id: inv.id.toString(),
           partyId: inv.party_id.toString(),
@@ -105,7 +105,7 @@ exports.getInvoices = (req, res) => {
           notes: inv.notes,
           paymentMode: inv.payment_mode,
           status: 'PAID', // Default status
-          partyName: inv.party_name || 'Cash Customer',
+          partyName: inv.party_name || "Cash Customer",
           items: invoiceItems,
         };
       });
@@ -148,7 +148,7 @@ exports.getInvoiceById = (req, res) => {
       const response = {
         id: inv.id.toString(),
         partyId: inv.party_id.toString(),
-        invoiceNo: inv.invoice_no,
+        invoiceNumber: inv.invoice_no,
         type: inv.type,
         totalAmount: Number(inv.total_amount),
         date: inv.invoice_date,
@@ -404,3 +404,516 @@ exports.createInvoice = async (req, res) => {
     });
   });
 };
+
+// ==============================
+// POST /api/invoices/:id/purchase-return
+// ==============================
+exports.applyPurchaseReturn = async (req, res) => {
+  const originalId = Number(req.params.id);
+  const { items, reason, processedBy } = req.body;
+
+  if (!originalId) return res.status(400).json({ message: "Invalid original invoice id" });
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "Return items are required" });
+  }
+
+  const getConn = () =>
+    new Promise((resolve, reject) => {
+      pool.getConnection((err, conn) => (err ? reject(err) : resolve(conn)));
+    });
+
+  const q = (conn, sql, params = []) =>
+    new Promise((resolve, reject) => {
+      conn.query(sql, params, (err, result) => (err ? reject(err) : resolve(result)));
+    });
+
+  const begin = (conn) =>
+    new Promise((resolve, reject) => conn.beginTransaction((e) => (e ? reject(e) : resolve())));
+  const commit = (conn) =>
+    new Promise((resolve, reject) => conn.commit((e) => (e ? reject(e) : resolve())));
+  const rollback = (conn) => new Promise((resolve) => conn.rollback(() => resolve()));
+
+  let conn;
+
+  try {
+    conn = await getConn();
+    await begin(conn);
+
+    // ✅ Ensure required columns exist
+    const cols = await q(
+      conn,
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='invoices'
+       AND COLUMN_NAME IN ('original_invoice_id','is_closed')`
+    );
+    const colNames = (Array.isArray(cols) ? cols : []).map((c) => c.COLUMN_NAME);
+    if (!colNames.includes("original_invoice_id")) {
+      await rollback(conn);
+      conn.release();
+      return res.status(500).json({ message: "DB missing column original_invoice_id in invoices table" });
+    }
+    if (!colNames.includes("is_closed")) {
+      await rollback(conn);
+      conn.release();
+      return res.status(500).json({ message: "DB missing column is_closed in invoices table" });
+    }
+
+    // 1) Load original invoice
+    const invRows = await q(conn, `SELECT * FROM invoices WHERE id = ? LIMIT 1`, [originalId]);
+    const original = Array.isArray(invRows) ? invRows[0] : null;
+
+    if (!original) {
+      await rollback(conn);
+      conn.release();
+      return res.status(404).json({ message: "Original invoice not found" });
+    }
+    if (original.type !== "PURCHASE") {
+      await rollback(conn);
+      conn.release();
+      return res.status(400).json({ message: "Purchase return allowed only for PURCHASE invoices" });
+    }
+    if (Number(original.is_closed) === 1) {
+      await rollback(conn);
+      conn.release();
+      return res.status(400).json({ message: "Invoice is closed. Cannot return." });
+    }
+
+    // 2) Load invoice items
+    const lineRows = await q(conn, `SELECT * FROM invoice_items WHERE invoice_id = ?`, [originalId]);
+    const lines = Array.isArray(lineRows) ? lineRows : [];
+
+    if (lines.length === 0) {
+      await rollback(conn);
+      conn.release();
+      return res.status(400).json({ message: "No items found in the original invoice" });
+    }
+
+    const lineMap = {};
+    for (const r of lines) lineMap[String(r.item_id)] = r;
+
+    // 3) Normalize + Validate payload
+    const normalized = items.map((it) => ({
+      itemId: String(it.itemId),
+      quantity: Number(it.quantity),
+    }));
+
+    for (const it of normalized) {
+      const row = lineMap[it.itemId];
+      if (!row) {
+        await rollback(conn);
+        conn.release();
+        return res.status(400).json({ message: "Return contains an item not in original purchase invoice" });
+      }
+      if (!it.quantity || it.quantity <= 0) {
+        await rollback(conn);
+        conn.release();
+        return res.status(400).json({ message: "Invalid return quantity" });
+      }
+      const purchasedQtyLeft = Number(row.quantity || 0);
+      if (it.quantity > purchasedQtyLeft) {
+        await rollback(conn);
+        conn.release();
+        return res.status(400).json({ message: "Cannot return more quantity than purchased" });
+      }
+    }
+
+    const qtyLeftAll = lines.reduce((s, r) => s + Number(r.quantity || 0), 0);
+    if (qtyLeftAll <= 0) {
+      await rollback(conn);
+      conn.release();
+      return res.status(400).json({ message: "Invoice already fully returned" });
+    }
+
+    // 4) Compute return totals (same math)
+    let returnSubtotal = 0;
+    let returnTax = 0;
+
+    for (const it of normalized) {
+      const row = lineMap[it.itemId];
+      const price = Number(row.price || 0);
+      const taxRate = Number(row.tax_rate || 0);
+
+      const sub = price * it.quantity;
+      const tax = (sub * taxRate) / 100;
+
+      returnSubtotal += sub;
+      returnTax += tax;
+    }
+
+    const returnGrand = Number((returnSubtotal + returnTax).toFixed(2));
+
+    // 5) Insert purchase return invoice (debit/return note)
+    const invoiceNo = `PRN-${Date.now().toString().slice(-8)}`;
+    const invoiceDate = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+    const insInv = await q(
+      conn,
+      `INSERT INTO invoices
+       (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, original_invoice_id)
+       VALUES (?, ?, 'PURCHASE_RETURN', ?, ?, ?, ?, ?)`,
+      [
+        original.party_id,
+        invoiceNo,
+        returnGrand,
+        invoiceDate,
+        reason ? `Purchase Return: ${reason}` : "Purchase Return",
+        original.payment_mode || "CASH",
+        originalId,
+      ]
+    );
+
+    const returnInvoiceId = Number(insInv.insertId);
+
+    // 6) Process each returned item
+    for (const it of normalized) {
+      const row = lineMap[it.itemId];
+
+      const itemId = Number(it.itemId);
+      const qty = Number(it.quantity);
+      const price = Number(row.price || 0);
+      const taxRate = Number(row.tax_rate || 0);
+
+      const sub = price * qty;
+      const tax = (sub * taxRate) / 100;
+      const total = Number((sub + tax).toFixed(2));
+
+      const safeName = row.name && String(row.name).trim() ? row.name : "Unknown";
+
+      // insert into purchase return invoice
+      await q(
+        conn,
+        `INSERT INTO invoice_items (invoice_id, item_id, name, quantity, price, tax_rate, total)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [returnInvoiceId, itemId, safeName, qty, price, taxRate, total]
+      );
+
+      // reduce qty in original purchase invoice
+      const newQty = Number(row.quantity || 0) - qty;
+      const newSub = price * newQty;
+      const newTax = (newSub * taxRate) / 100;
+      const newTotal = Number((newSub + newTax).toFixed(2));
+
+      await q(conn, `UPDATE invoice_items SET quantity = ?, total = ? WHERE id = ?`, [
+        newQty,
+        newTotal,
+        row.id,
+      ]);
+
+      // ✅ stock decreases because items sent back to supplier
+      await q(conn, `UPDATE items SET stock = stock - ? WHERE id = ?`, [qty, itemId]);
+
+      // ✅ audit table (optional) — only if exists
+      // ✅ audit (now table exists)
+      await q(
+        conn,
+        `INSERT INTO purchase_return_audit
+   (original_invoice_id, return_invoice_id, item_id, quantity, reason, processed_by)
+   VALUES (?, ?, ?, ?, ?, ?)`,
+        [originalId, returnInvoiceId, itemId, qty, reason || null, processedBy || "Unknown"]
+      );
+
+    }
+
+    // 7) Update original invoice total_amount
+    const newTotals = await q(
+      conn,
+      `SELECT COALESCE(SUM(total),0) AS total_amount FROM invoice_items WHERE invoice_id = ?`,
+      [originalId]
+    );
+    const newTotalAmount = Number((newTotals?.[0]?.total_amount || 0));
+
+    await q(conn, `UPDATE invoices SET total_amount = ? WHERE id = ?`, [newTotalAmount, originalId]);
+
+    // 8) ✅ party balance adjustment
+    // PURCHASE makes balance negative (we owe supplier).
+    // PURCHASE_RETURN means we owe less, so balance should increase (+ returnGrand).
+    await q(conn, `UPDATE parties SET balance = balance + ? WHERE id = ?`, [
+      returnGrand,
+      original.party_id,
+    ]);
+
+    // 9) close if fully returned
+    const left = await q(
+      conn,
+      `SELECT COALESCE(SUM(quantity),0) AS qty_left FROM invoice_items WHERE invoice_id = ?`,
+      [originalId]
+    );
+    const qtyLeft = Number(left?.[0]?.qty_left || 0);
+    if (qtyLeft <= 0) {
+      await q(conn, `UPDATE invoices SET is_closed = 1 WHERE id = ?`, [originalId]);
+    }
+
+    await commit(conn);
+    conn.release();
+
+    return res.json({ message: "Purchase return processed", returnInvoiceId: String(returnInvoiceId) });
+  } catch (err) {
+    console.error("Purchase return error:", err);
+    if (conn) {
+      try {
+        await rollback(conn);
+        conn.release();
+      } catch { }
+    }
+    return res.status(500).json({
+      message: "Failed to process purchase return",
+      error: err?.message || String(err),
+    });
+  }
+};
+
+// ==============================
+// POST /api/invoices/:id/sale-return
+// ==============================
+// ==============================
+// POST /api/invoices/:id/sale-return
+// ==============================
+exports.applySaleReturn = async (req, res) => {
+  const originalId = Number(req.params.id);
+  const { items, reason, processedBy } = req.body;
+
+  if (!originalId) return res.status(400).json({ message: "Invalid original invoice id" });
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "Return items are required" });
+  }
+
+  const getConn = () =>
+    new Promise((resolve, reject) => {
+      pool.getConnection((err, conn) => (err ? reject(err) : resolve(conn)));
+    });
+
+  const q = (conn, sql, params = []) =>
+    new Promise((resolve, reject) => {
+      conn.query(sql, params, (err, result) => (err ? reject(err) : resolve(result)));
+    });
+
+  const begin = (conn) => new Promise((resolve, reject) => conn.beginTransaction((e) => (e ? reject(e) : resolve())));
+  const commit = (conn) => new Promise((resolve, reject) => conn.commit((e) => (e ? reject(e) : resolve())));
+  const rollback = (conn) => new Promise((resolve) => conn.rollback(() => resolve()));
+
+  let conn;
+
+  try {
+    conn = await getConn();
+    await begin(conn);
+
+    // ✅ Ensure required columns exist (fails fast with clear message)
+    const cols = await q(
+      conn,
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='invoices'
+       AND COLUMN_NAME IN ('original_invoice_id','is_closed')`
+    );
+    const colNames = (Array.isArray(cols) ? cols : []).map((c) => c.COLUMN_NAME);
+    if (!colNames.includes("original_invoice_id")) {
+      await rollback(conn);
+      conn.release();
+      return res.status(500).json({ message: "DB missing column original_invoice_id in invoices table" });
+    }
+    if (!colNames.includes("is_closed")) {
+      await rollback(conn);
+      conn.release();
+      return res.status(500).json({ message: "DB missing column is_closed in invoices table" });
+    }
+
+    // 1) Load original invoice
+    const invRows = await q(conn, `SELECT * FROM invoices WHERE id = ? LIMIT 1`, [originalId]);
+    const original = Array.isArray(invRows) ? invRows[0] : null;
+
+    if (!original) {
+      await rollback(conn);
+      conn.release();
+      return res.status(404).json({ message: "Original invoice not found" });
+    }
+    if (original.type !== "SALE") {
+      await rollback(conn);
+      conn.release();
+      return res.status(400).json({ message: "Sale return allowed only for SALE invoices" });
+    }
+    if (Number(original.is_closed) === 1) {
+      await rollback(conn);
+      conn.release();
+      return res.status(400).json({ message: "Invoice is closed. Cannot return." });
+    }
+
+    // 2) Load invoice items
+    const lineRows = await q(conn, `SELECT * FROM invoice_items WHERE invoice_id = ?`, [originalId]);
+    const lines = Array.isArray(lineRows) ? lineRows : [];
+
+    if (lines.length === 0) {
+      await rollback(conn);
+      conn.release();
+      return res.status(400).json({ message: "No items found in the original invoice" });
+    }
+
+    const lineMap = {};
+    for (const r of lines) lineMap[String(r.item_id)] = r;
+
+    // 3) Normalize + Validate payload
+    const normalized = items.map((it) => ({
+      itemId: String(it.itemId),
+      quantity: Number(it.quantity),
+    }));
+
+    for (const it of normalized) {
+      const row = lineMap[it.itemId];
+      if (!row) {
+        await rollback(conn);
+        conn.release();
+        return res.status(400).json({ message: "Return contains an item not in original invoice" });
+      }
+      if (!it.quantity || it.quantity <= 0) {
+        await rollback(conn);
+        conn.release();
+        return res.status(400).json({ message: "Invalid return quantity" });
+      }
+      const soldQtyLeft = Number(row.quantity || 0);
+      if (it.quantity > soldQtyLeft) {
+        await rollback(conn);
+        conn.release();
+        return res.status(400).json({ message: "Cannot return more quantity than sold" });
+      }
+    }
+
+    const qtyLeftAll = lines.reduce((s, r) => s + Number(r.quantity || 0), 0);
+    if (qtyLeftAll <= 0) {
+      await rollback(conn);
+      conn.release();
+      return res.status(400).json({ message: "Invoice already fully returned" });
+    }
+
+    // 4) Compute return totals
+    let returnSubtotal = 0;
+    let returnTax = 0;
+
+    for (const it of normalized) {
+      const row = lineMap[it.itemId];
+      const price = Number(row.price || 0);
+      const taxRate = Number(row.tax_rate || 0);
+
+      const sub = price * it.quantity;
+      const tax = (sub * taxRate) / 100;
+
+      returnSubtotal += sub;
+      returnTax += tax;
+    }
+
+    const returnGrand = Number((returnSubtotal + returnTax).toFixed(2));
+
+    // 5) Insert return invoice (credit note)
+    const invoiceNo = `CN-${Date.now().toString().slice(-8)}`;
+    const invoiceDate = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+    const insInv = await q(
+      conn,
+      `INSERT INTO invoices
+       (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, original_invoice_id)
+       VALUES (?, ?, 'RETURN', ?, ?, ?, ?, ?)`,
+      [
+        original.party_id,
+        invoiceNo,
+        returnGrand,
+        invoiceDate,
+        reason ? `Return: ${reason}` : "Sale Return",
+        original.payment_mode || "CASH",
+        originalId,
+      ]
+    );
+
+    const returnInvoiceId = Number(insInv.insertId);
+
+    // 6) Process each returned item
+    for (const it of normalized) {
+      const row = lineMap[it.itemId];
+
+      const itemId = Number(it.itemId);
+      const qty = Number(it.quantity);
+      const price = Number(row.price || 0);
+      const taxRate = Number(row.tax_rate || 0);
+
+      const sub = price * qty;
+      const tax = (sub * taxRate) / 100;
+      const total = Number((sub + tax).toFixed(2));
+
+      // ✅ insert return invoice item with safe name
+      const safeName = row.name && String(row.name).trim() ? row.name : "Unknown";
+
+      await q(
+        conn,
+        `INSERT INTO invoice_items (invoice_id, item_id, name, quantity, price, tax_rate, total)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [returnInvoiceId, itemId, safeName, qty, price, taxRate, total]
+      );
+
+      // ✅ reduce original invoice item qty + total
+      const newQty = Number(row.quantity || 0) - qty;
+      const newSub = price * newQty;
+      const newTax = (newSub * taxRate) / 100;
+      const newTotal = Number((newSub + newTax).toFixed(2));
+
+      await q(conn, `UPDATE invoice_items SET quantity = ?, total = ? WHERE id = ?`, [
+        newQty,
+        newTotal,
+        row.id,
+      ]);
+
+      // ✅ stock back
+      await q(conn, `UPDATE items SET stock = stock + ? WHERE id = ?`, [qty, itemId]);
+
+      // ✅ audit
+      await q(
+        conn,
+        `INSERT INTO sale_return_audit
+         (original_invoice_id, return_invoice_id, item_id, quantity, reason, processed_by)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [originalId, returnInvoiceId, itemId, qty, reason || null, processedBy || "Unknown"]
+      );
+    }
+
+    // 7) Update original invoice total_amount
+    const newTotals = await q(
+      conn,
+      `SELECT COALESCE(SUM(total),0) AS total_amount FROM invoice_items WHERE invoice_id = ?`,
+      [originalId]
+    );
+    const newTotalAmount = Number((newTotals?.[0]?.total_amount || 0));
+
+    await q(conn, `UPDATE invoices SET total_amount = ? WHERE id = ?`, [newTotalAmount, originalId]);
+
+    // 8) party balance decrease
+    await q(conn, `UPDATE parties SET balance = balance - ? WHERE id = ?`, [
+      returnGrand,
+      original.party_id,
+    ]);
+
+    // 9) close if fully returned
+    const left = await q(
+      conn,
+      `SELECT COALESCE(SUM(quantity),0) AS qty_left FROM invoice_items WHERE invoice_id = ?`,
+      [originalId]
+    );
+    const qtyLeft = Number(left?.[0]?.qty_left || 0);
+    if (qtyLeft <= 0) {
+      await q(conn, `UPDATE invoices SET is_closed = 1 WHERE id = ?`, [originalId]);
+    }
+
+    await commit(conn);
+    conn.release();
+
+    return res.json({ message: "Sale return processed", returnInvoiceId: String(returnInvoiceId) });
+  } catch (err) {
+    console.error("Sale return error:", err);
+    if (conn) {
+      try {
+        await rollback(conn);
+        conn.release();
+      } catch { }
+    }
+    return res.status(500).json({
+      message: "Failed to process sale return",
+      error: err?.message || String(err),
+    });
+  }
+};
+
+

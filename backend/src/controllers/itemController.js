@@ -1,7 +1,28 @@
 // src/controllers/itemController.js
 const pool = require('../config/db');
+const xlsx = require('xlsx');
+const { parse } = require('csv-parse/sync');
 
-// GET /api/items
+/* ----------------------------- helpers ----------------------------- */
+const toNum = (v, def = 0) => {
+  if (v === null || v === undefined || v === '') return def;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : def;
+};
+
+const pick = (row, keys) => {
+  for (const k of keys) {
+    if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k];
+  }
+  return undefined;
+};
+
+const normalizeBarcode = (v) => {
+  const s = String(v ?? '').trim();
+  return s.length ? s : null;
+};
+
+/* ----------------------------- GET /api/items ----------------------------- */
 exports.getItems = (req, res) => {
   const sql =
     'SELECT id, name, code, barcode, selling_price, purchase_price, stock, mrp, unit, tax_rate FROM items ORDER BY id DESC';
@@ -20,16 +41,16 @@ exports.getItems = (req, res) => {
       sellingPrice: Number(i.selling_price),
       purchasePrice: Number(i.purchase_price),
       stock: Number(i.stock),
+      mrp: Number(i.mrp),
       unit: i.unit,
       taxRate: Number(i.tax_rate),
-      mrp: Number(i.mrp)
     }));
 
     res.json(items);
   });
 };
 
-// POST /api/items
+/* ----------------------------- POST /api/items ----------------------------- */
 exports.createItem = (req, res) => {
   const {
     name,
@@ -50,20 +71,20 @@ exports.createItem = (req, res) => {
   }
 
   const sql =
-    'INSERT INTO items (name, code, barcode, selling_price, purchase_price, stock, unit, tax_rate, mrp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    'INSERT INTO items (name, code, barcode, selling_price, purchase_price, mrp, stock, unit, tax_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
   pool.query(
     sql,
     [
       name,
       code || null,
-      barcode || null,
-      sellingPrice || 0,
-      purchasePrice || 0,
-      stock || 0,
+      normalizeBarcode(barcode),
+      toNum(sellingPrice, 0),
+      toNum(purchasePrice, 0),
+      toNum(mrp, 0),
+      toNum(stock, 0),
       unit || 'pcs',
-      taxRate || 0,
-      mrp || 0
+      toNum(taxRate, 0),
     ],
     (err, result) => {
       if (err) {
@@ -74,20 +95,23 @@ exports.createItem = (req, res) => {
       res.status(201).json({
         id: result.insertId.toString(),
         name,
-        code,
-        barcode,
-        sellingPrice: Number(sellingPrice || 0),
-        purchasePrice: Number(purchasePrice || 0),
-        stock: Number(stock || 0),
+        code: code || null,
+        barcode: normalizeBarcode(barcode),
+        sellingPrice: toNum(sellingPrice, 0),
+        purchasePrice: toNum(purchasePrice, 0),
+        mrp: toNum(mrp, 0),
+        stock: toNum(stock, 0),
         unit: unit || 'pcs',
-        taxRate: Number(taxRate || 0),
-        mrp: Number(mrp || 0) 
+        taxRate: toNum(taxRate, 0),
       });
     }
   );
 };
 
-// PUT /api/items/:id
+/* ----------------------------- PUT /api/items/:id ----------------------------- */
+/**
+ * ✅ FIXED: your previous SQL + params order was wrong
+ */
 exports.updateItem = (req, res) => {
   const { id } = req.params;
   const {
@@ -103,21 +127,21 @@ exports.updateItem = (req, res) => {
   } = req.body;
 
   const sql =
-    'UPDATE items SET name=?, code=?, barcode=?, selling_price=?, mrp=?, purchase_price=?, stock=?, unit=?, tax_rate=? WHERE id = ?';
+    'UPDATE items SET name=?, code=?, barcode=?, selling_price=?, purchase_price=?, mrp=?, stock=?, unit=?, tax_rate=? WHERE id=?';
 
   pool.query(
     sql,
     [
       name,
       code || null,
-      barcode || null,
-      sellingPrice || 0,
-      purchasePrice || 0,
-      stock || 0,
+      normalizeBarcode(barcode),
+      toNum(sellingPrice, 0),
+      toNum(purchasePrice, 0),
+      toNum(mrp, 0),
+      toNum(stock, 0),
       unit || 'pcs',
-      taxRate || 0,
+      toNum(taxRate, 0),
       id,
-      mrp || 0
     ],
     (err, result) => {
       if (err) {
@@ -134,7 +158,7 @@ exports.updateItem = (req, res) => {
   );
 };
 
-// DELETE /api/items/:id
+/* ----------------------------- DELETE /api/items/:id ----------------------------- */
 exports.deleteItem = (req, res) => {
   const { id } = req.params;
 
@@ -170,19 +194,18 @@ exports.deleteItem = (req, res) => {
   });
 };
 
-// PATCH /api/items/:id/stock
+/* ----------------------------- PATCH /api/items/:id/stock ----------------------------- */
 exports.adjustStock = (req, res) => {
   const { id } = req.params;
   const { addedQuantity } = req.body;
 
-  if (typeof addedQuantity !== 'number') {
-    return res
-      .status(400)
-      .json({ message: 'addedQuantity must be a number' });
+  const qty = Number(addedQuantity);
+  if (!Number.isFinite(qty)) {
+    return res.status(400).json({ message: 'addedQuantity must be a number' });
   }
 
   const sql = 'UPDATE items SET stock = stock + ? WHERE id = ?';
-  pool.query(sql, [addedQuantity, id], (err, result) => {
+  pool.query(sql, [qty, id], (err, result) => {
     if (err) {
       console.error('Error adjusting stock:', err);
       return res.status(500).json({ message: 'Failed to adjust stock' });
@@ -194,4 +217,114 @@ exports.adjustStock = (req, res) => {
 
     res.status(204).end();
   });
+};
+
+/* ----------------------------- POST /api/items/bulk-upload ----------------------------- */
+/**
+ * CSV/XLSX bulk upload
+ * - Upsert by UNIQUE barcode
+ * - If barcode is empty -> insert new row (barcode NULL)
+ */
+exports.bulkUploadItems = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'File is required (csv/xlsx)' });
+    }
+
+    const ext = (req.file.originalname.split('.').pop() || '').toLowerCase();
+    let rows = [];
+
+    if (ext === 'csv') {
+      const text = req.file.buffer.toString('utf8');
+      rows = parse(text, { columns: true, skip_empty_lines: true, trim: true });
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      const wb = xlsx.read(req.file.buffer, { type: 'buffer' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+    } else {
+      return res.status(400).json({ message: 'Unsupported file type. Upload csv/xlsx' });
+    }
+
+    if (!rows.length) {
+      return res.status(400).json({ message: 'No rows found in file' });
+    }
+
+    const errors = [];
+    const values = [];
+
+    rows.forEach((r, idx) => {
+      const rowNo = idx + 2;
+
+      const name = String(pick(r, ['name', 'Name', 'itemName', 'Item Name']) || '').trim();
+      const codeVal = pick(r, ['code', 'Code']);
+      const barcodeVal = pick(r, ['barcode', 'Barcode']);
+
+      const sellingPrice = toNum(pick(r, ['sellingPrice', 'selling_price', 'Selling Price', 'selling price']), 0);
+      const purchasePrice = toNum(pick(r, ['purchasePrice', 'purchase_price', 'Purchase Price', 'purchase price']), 0);
+      const mrp = toNum(pick(r, ['mrp', 'MRP']), 0);
+      const stock = toNum(pick(r, ['stock', 'Stock']), 0);
+      const unit = String(pick(r, ['unit', 'Unit']) || 'pcs').trim() || 'pcs';
+      const taxRate = toNum(pick(r, ['taxRate', 'tax_rate', 'Tax Rate', 'tax rate']), 0);
+
+      const code = codeVal ? String(codeVal).trim() : null;
+      const barcode = normalizeBarcode(barcodeVal);
+
+      // validations
+      if (!name) errors.push({ row: rowNo, message: 'name is required' });
+      if (sellingPrice < 0) errors.push({ row: rowNo, message: 'sellingPrice cannot be negative' });
+      if (purchasePrice < 0) errors.push({ row: rowNo, message: 'purchasePrice cannot be negative' });
+      if (mrp < 0) errors.push({ row: rowNo, message: 'mrp cannot be negative' });
+      if (taxRate < 0) errors.push({ row: rowNo, message: 'taxRate cannot be negative' });
+
+      values.push([
+        name,
+        code,
+        barcode,          // NULL allowed
+        sellingPrice,
+        purchasePrice,
+        mrp,
+        stock,
+        unit,
+        taxRate,
+      ]);
+    });
+
+    if (errors.length) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.slice(0, 50),
+      });
+    }
+
+    const sql = `
+      INSERT INTO items
+        (name, code, barcode, selling_price, purchase_price, mrp, stock, unit, tax_rate)
+      VALUES ?
+      ON DUPLICATE KEY UPDATE
+        name = VALUES(name),
+        code = VALUES(code),
+        selling_price = VALUES(selling_price),
+        purchase_price = VALUES(purchase_price),
+        mrp = VALUES(mrp),
+        stock = VALUES(stock),
+        unit = VALUES(unit),
+        tax_rate = VALUES(tax_rate)
+    `;
+
+    pool.query(sql, [values], (err, result) => {
+      if (err) {
+        console.error('Bulk upload error:', err);
+        return res.status(500).json({ message: 'Bulk upload failed', error: err.message });
+      }
+
+      res.json({
+        message: 'Bulk upload success',
+        totalRows: values.length,
+        affectedRows: result.affectedRows,
+      });
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: 'Bulk upload failed', error: e.message });
+  }
 };
