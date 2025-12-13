@@ -19,7 +19,10 @@ const formatMoney = (value: number | string | null | undefined): string => {
 const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = false, parties = [] }) => {
   const [viewMode, setViewMode] = useState<'A4' | 'THERMAL'>('A4');
   
-  console.log('InVoice',invoice);
+  console.log('=== Invoice View Debug ===');
+  console.log('Full Invoice Object:', JSON.stringify(invoice, null, 2));
+  console.log('Invoice Number Field:', invoice.invoiceNumber);
+  console.log('Invoice Keys:', Object.keys(invoice));
 
   useEffect(() => {
     if (autoPrint) {
@@ -89,13 +92,17 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
             </p>
           </div>
           <div className="text-right">
-            <h2 className="text-2xl font-bold mb-2 uppercase tracking-widest text-slate-300">
+            <h2 className="text-2xl font-bold mb-2 uppercase tracking-widest text-slate-700">
               {getDocTitle()}
             </h2>
             <div className="text-slate-600">
-              {/* NOTE: if your type uses invoiceNo instead of invoiceNumber, change below */}
-              <span className="font-bold"># {(invoice as any).invoiceNumber || (invoice as any).invoiceNo}</span>
-              <br />
+              <div className="mb-2 invoice-number">
+                <span className="text-xs font-semibold text-slate-500">Invoice No:</span>
+                <br />
+                <span className="text-lg font-bold text-slate-800">
+                  {invoice.invoiceNumber || (invoice as any).invoiceNo || invoice.id || 'N/A'}
+                </span>
+              </div>
               Date: {new Date(invoice.date).toLocaleDateString()}
               <br />
               <span className="text-sm">Time : {new Date().toLocaleTimeString('en-GB')}</span>
@@ -225,7 +232,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         </div>
         <div className="flex justify-between text-xs mb-1">
           <span>No:</span>
-          <span>{(invoice as any).invoiceNumber || (invoice as any).invoiceNo}</span>
+          <span>{invoice.invoiceNumber || (invoice as any).invoiceNo || 'N/A'}</span>
         </div>
         {(invoice as any).originalRefNumber && (
           <div className="flex justify-between text-xs mb-1">
@@ -319,6 +326,16 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
   };
 
   return (
+    <>
+      <style>{`
+        @media print {
+          .invoice-number {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+          }
+        }
+      `}</style>
     <div className="h-full flex flex-col bg-slate-100">
       {/* Toolbar - Hidden when printing */}
       <div className="no-print mb-6 flex justify-between items-center max-w-4xl mx-auto w-full pt-4 px-4">
@@ -368,6 +385,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         {viewMode === 'A4' ? <StandardLayout /> : <ThermalLayout />}
       </div>
     </div>
+    </>
   );
 };
 

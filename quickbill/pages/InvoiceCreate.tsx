@@ -222,22 +222,24 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
     setLoading(true);
     const party = parties.find(p => p.id === selectedPartyId);
     
-    const invoiceData: Omit<Invoice, 'id'> = {
+    const invoiceData: any = {
       type: transactionType,
-      invoiceNumber,
+      invoiceNo: invoiceNumber,
       date: invoiceDate,
-      partyId: selectedPartyId || 'CASH', // Use placeholder if empty
-      partyName: party?.name || 'Cash Sale', // Default to Cash Sale if no party selected
+      partyId: selectedPartyId || 'CASH',
+      partyName: party?.name || 'Cash Sale',
       originalRefNumber: (isReturn && originalRefNumber) ? originalRefNumber : undefined,
-      items: rows.filter(r => r.itemId), // Remove empty rows
+      items: rows.filter(r => r.itemId),
       totalAmount: totals.total,
       totalTax: totals.tax,
-      status: selectedPartyId ? 'UNPAID' : 'PAID', // Default to PAID for cash sales (no party)
-      paymentMode
+      status: selectedPartyId ? 'UNPAID' : 'PAID',
+      paymentMode,
+      notes: ''
     };
 
     try {
       const newInvoice = await InvoiceService.create(invoiceData);
+      console.log('Created Invoice Response:', newInvoice);
       onSuccess(newInvoice, shouldPrint);
     } catch (e) {
       console.error(e);

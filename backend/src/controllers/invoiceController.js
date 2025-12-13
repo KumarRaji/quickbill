@@ -310,14 +310,23 @@ exports.createInvoice = async (req, res) => {
 
                   conn.release();
 
+                  const totalTax = items.reduce((sum, item) => {
+                    const taxAmount = (Number(item.price) * Number(item.quantity) * Number(item.taxRate || 0)) / 100;
+                    return sum + taxAmount;
+                  }, 0);
+
                   res.status(201).json({
                     id: invoiceId.toString(),
                     partyId: partyIdNum.toString(),
-                    invoiceNo,
+                    invoiceNumber: invoiceNo,
                     type,
                     totalAmount: total,
+                    totalTax: totalTax,
                     date,
                     notes,
+                    paymentMode,
+                    status: 'PAID',
+                    partyName: 'Cash Customer',
                     items,
                   });
                 });
