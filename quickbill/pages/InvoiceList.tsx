@@ -130,6 +130,9 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">
                 Party Name
               </th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">
+                Items
+              </th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-right">
                 Amount
               </th>
@@ -162,6 +165,19 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                   {inv.originalRefNumber && (
                     <div className="text-xs text-slate-400 mt-0.5">Ref: {inv.originalRefNumber}</div>
                   )}
+                </td>
+
+                <td className="px-6 py-4 text-sm text-slate-600">
+                  <div className="max-w-xs">
+                    {inv.items.slice(0, 2).map((item, idx) => (
+                      <div key={idx} className="text-xs">
+                        {item.itemName} (x{item.quantity})
+                      </div>
+                    ))}
+                    {inv.items.length > 2 && (
+                      <div className="text-xs text-slate-400">+{inv.items.length - 2} more</div>
+                    )}
+                  </div>
                 </td>
 
                 <td
@@ -213,7 +229,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
 
             {filteredInvoices.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                   {type === 'SALE' && <FileText size={48} className="mx-auto mb-2 opacity-20" />}
                   {type === 'RETURN' && <Undo2 size={48} className="mx-auto mb-2 opacity-20" />}
                   {type === 'PURCHASE' && <ShoppingCart size={48} className="mx-auto mb-2 opacity-20" />}
