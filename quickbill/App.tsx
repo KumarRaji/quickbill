@@ -293,6 +293,21 @@ const App: React.FC = () => {
             onPrint={handlePrintInvoice}
             type="SALE"
             onCreate={() => startTransaction("SALE")}
+            onEdit={(inv) => {
+              setSelectedInvoice(inv);
+              navigate("/quick-sale");
+            }}
+            onDelete={async (inv) => {
+              if (confirm(`Delete invoice ${inv.invoiceNumber}?`)) {
+                try {
+                  await InvoiceService.delete(inv.id);
+                  await refreshData();
+                } catch (error) {
+                  console.error(error);
+                  alert("Failed to delete invoice");
+                }
+              }
+            }}
           />
         );
       }
