@@ -43,9 +43,15 @@ function getBalanceDelta(type, total) {
 // ==============================
 exports.getInvoices = (req, res) => {
   const sql = `
-    SELECT i.*, p.name as party_name, orig.invoice_no as original_invoice_no
+    SELECT i.*, 
+      CASE 
+        WHEN i.type IN ('PURCHASE', 'PURCHASE_RETURN') THEN s.name
+        ELSE p.name
+      END as party_name,
+      orig.invoice_no as original_invoice_no
     FROM invoices i 
-    LEFT JOIN parties p ON i.party_id = p.id 
+    LEFT JOIN parties p ON i.party_id = p.id AND i.type NOT IN ('PURCHASE', 'PURCHASE_RETURN')
+    LEFT JOIN suppliers s ON i.party_id = s.id AND i.type IN ('PURCHASE', 'PURCHASE_RETURN')
     LEFT JOIN invoices orig ON i.original_invoice_id = orig.id
     ORDER BY i.id DESC
   `;
@@ -412,6 +418,413 @@ exports.createInvoice = async (req, res) => {
           processNextItem();
         }
       );
+    });
+  });
+};
+
+// ==============================
+// PATCH /api/invoices/:id
+// ==============================
+exports.updateInvoice = async (req, res) => {
+  const { id } = req.params;
+  let { partyId, type, date, items, totalAmount, invoiceNo, notes, paymentMode } = req.body;
+
+  pool.getConnection((connErr, conn) => {
+    if (connErr) {
+      console.error("Error getting connection:", connErr);
+      return res.status(500).json({ message: "Failed to update invoice", error: connErr.message });
+    }
+
+    conn.beginTransaction((txErr) => {
+      if (txErr) {
+        conn.release();
+        console.error("Transaction error:", txErr);
+        return res.status(500).json({ message: "Failed to update invoice", error: txErr.message });
+      }
+
+      // 1) Load existing invoice
+      conn.query("SELECT * FROM invoices WHERE id = ? LIMIT 1", [id], (invErr, invRows) => {
+        if (invErr) {
+          return conn.rollback(() => {
+            conn.release();
+            console.error("Error fetching invoice:", invErr);
+            res.status(500).json({ message: "Failed to update invoice", error: invErr.message });
+          });
+        }
+
+        if (!invRows || invRows.length === 0) {
+          return conn.rollback(() => {
+            conn.release();
+            res.status(404).json({ message: "Invoice not found" });
+          });
+        }
+
+        const oldInv = invRows[0];
+
+        // 2) Load old items
+        conn.query("SELECT * FROM invoice_items WHERE invoice_id = ?", [id], (itemsErr, oldItems) => {
+          if (itemsErr) {
+            return conn.rollback(() => {
+              conn.release();
+              console.error("Error fetching invoice items:", itemsErr);
+              res.status(500).json({ message: "Failed to update invoice", error: itemsErr.message });
+            });
+          }
+
+          const oldItemsArr = Array.isArray(oldItems) ? oldItems : [];
+
+          // 3) Reverse old stock & balance
+          const reverseOldStock = (idx) => {
+            if (idx >= oldItemsArr.length) {
+              // Reverse old balance
+              const oldTotal = Number(oldInv.total_amount || 0);
+              const oldBalDelta = -getBalanceDelta(oldInv.type, oldTotal);
+              conn.query(
+                "UPDATE parties SET balance = balance + ? WHERE id = ?",
+                [oldBalDelta, oldInv.party_id],
+                (balErr) => {
+                  if (balErr) {
+                    return conn.rollback(() => {
+                      conn.release();
+                      console.error("Error reversing balance:", balErr);
+                      res.status(500).json({ message: "Failed to update invoice", error: balErr.message });
+                    });
+                  }
+
+                  // 4) Delete old items
+                  conn.query("DELETE FROM invoice_items WHERE invoice_id = ?", [id], (delErr) => {
+                    if (delErr) {
+                      return conn.rollback(() => {
+                        conn.release();
+                        console.error("Error deleting old items:", delErr);
+                        res.status(500).json({ message: "Failed to update invoice", error: delErr.message });
+                      });
+                    }
+
+                    // 5) Update invoice record
+                    let partyIdNum;
+                    if (!partyId || partyId === 'CASH' || partyId === 'cash' || partyId === '') {
+                      partyIdNum = CASH_PARTY_ID;
+                    } else {
+                      partyIdNum = Number(partyId);
+                    }
+
+                    const newTotal = Number(totalAmount || 0);
+                    const updateSql = `UPDATE invoices SET party_id = ?, invoice_no = ?, type = ?, total_amount = ?, invoice_date = ?, notes = ?, payment_mode = ? WHERE id = ?`;
+
+                    conn.query(
+                      updateSql,
+                      [
+                        partyIdNum,
+                        invoiceNo || oldInv.invoice_no,
+                        type || oldInv.type,
+                        newTotal,
+                        date ? new Date(date) : oldInv.invoice_date,
+                        notes !== undefined ? notes : oldInv.notes,
+                        paymentMode || oldInv.payment_mode,
+                        id,
+                      ],
+                      (updErr) => {
+                        if (updErr) {
+                          return conn.rollback(() => {
+                            conn.release();
+                            console.error("Error updating invoice:", updErr);
+                            res.status(500).json({ message: "Failed to update invoice", error: updErr.message });
+                          });
+                        }
+
+                        // 6) Insert new items
+                        const newItems = Array.isArray(items) ? items : [];
+                        if (newItems.length === 0) {
+                          return conn.rollback(() => {
+                            conn.release();
+                            res.status(400).json({ message: "Invoice must have at least one item" });
+                          });
+                        }
+
+                        let itemIdx = 0;
+                        const processNewItem = () => {
+                          if (itemIdx >= newItems.length) {
+                            // Apply new balance
+                            const newBalDelta = getBalanceDelta(type || oldInv.type, newTotal);
+                            conn.query(
+                              "UPDATE parties SET balance = balance + ? WHERE id = ?",
+                              [newBalDelta, partyIdNum],
+                              (newBalErr) => {
+                                if (newBalErr) {
+                                  return conn.rollback(() => {
+                                    conn.release();
+                                    console.error("Error applying new balance:", newBalErr);
+                                    res.status(500).json({ message: "Failed to update invoice", error: newBalErr.message });
+                                  });
+                                }
+
+                                conn.commit((commitErr) => {
+                                  if (commitErr) {
+                                    return conn.rollback(() => {
+                                      conn.release();
+                                      console.error("Commit error:", commitErr);
+                                      res.status(500).json({ message: "Failed to update invoice", error: commitErr.message });
+                                    });
+                                  }
+
+                                  conn.release();
+
+                                  const totalTax = newItems.reduce((sum, item) => {
+                                    const taxAmount = (Number(item.price) * Number(item.quantity) * Number(item.taxRate || 0)) / 100;
+                                    return sum + taxAmount;
+                                  }, 0);
+
+                                  res.json({
+                                    id: id.toString(),
+                                    partyId: partyIdNum.toString(),
+                                    invoiceNumber: invoiceNo || oldInv.invoice_no,
+                                    type: type || oldInv.type,
+                                    totalAmount: newTotal,
+                                    totalTax: totalTax,
+                                    date: date || oldInv.invoice_date,
+                                    notes: notes !== undefined ? notes : oldInv.notes,
+                                    paymentMode: paymentMode || oldInv.payment_mode,
+                                    status: 'PAID',
+                                    items: newItems,
+                                  });
+                                });
+                              }
+                            );
+                            return;
+                          }
+
+                          const it = newItems[itemIdx];
+                          const qty = Number(it.quantity);
+                          const price = Number(it.price);
+                          const taxRate = it.taxRate != null ? Number(it.taxRate) : 0;
+                          const base = qty * price;
+                          const taxAmount = (base * taxRate) / 100;
+                          let lineTotal = it.total != null ? Number(it.total) : base + taxAmount;
+                          if (isNaN(lineTotal)) lineTotal = base + taxAmount;
+
+                          const stockDelta = getStockDelta(type || oldInv.type, qty);
+
+                          const insertItemSql = 'INSERT INTO invoice_items (invoice_id, item_id, name, quantity, price, tax_rate, total) VALUES (?, ?, ?, ?, ?, ?, ?)';
+                          conn.query(
+                            insertItemSql,
+                            [id, it.itemId, it.itemName || it.name || null, qty, price, taxRate, lineTotal],
+                            (itemErr) => {
+                              if (itemErr) {
+                                return conn.rollback(() => {
+                                  conn.release();
+                                  console.error("Error inserting new item:", itemErr);
+                                  res.status(500).json({ message: "Failed to update invoice", error: itemErr.message });
+                                });
+                              }
+
+                              conn.query(
+                                "UPDATE items SET stock = stock + ? WHERE id = ?",
+                                [stockDelta, it.itemId],
+                                (stockErr) => {
+                                  if (stockErr) {
+                                    return conn.rollback(() => {
+                                      conn.release();
+                                      console.error("Error updating stock:", stockErr);
+                                      res.status(500).json({ message: "Failed to update invoice", error: stockErr.message });
+                                    });
+                                  }
+
+                                  itemIdx++;
+                                  processNewItem();
+                                }
+                              );
+                            }
+                          );
+                        };
+
+                        processNewItem();
+                      }
+                    );
+                  });
+                }
+              );
+              return;
+            }
+
+            const row = oldItemsArr[idx];
+            const qty = Number(row.quantity || 0);
+            const itemId = Number(row.item_id);
+            const reverseStock = -getStockDelta(oldInv.type, qty);
+
+            conn.query(
+              "UPDATE items SET stock = stock + ? WHERE id = ?",
+              [reverseStock, itemId],
+              (stockErr) => {
+                if (stockErr) {
+                  return conn.rollback(() => {
+                    conn.release();
+                    console.error("Error reversing stock:", stockErr);
+                    res.status(500).json({ message: "Failed to update invoice", error: stockErr.message });
+                  });
+                }
+                reverseOldStock(idx + 1);
+              }
+            );
+          };
+
+          reverseOldStock(0);
+        });
+      });
+    });
+  });
+};
+
+// ==============================
+// DELETE /api/invoices/:id
+// ==============================
+exports.deleteInvoice = (req, res) => {
+  const { id } = req.params;
+
+  pool.getConnection((connErr, conn) => {
+    if (connErr) {
+      console.error("Error getting connection:", connErr);
+      return res.status(500).json({ message: "Failed to delete invoice", error: connErr.message });
+    }
+
+    conn.beginTransaction((txErr) => {
+      if (txErr) {
+        conn.release();
+        console.error("Transaction error:", txErr);
+        return res.status(500).json({ message: "Failed to delete invoice", error: txErr.message });
+      }
+
+      // 1) Load invoice
+      conn.query("SELECT * FROM invoices WHERE id = ? LIMIT 1", [id], (invErr, invRows) => {
+        if (invErr) {
+          return conn.rollback(() => {
+            conn.release();
+            console.error("Error fetching invoice:", invErr);
+            res.status(500).json({ message: "Failed to delete invoice", error: invErr.message });
+          });
+        }
+
+        if (!invRows || invRows.length === 0) {
+          return conn.rollback(() => {
+            conn.release();
+            res.status(404).json({ message: "Invoice not found" });
+          });
+        }
+
+        const inv = invRows[0];
+
+        // Optional: block delete for return invoices if you want (you can remove this)
+        // if (inv.type === "RETURN" || inv.type === "PURCHASE_RETURN") {
+        //   return conn.rollback(() => {
+        //     conn.release();
+        //     res.status(400).json({ message: "Cannot delete return invoices" });
+        //   });
+        // }
+
+        // 2) Load invoice items
+        conn.query("SELECT * FROM invoice_items WHERE invoice_id = ?", [id], (itemsErr, itemRows) => {
+          if (itemsErr) {
+            return conn.rollback(() => {
+              conn.release();
+              console.error("Error fetching invoice items:", itemsErr);
+              res.status(500).json({ message: "Failed to delete invoice", error: itemsErr.message });
+            });
+          }
+
+          const items = Array.isArray(itemRows) ? itemRows : [];
+
+          // 3) Reverse stock for each item (undo original invoice effect)
+          const reverseOne = (idx) => {
+            if (idx >= items.length) {
+              // 4) Reverse party balance (undo original invoice effect)
+              const total = Number(inv.total_amount || 0);
+              const partyId = Number(inv.party_id);
+
+              const balDelta = -getBalanceDelta(inv.type, total); // reverse
+              conn.query(
+                "UPDATE parties SET balance = balance + ? WHERE id = ?",
+                [balDelta, partyId],
+                (balErr) => {
+                  if (balErr) {
+                    return conn.rollback(() => {
+                      conn.release();
+                      console.error("Error reversing party balance:", balErr);
+                      res.status(500).json({ message: "Failed to delete invoice", error: balErr.message });
+                    });
+                  }
+
+                  // 5) Delete invoice items then invoice
+                  conn.query("DELETE FROM invoice_items WHERE invoice_id = ?", [id], (delItemsErr) => {
+                    if (delItemsErr) {
+                      return conn.rollback(() => {
+                        conn.release();
+                        console.error("Error deleting invoice items:", delItemsErr);
+                        res.status(500).json({ message: "Failed to delete invoice", error: delItemsErr.message });
+                      });
+                    }
+
+                    conn.query("DELETE FROM invoices WHERE id = ?", [id], (delInvErr, delInvResult) => {
+                      if (delInvErr) {
+                        return conn.rollback(() => {
+                          conn.release();
+                          console.error("Error deleting invoice:", delInvErr);
+                          res.status(500).json({ message: "Failed to delete invoice", error: delInvErr.message });
+                        });
+                      }
+
+                      if (!delInvResult || delInvResult.affectedRows === 0) {
+                        return conn.rollback(() => {
+                          conn.release();
+                          res.status(404).json({ message: "Invoice not found" });
+                        });
+                      }
+
+                      conn.commit((commitErr) => {
+                        if (commitErr) {
+                          return conn.rollback(() => {
+                            conn.release();
+                            console.error("Commit error:", commitErr);
+                            res.status(500).json({ message: "Failed to delete invoice", error: commitErr.message });
+                          });
+                        }
+
+                        conn.release();
+                        return res.status(204).send();
+                      });
+                    });
+                  });
+                }
+              );
+
+              return;
+            }
+
+            const row = items[idx];
+            const qty = Number(row.quantity || 0);
+            const itemId = Number(row.item_id);
+
+            // Reverse stock delta
+            const reverseStock = -getStockDelta(inv.type, qty);
+
+            conn.query(
+              "UPDATE items SET stock = stock + ? WHERE id = ?",
+              [reverseStock, itemId],
+              (stockErr) => {
+                if (stockErr) {
+                  return conn.rollback(() => {
+                    conn.release();
+                    console.error("Error reversing stock:", stockErr);
+                    res.status(500).json({ message: "Failed to delete invoice", error: stockErr.message });
+                  });
+                }
+                reverseOne(idx + 1);
+              }
+            );
+          };
+
+          reverseOne(0);
+        });
+      });
     });
   });
 };

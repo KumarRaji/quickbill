@@ -1,10 +1,11 @@
 export interface Party {
   id: string;
   name: string;
-  phone?: string;          // ✅ optional (because DB allows NULL)
+  phone?: string;
   gstin?: string;
   address?: string;
-  balance: number;         // +ve = receivable, -ve = payable
+  balance: number;
+  type?: 'CUSTOMER' | 'SUPPLIER';
 }
 
 export interface Item {
@@ -92,10 +93,22 @@ export interface User {
   username: string;
   role: UserRole;
 }
+export interface Supplier {
+  id: number;
+  name: string;
+  phone?: string | null;
+  gstin?: string | null;
+  address?: string | null;
+  balance: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 
 export type ViewState =
   | "DASHBOARD"
   | "PARTIES"
+  | "SUPPLIERS"
   | "ITEMS"
   | "STOCK"
   | "SALES_INVOICES"

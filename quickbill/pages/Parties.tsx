@@ -16,7 +16,8 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
     phone: '',
     gstin: '',
     address: '',
-    balance: 0
+    balance: 0,
+    type: 'CUSTOMER'
   });
   const [loading, setLoading] = useState(false);
   const [editingParty, setEditingParty] = useState<Party | null>(null);
@@ -27,8 +28,9 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
 
 
   const filteredParties = parties.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.phone.includes(searchTerm)
+    (p.type === 'CUSTOMER' || !p.type) &&
+    (p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.phone && p.phone.includes(searchTerm)))
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredParties.length / pageSize));
@@ -40,12 +42,13 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
     e.preventDefault();
     setLoading(true);
     try {
+      const dataToSave = { ...formData, type: 'CUSTOMER' as const };
       if (editingParty) {
-        await PartyService.update(editingParty.id, formData);
+        await PartyService.update(editingParty.id, dataToSave);
       } else {
-        await PartyService.create(formData as Party);
+        await PartyService.create(dataToSave as Party);
       }
-      setFormData({ name: '', phone: '', gstin: '', address: '', balance: 0 });
+      setFormData({ name: '', phone: '', gstin: '', address: '', balance: 0, type: 'CUSTOMER' });
       setEditingParty(null);
       setIsModalOpen(false);
       onRefresh();
@@ -78,7 +81,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingParty(null);
-    setFormData({ name: '', phone: '', gstin: '', address: '', balance: 0 });
+    setFormData({ name: '', phone: '', gstin: '', address: '', balance: 0, type: 'CUSTOMER' });
   };
 
   const handlePrevious = () => {
@@ -92,13 +95,13 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
   return (
     <div className="max-w-7xl mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Parties</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Customers</h1>
         <button
           onClick={() => setIsModalOpen(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
         >
           <Plus size={18} />
-          <span>Add Party</span>
+          <span>Add Customer</span>
         </button>
       </div>
 
@@ -114,7 +117,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
       />
       <input
         type="text"
-        placeholder="Search parties by name or phone..."
+        placeholder="Search customers by name or phone..."
         className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         value={searchTerm}
         onChange={(e) => {
@@ -214,7 +217,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
               {filteredParties.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                    No parties found matching your search.
+                    No customers found matching your search.
                   </td>
                 </tr>
               )}
@@ -231,7 +234,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
                 {startIndex + 1}–
                 {Math.min(startIndex + paginatedParties.length, filteredParties.length)}
               </span>{' '}
-              of <span className="font-medium">{filteredParties.length}</span> parties
+              of <span className="font-medium">{filteredParties.length}</span> customers
             </p>
 
             <div className="inline-flex items-center gap-2 text-sm">
@@ -269,7 +272,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h2 className="text-lg font-bold text-slate-800">
-                {editingParty ? 'Edit Party' : 'Add New Party'}
+                {editingParty ? 'Edit Customer' : 'Add New Customer'}
               </h2>
               <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
@@ -278,7 +281,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Party Name *
+                  Customer Name *
                 </label>
                 <input
                   required
@@ -350,7 +353,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
                   disabled={loading}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : editingParty ? 'Update Party' : 'Save Party'}
+                  {loading ? 'Saving...' : editingParty ? 'Update Customer' : 'Save Customer'}
                 </button>
               </div>
             </form>

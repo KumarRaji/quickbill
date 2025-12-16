@@ -19,7 +19,7 @@ const handleResponse = async <T = any>(res: Response): Promise<T> => {
       const data = await res.json();
       message = data?.message || message;
       if (data?.error) message += `: ${data.error}`;
-    } catch {}
+    } catch { }
     throw new Error(message);
   }
   if (res.status === 204) return undefined as T;
@@ -198,6 +198,35 @@ export const InvoiceService = {
     return handleResponse<Invoice>(res);
   },
 
+  create: async (invoice: Omit<Invoice, "id">): Promise<Invoice> => {
+    const res = await fetch(`${API_BASE}/invoices`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(invoice),
+    });
+    return handleResponse<Invoice>(res);
+  },
+
+  // ✅ UPDATE invoice (PATCH)
+  update: async (id: string, data: Partial<Invoice>): Promise<Invoice> => {
+    const res = await fetch(`${API_BASE}/invoices/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<Invoice>(res);
+  },
+
+
+
+  // ✅ NEW: DELETE invoice
+  delete: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/invoices/${id}`, {
+      method: "DELETE",
+    });
+    await handleResponse(res);
+  },
+
   applySaleReturnToOriginal: async (
     originalInvoiceId: string,
     payload: {
@@ -206,11 +235,14 @@ export const InvoiceService = {
       items: { itemId: string; quantity: number }[];
     }
   ): Promise<{ returnInvoiceId: string }> => {
-    const res = await fetch(`${API_BASE}/invoices/${originalInvoiceId}/sale-return`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const res = await fetch(
+      `${API_BASE}/invoices/${originalInvoiceId}/sale-return`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
 
     return handleResponse<{ returnInvoiceId: string }>(res);
   },
@@ -223,24 +255,65 @@ export const InvoiceService = {
       items: { itemId: string; quantity: number }[];
     }
   ): Promise<{ returnInvoiceId: string }> => {
-    const res = await fetch(`${API_BASE}/invoices/${originalInvoiceId}/purchase-return`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const res = await fetch(
+      `${API_BASE}/invoices/${originalInvoiceId}/purchase-return`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
 
     return handleResponse<{ returnInvoiceId: string }>(res);
   },
+};
 
-  create: async (invoice: Omit<Invoice, "id">): Promise<Invoice> => {
-    const res = await fetch(`${API_BASE}/invoices`, {
+// ========================
+// SUPPLIER SERVICE
+// ========================
+export type Supplier = {
+  id: string; // or number (match your backend)
+  name: string;
+  phone?: string | null;
+  gstin?: string | null;
+  address?: string | null;
+  balance: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export const SupplierService = {
+  getAll: async (): Promise<Supplier[]> => {
+    const res = await fetch(`${API_BASE}/suppliers`);
+    return handleResponse<Supplier[]>(res);
+  },
+
+  create: async (supplier: Omit<Supplier, "id">): Promise<Supplier> => {
+    const res = await fetch(`${API_BASE}/suppliers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(invoice),
+      body: JSON.stringify(supplier),
     });
-    return handleResponse<Invoice>(res);
+    return handleResponse<Supplier>(res);
+  },
+
+  update: async (id: string, data: Partial<Supplier>): Promise<void> => {
+    const res = await fetch(`${API_BASE}/suppliers/${id}`, {
+      method: "PATCH", // ✅ use PATCH
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    await handleResponse(res);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/suppliers/${id}`, {
+      method: "DELETE",
+    });
+    await handleResponse(res);
   },
 };
+
 
 // ========================
 // PAYMENT SERVICE
@@ -277,5 +350,25 @@ export const ExpenseService = {
       body: JSON.stringify(expense),
     });
     return handleResponse<Expense>(res);
+  },
+};
+
+// ========================
+// PURCHASE BILL SERVICE
+// ========================
+export interface PurchaseBill {
+  id: string;
+  billNo: string;
+  date: string;
+  supplier: string;
+  items: { name: string; quantity: number }[];
+  amount: number;
+  status: string;
+}
+
+export const PurchaseBillService = {
+  getAll: async (): Promise<PurchaseBill[]> => {
+    const res = await fetch(`${API_BASE}/purchase-bills`);
+    return handleResponse<PurchaseBill[]>(res);
   },
 };

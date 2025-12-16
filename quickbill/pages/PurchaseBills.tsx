@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Search, Eye, Edit2, Trash2 } from "lucide-react";
 import { Invoice } from "../types";
 import { InvoiceService } from "../services/api";
@@ -6,29 +6,64 @@ import { InvoiceService } from "../services/api";
 interface PurchaseBillsProps {
   onCreateNew: () => void;
   onViewInvoice: (invoice: Invoice) => void;
+  onEditInvoice: (invoice: Invoice) => void;
 }
 
-export default function PurchaseBills({ onCreateNew, onViewInvoice }: PurchaseBillsProps) {
+export default function PurchaseBills({
+  onCreateNew,
+  onViewInvoice,
+  onEditInvoice,
+}: PurchaseBillsProps) {
   const [bills, setBills] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadBills();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadBills = async () => {
+  const loadBills = useCallback(async () => {
     try {
       setLoading(true);
       const data = await InvoiceService.getAll();
-      const purchaseOnly = (Array.isArray(data) ? data : []).filter((inv: Invoice) => inv.type === "PURCHASE");
+      const purchaseOnly = (Array.isArray(data) ? data : []).filter(
+        (inv: Invoice) => inv.type === "PURCHASE"
+      );
       setBills(purchaseOnly);
     } catch (error) {
       console.error("Error loading purchase bills:", error);
       setBills([]);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBills();
+  }, [loadBills]);
+
+  const handleDelete = async (bill: Invoice) => {
+    const ok = window.confirm("Delete this purchase bill?");
+    if (!ok) return;
+
+    const prev = bills;
+
+    try {
+      setDeletingId(bill.id);
+
+      // ✅ Optimistic remove (instant UI)
+      setBills((p) => p.filter((x) => x.id !== bill.id));
+
+      await InvoiceService.delete(bill.id); // ✅ API call
+
+      // ✅ optional: refresh from server to stay accurate
+      await loadBills();
+    } catch (err) {
+      console.error("Delete failed:", err);
+
+      // rollback
+      setBills(prev);
+
+      alert("Failed to delete. Please try again.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -101,30 +136,31 @@ export default function PurchaseBills({ onCreateNew, onViewInvoice }: PurchaseBi
                   const supplier = bill.partyName || "-";
                   const status = bill.status || "UNPAID";
 
+                  const items = Array.isArray(bill.items) ? bill.items : [];
+                  const isDeleting = deletingId === bill.id;
+
                   return (
                     <tr key={bill.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 text-sm font-medium text-slate-900">{bill.invoiceNumber || "-"}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">{dateStr}</td>
-
-                      {/* ✅ Supplier */}
                       <td className="px-6 py-4 text-sm text-slate-600">{supplier}</td>
 
-                      {/* ✅ Items */}
                       <td className="px-6 py-4 text-sm text-slate-600">
                         <div className="max-w-xs">
-                          {bill.items.slice(0, 2).map((item, idx) => (
+                          {items.slice(0, 2).map((item, idx) => (
                             <div key={idx} className="text-xs">
                               {item.itemName} (x{item.quantity})
                             </div>
                           ))}
-                          {bill.items.length > 2 && (
-                            <div className="text-xs text-slate-400">+{bill.items.length - 2} more</div>
+                          {items.length > 2 && (
+                            <div className="text-xs text-slate-400">+{items.length - 2} more</div>
                           )}
                         </div>
                       </td>
 
-                      {/* ✅ Amount */}
-                      <td className="px-6 py-4 text-sm text-slate-900 text-right font-medium">₹{amount.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-sm text-slate-900 text-right font-medium">
+                        ₹{amount.toFixed(2)}
+                      </td>
 
                       <td className="px-6 py-4 text-center">
                         <span
@@ -140,33 +176,44 @@ export default function PurchaseBills({ onCreateNew, onViewInvoice }: PurchaseBi
                         <div className="flex justify-center space-x-2">
                           <button
                             onClick={() => onViewInvoice(bill)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            disabled={isDeleting}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDeleting ? "text-slate-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
+                            }`}
                             title="View"
                             type="button"
                           >
                             <Eye size={18} />
                           </button>
+
                           <button
-                            onClick={() => alert('Edit functionality coming soon')}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            onClick={() => onEditInvoice(bill)}
+                            disabled={isDeleting}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDeleting ? "text-slate-400 cursor-not-allowed" : "text-green-600 hover:bg-green-50"
+                            }`}
                             title="Edit"
                             type="button"
                           >
                             <Edit2 size={18} />
                           </button>
+
                           <button
-                            onClick={() => {
-                              if (confirm('Delete this purchase bill?')) {
-                                alert('Delete functionality not available');
-                              }
-                            }}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
+                            onClick={() => handleDelete(bill)}
+                            disabled={isDeleting}
+                            className={`p-2 rounded-lg transition-colors ${
+                              isDeleting ? "text-slate-400 cursor-not-allowed" : "text-red-600 hover:bg-red-50"
+                            }`}
+                            title={isDeleting ? "Deleting..." : "Delete"}
                             type="button"
                           >
                             <Trash2 size={18} />
                           </button>
                         </div>
+
+                        {isDeleting && (
+                          <div className="mt-1 text-[11px] text-slate-400">Deleting...</div>
+                        )}
                       </td>
                     </tr>
                   );

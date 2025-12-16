@@ -5,6 +5,7 @@ import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Parties from "./pages/Parties";
+import Suppliers from "./pages/Suppliers";
 import Items from "./pages/Items";
 import Stock from "./pages/Stock";
 import InvoiceList from "./pages/InvoiceList";
@@ -23,7 +24,7 @@ import PurchaseBills from "./pages/PurchaseBills";
 import PurchaseInvoiceCreate from "./pages/PurchaseInvoiceCreate";
 
 import { Party, Item, Invoice, ViewState, TransactionType, User, Expense } from "./types";
-import { PartyService, ItemService, InvoiceService, AuthService, ExpenseService } from "./services/api";
+import { PartyService, ItemService, InvoiceService, AuthService, ExpenseService, SupplierService, Supplier } from "./services/api";
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -37,12 +38,14 @@ const App: React.FC = () => {
   const [creationType, setCreationType] = useState<TransactionType>("SALE");
 
   const [parties, setParties] = useState<Party[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [autoPrint, setAutoPrint] = useState(false);
+  const [editingPurchaseInvoice, setEditingPurchaseInvoice] = useState<Invoice | null>(null);
 
   // ✅ remember where user came from (sales list or purchase list)
   const [lastListPath, setLastListPath] = useState<string>("/sales/invoices");
@@ -57,13 +60,15 @@ const App: React.FC = () => {
   // ===================== DATA HELPERS =====================
   const refreshData = async () => {
     try {
-      const [p, i, inv, exp] = await Promise.all([
+      const [p, s, i, inv, exp] = await Promise.all([
         PartyService.getAll(),
+        SupplierService.getAll(),
         ItemService.getAll(),
         InvoiceService.getAll(),
         ExpenseService.getAll(),
       ]);
       setParties(p);
+      setSuppliers(s);
       setItems(i);
       setInvoices(inv);
       setExpenses(exp);
@@ -86,6 +91,9 @@ const App: React.FC = () => {
           const [p, i] = await Promise.all([PartyService.getAll(), ItemService.getAll()]);
           setParties(p);
           setItems(i);
+        } else if (path.startsWith("/sales/invoices")) {
+          const inv = await InvoiceService.getAll();
+          setInvoices(inv);
         } else if (path.startsWith("/sale-return")) {
           const [inv, i] = await Promise.all([InvoiceService.getAll(), ItemService.getAll()]);
           setInvoices(inv);
@@ -96,10 +104,16 @@ const App: React.FC = () => {
         } else if (path.startsWith("/parties")) {
           const p = await PartyService.getAll();
           setParties(p);
+        } else if (path.startsWith("/suppliers")) {
+          const s = await SupplierService.getAll();
+          setSuppliers(s);
         } else if (path.startsWith("/items") || path.startsWith("/stock")) {
           const i = await ItemService.getAll();
           setItems(i);
-        } else if (path.startsWith("/sales") || path.startsWith("/purchases")) {
+        } else if (path.startsWith("/purchases/create")) {
+          const i = await ItemService.getAll();
+          setItems(i);
+        } else if (path.startsWith("/purchases")) {
           const [inv, p] = await Promise.all([InvoiceService.getAll(), PartyService.getAll()]);
           setInvoices(inv);
           setParties(p);
@@ -146,6 +160,7 @@ const App: React.FC = () => {
     const routes: Record<string, string> = {
       DASHBOARD: "/",
       PARTIES: "/parties",
+      SUPPLIERS: "/suppliers",
       ITEMS: "/items",
       STOCK: "/stock",
       SALES_INVOICES: "/sales/invoices",
@@ -207,7 +222,7 @@ const App: React.FC = () => {
     const invoiceType = selectedInvoice?.type;
     setSelectedInvoice(null);
     setAutoPrint(false);
-    
+
     if (invoiceType === "PURCHASE" || invoiceType === "PURCHASE_RETURN") {
       navigate("/purchases/bills");
       setCurrentView("PURCHASE_INVOICES");
@@ -221,6 +236,7 @@ const App: React.FC = () => {
     const pathMap: Record<string, ViewState> = {
       "/": "DASHBOARD",
       "/parties": "PARTIES",
+      "/suppliers": "SUPPLIERS",
       "/items": "ITEMS",
       "/stock": "STOCK",
       "/sales/invoices": "SALES_INVOICES",
@@ -320,6 +336,7 @@ const App: React.FC = () => {
         />
 
         <Route path="/parties" element={<Parties parties={parties} onRefresh={refreshData} />} />
+        <Route path="/suppliers" element={<Suppliers suppliers={suppliers} onRefresh={refreshData} />} />
         <Route path="/items" element={<Items items={items} onRefresh={refreshData} userRole={user?.role} />} />
         <Route path="/stock" element={<Stock items={items} onRefresh={refreshData} userRole={user?.role} />} />
 
@@ -332,6 +349,21 @@ const App: React.FC = () => {
               onView={handleViewInvoice}
               onPrint={handlePrintInvoice}
               onCreate={() => startTransaction("SALE")}
+              onEdit={(inv) => {
+                setSelectedInvoice(inv);
+                navigate("/quick-sale");
+              }}
+              onDelete={async (inv) => {
+                if (confirm(`Delete invoice ${inv.invoiceNumber}?`)) {
+                  try {
+                    await InvoiceService.delete(inv.id);
+                    await refreshData();
+                  } catch (error) {
+                    console.error(error);
+                    alert("Failed to delete invoice");
+                  }
+                }
+              }}
               type="SALE"
             />
           }
@@ -343,25 +375,35 @@ const App: React.FC = () => {
           path="/purchases/bills"
           element={
             <PurchaseBills
-              // ✅ go to separate purchase create page
               onCreateNew={() => {
+                setEditingPurchaseInvoice(null); // ✅ new
                 setLastListPath("/purchases/bills");
                 navigate("/purchases/create");
               }}
               onViewInvoice={handleViewInvoice}
+              onEditInvoice={(inv) => {
+                setEditingPurchaseInvoice(inv); // ✅ this fixes onEditInvoice not a function
+                setLastListPath("/purchases/bills");
+                navigate("/purchases/create"); // ✅ open same form page
+              }}
             />
           }
         />
+
 
         {/* ✅ Separate Purchase Create Route */}
         <Route
           path="/purchases/create"
           element={
             <PurchaseInvoiceCreate
-              parties={parties}
               items={items}
-              onCancel={() => navigate("/purchases/bills")}
+              editInvoice={editingPurchaseInvoice}
+              onCancel={() => {
+                setEditingPurchaseInvoice(null);
+                navigate("/purchases/bills");
+              }}
               onSuccess={(invoice, shouldPrint) => {
+                setEditingPurchaseInvoice(null);
                 refreshData();
                 if (shouldPrint) {
                   setLastListPath("/purchases/bills");
@@ -372,9 +414,14 @@ const App: React.FC = () => {
                   navigate("/purchases/bills");
                 }
               }}
+              onItemsRefresh={async () => {
+                const i = await ItemService.getAll();
+                setItems(i);
+              }}
             />
           }
         />
+
 
         <Route
           path="/purchases/returns"

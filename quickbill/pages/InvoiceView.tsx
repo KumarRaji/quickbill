@@ -124,8 +124,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
           <h2 className="text-xl font-bold text-slate-800 mb-1">
             {parties.find(p => p.id === invoice.partyId)?.name || invoice.partyName || `Party #${invoice.partyId}`}
           </h2>
-         
           <p className="text-slate-500">Party ID: {invoice.partyId}</p>
+          <p className="text-slate-600 font-medium mt-2">Payment Mode: {invoice.paymentMode || 'CASH'}</p>
         </div>
 
         {/* Table */}
@@ -258,6 +258,10 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
           <span className="text-xs">
             {parties.find(p => p.id === invoice.partyId)?.name || (invoice as any).partyName || `#${invoice.partyId}`}
           </span>
+        </div>
+        <div className="mb-2">
+          <span className="text-xs font-bold">Payment: </span>
+          <span className="text-xs">{invoice.paymentMode || 'CASH'}</span>
         </div>
 
         <div className="border-b border-dashed border-black my-2" />

@@ -93,6 +93,13 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
         }
         row.taxRate = selectedItem.taxRate;
       }
+    } else if (field === 'price') {
+      // Validate rate should not exceed MRP for sale invoices
+      if ((transactionType === 'SALE' || transactionType === 'RETURN') && row.mrp > 0 && value > row.mrp) {
+        alert('Rate cannot be greater than MRP');
+        return;
+      }
+      (row as any)[field] = value;
     } else {
       (row as any)[field] = value;
     }
@@ -105,19 +112,20 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
   // Handle input change for suggestions
   const handleInputChange = (value: string) => {
     setBarcodeInput(value);
-    setSelectedSuggestionIndex(-1); // Reset selection when typing
+    setSelectedSuggestionIndex(-1);
     
     if (value.trim().length > 0) {
       const filtered = items.filter(i => 
         i.name.toLowerCase().includes(value.toLowerCase()) ||
         (i.code && i.code.toLowerCase().includes(value.toLowerCase())) ||
         (i.barcode && i.barcode.includes(value))
-      ).slice(0, 5); // Limit to 5 suggestions
+      ).slice(0, 10);
       
       setFilteredItems(filtered);
       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
+      setFilteredItems([]);
     }
   };
 
@@ -399,9 +407,9 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
                 />
                 
                 {/* Suggestions Dropdown */}
-                {showSuggestions && filteredItems.length > 0 && (
+                {showSuggestions && (
                   <div className="absolute top-full left-0 right-0 bg-white border border-slate-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                    {filteredItems.map((item, index) => (
+                    {filteredItems.length > 0 ? filteredItems.map((item, index) => (
                       <div
                         key={item.id}
                         className={`px-4 py-2 cursor-pointer border-b border-slate-100 last:border-b-0 ${
@@ -419,7 +427,11 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
                           {item.code && ` • Code: ${item.code}`}
                         </div>
                       </div>
-                    ))}
+                    )) : (
+                      <div className="px-4 py-3 text-center text-slate-500 text-sm">
+                        No items found
+                      </div>
+                    )}
                   </div>
                 )}
             </div>
@@ -430,14 +442,14 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
           <table className="w-full text-left border-collapse">
             <thead>
               <tr>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-5/12">Item</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">
+                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-4/12">Item</th>
+                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">
                     {isReturn ? 'Return Qty' : 'Qty'}
                 </th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">MRP</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Rate</th>
+                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">MRP</th>
+                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Rate</th>
                 <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Save</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Amount</th>
+                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Amount</th>
                 <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12"></th>
               </tr>
             </thead>

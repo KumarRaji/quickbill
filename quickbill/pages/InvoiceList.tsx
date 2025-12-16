@@ -1,16 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { Invoice, TransactionType } from '../types';
-import { FileText, Eye, Undo2, ShoppingCart, Printer, Plus } from 'lucide-react';
+import { FileText, Eye, Undo2, ShoppingCart, Printer, Plus, Edit, Trash2 } from 'lucide-react';
 
 interface InvoiceListProps {
   invoices: Invoice[];
   onView: (invoice: Invoice) => void;
   onPrint: (invoice: Invoice) => void;
   onCreate: () => void;
+  onEdit: (invoice: Invoice) => void;
+  onDelete: (invoice: Invoice) => void;
   type: TransactionType;
 }
 
-const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, onCreate, type }) => {
+const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, onCreate, onEdit, onDelete, type }) => {
   // ✅ Page size + pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -205,6 +207,26 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        onView(inv);
+                      }}
+                      className="text-blue-600 hover:text-blue-800 p-1"
+                      title="View"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit(inv);
+                      }}
+                      className="text-green-600 hover:text-green-800 p-1"
+                      title="Edit"
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
                         onPrint(inv);
                       }}
                       className="text-slate-500 hover:text-slate-800 p-1"
@@ -215,12 +237,12 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        onView(inv);
+                        onDelete(inv);
                       }}
-                      className="text-blue-600 hover:text-blue-800 p-1"
-                      title="View"
+                      className="text-red-600 hover:text-red-800 p-1"
+                      title="Delete"
                     >
-                      <Eye size={18} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </td>

@@ -44,13 +44,13 @@ exports.createParty = (req, res) => {
 // PUT /api/parties/:id
 exports.updateParty = (req, res) => {
   const { id } = req.params;
-  const { name, phone, gstin, address } = req.body;
+  const { name, phone, gstin, address, balance } = req.body;
 
   const sql =
-    'UPDATE parties SET name = ?, phone = ?, gstin = ?, address = ? WHERE id = ?';
+    'UPDATE parties SET name = ?, phone = ?, gstin = ?, address = ?, balance = ? WHERE id = ?';
   pool.query(
     sql,
-    [name, phone || null, gstin || null, address || null, id],
+    [name, phone || null, gstin || null, address || null, balance || 0, id],
     (err, result) => {
       if (err) {
         console.error('Error updating party:', err);
@@ -59,7 +59,13 @@ exports.updateParty = (req, res) => {
       if (result.affectedRows === 0) {
         return res.status(404).json({ message: 'Party not found' });
       }
-      res.status(204).end();
+      const selectSql = 'SELECT * FROM parties WHERE id = ?';
+      pool.query(selectSql, [id], (selectErr, rows) => {
+        if (selectErr || rows.length === 0) {
+          return res.status(500).json({ message: 'Failed to fetch updated party' });
+        }
+        res.json({ ...rows[0], id: rows[0].id.toString() });
+      });
     }
   );
 };

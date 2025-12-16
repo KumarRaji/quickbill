@@ -17,6 +17,7 @@ import {
   Boxes,
   UserCircle,
   ShieldCheck,
+  Building2,
 } from "lucide-react";
 import { ViewState, User } from "../types";
 
@@ -80,7 +81,13 @@ const Layout: React.FC<LayoutProps> = ({
             active={currentView === "PARTIES"}
             onClick={() => onChangeView("PARTIES")}
             icon={Users}
-            label="Parties"
+            label="Customers"
+          />
+          <NavItem
+            active={currentView === "SUPPLIERS"}
+            onClick={() => onChangeView("SUPPLIERS")}
+            icon={Building2}
+            label="Suppliers"
           />
           <NavItem
             active={currentView === "ITEMS"}
@@ -250,7 +257,8 @@ const Layout: React.FC<LayoutProps> = ({
 
             <nav className="space-y-2">
               <NavItem active={currentView === "DASHBOARD"} onClick={() => go("DASHBOARD")} icon={LayoutDashboard} label="Dashboard" />
-              <NavItem active={currentView === "PARTIES"} onClick={() => go("PARTIES")} icon={Users} label="Parties" />
+              <NavItem active={currentView === "PARTIES"} onClick={() => go("PARTIES")} icon={Users} label="Customers" />
+              <NavItem active={currentView === "SUPPLIERS"} onClick={() => go("SUPPLIERS")} icon={Building2} label="Suppliers" />
               <NavItem active={currentView === "ITEMS"} onClick={() => go("ITEMS")} icon={Package} label="Items" />
               <NavItem active={currentView === "STOCK"} onClick={() => go("STOCK")} icon={Boxes} label="Stock" />
               {canManageData && (

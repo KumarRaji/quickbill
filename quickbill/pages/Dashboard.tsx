@@ -12,6 +12,7 @@ import {
   Line,
 } from 'recharts';
 import { Invoice, Item, Party, Expense } from '../types';
+import { useState } from 'react';
 import {
   TrendingUp,
   Users,
@@ -53,6 +54,9 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, su
 );
 
 const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expenses }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   // 🔹 Current date & time in AM/PM
   const formattedDateTime = new Date().toLocaleString('en-IN', {
     dateStyle: 'short',
@@ -78,6 +82,18 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
 
     return { totalSales, totalExpenses, totalInvoices, totalParties, lowStockItems };
   }, [invoices, parties, items, expenses]);
+
+  const lowStockItemsList = useMemo(() => 
+    items.filter((i) => i.stock < 10).sort((a, b) => a.stock - b.stock),
+    [items]
+  );
+
+  const paginatedLowStock = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return lowStockItemsList.slice(start, start + itemsPerPage);
+  }, [lowStockItemsList, currentPage]);
+
+  const totalPages = Math.ceil(lowStockItemsList.length / itemsPerPage);
 
   const chartData = useMemo(() => {
     const salesByDate: Record<string, number> = {};
@@ -146,7 +162,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
           subText="All expenses"
         />
         <StatCard
-          title="Total Parties"
+          title="Total Customers"
           value={stats.totalParties}
           icon={Users}
           color="bg-blue-500"
@@ -266,7 +282,76 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Low Stock Items Table */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <h3 className="text-lg font-bold text-slate-800 mb-6">Low Stock Items</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+              <tr>
+                <th className="px-4 py-3">Item Name</th>
+                <th className="px-4 py-3 text-right">Stock</th>
+                <th className="px-4 py-3">Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedLowStock.map((item) => (
+                <tr key={item.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span className={`font-semibold ${
+                      item.stock === 0 ? 'text-red-600' : 
+                      item.stock < 5 ? 'text-orange-600' : 'text-yellow-600'
+                    }`}>
+                      {item.stock}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{item.unit}</td>
+                </tr>
+              ))}
+              {lowStockItemsList.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-slate-400">
+                    No low stock items
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+            <p className="text-sm text-slate-500">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, lowStockItemsList.length)} of {lowStockItemsList.length} items
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded-md border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span className="px-3 py-1 text-sm text-slate-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-md border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+                )}
+          
+          </div>
+        </div>
+   
   );
 };
 
