@@ -117,8 +117,8 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
   }, [invoices]);
 
   const partySummary = useMemo(() => {
-    const receivables = parties.reduce((sum, p) => sum + (p.balance > 0 ? p.balance : 0), 0);
-    const payables = parties.reduce((sum, p) => sum + (p.balance < 0 ? Math.abs(p.balance) : 0), 0);
+    const receivables = parties.filter(p => p.balance > 0).reduce((sum, p) => sum + Number(p.balance), 0);
+    const payables = parties.filter(p => p.balance < 0).reduce((sum, p) => sum + Math.abs(Number(p.balance)), 0);
     return { receivables, payables };
   }, [parties]);
 
@@ -629,7 +629,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
             }`}
         >
           <Users size={18} />
-          <span>Party Statement</span>
+          <span>Customer Statement</span>
         </button>
       </div>
 
