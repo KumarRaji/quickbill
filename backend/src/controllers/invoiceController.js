@@ -198,6 +198,36 @@ exports.createInvoice = async (req, res) => {
     if (!partyIdNum) {
       return res.status(400).json({ message: 'Invalid partyId' });
     }
+    
+    // For PURCHASE invoices, sync supplier to parties table
+    if (type === 'PURCHASE' || type === 'PURCHASE_RETURN') {
+      try {
+        const checkSupplier = await new Promise((resolve, reject) => {
+          pool.query('SELECT * FROM suppliers WHERE id = ?', [partyIdNum], (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+          });
+        });
+        
+        if (checkSupplier && checkSupplier.length > 0) {
+          const supplier = checkSupplier[0];
+          // Upsert to parties table
+          await new Promise((resolve, reject) => {
+            pool.query(
+              'INSERT INTO parties (id, name, phone, gstin, address, balance) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), phone = VALUES(phone), gstin = VALUES(gstin), address = VALUES(address)',
+              [supplier.id, supplier.name, supplier.phone, supplier.gstin, supplier.address, supplier.balance || 0],
+              (err, result) => {
+                if (err) reject(err);
+                else resolve(result);
+              }
+            );
+          });
+        }
+      } catch (syncErr) {
+        console.error('Error syncing supplier to parties:', syncErr);
+        return res.status(500).json({ message: 'Failed to sync supplier data', error: syncErr.message });
+      }
+    }
   }
 
   if (!type || !items || !Array.isArray(items) || !items.length) {

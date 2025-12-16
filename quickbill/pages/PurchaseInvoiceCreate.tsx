@@ -268,7 +268,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     if (!rows.some((r) => r.itemId)) return;
 
     setLoading(true);
-    const supplier = suppliers.find((s) => s.id === selectedPartyId);
+    const supplier = suppliers.find((s) => String(s.id) === selectedPartyId);
 
     const payload: any = {
       type: transactionType,
@@ -286,16 +286,15 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     };
 
     try {
-      // ✅ if your backend supports update, call update here
-      // else it will create a new invoice (you must implement PUT/PATCH in backend)
+      console.log('Saving purchase bill with payload:', payload);
       const saved = editInvoice?.id
-        ? await InvoiceService.update(editInvoice.id, payload)   // <-- implement in api if not present
+        ? await InvoiceService.update(editInvoice.id, payload)
         : await InvoiceService.create(payload);
 
       onSuccess(saved, shouldPrint);
-    } catch (e) {
-      console.error(e);
-      alert("Error saving purchase bill");
+    } catch (e: any) {
+      console.error('Purchase bill save error:', e);
+      alert(`Error saving purchase bill: ${e.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
