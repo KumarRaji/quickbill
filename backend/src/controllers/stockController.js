@@ -9,7 +9,7 @@ exports.getStock = (req, res) => {
     SELECT s.*, sup.name as supplier_name 
     FROM stock s
     LEFT JOIN suppliers sup ON s.supplier_id = sup.id
-    ORDER BY s.id DESC
+    ORDER BY s.created_at DESC
   `;
   
   pool.query(sql, (err, results) => {
