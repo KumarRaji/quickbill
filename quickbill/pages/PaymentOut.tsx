@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Party, Payment } from '../types';
-import { PaymentService } from '../services/api';
+import { PaymentService, Supplier } from '../services/api';
 import { Plus, Search, TrendingUp, Calendar } from 'lucide-react';
 import { X } from 'lucide-react';
 
 interface PaymentOutProps {
   parties: Party[];
+  suppliers: Supplier[];
   onRefresh: () => void;
 }
 
-const PaymentOut: React.FC<PaymentOutProps> = ({ parties, onRefresh }) => {
+const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }) => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,11 +43,11 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, onRefresh }) => {
 
     setLoading(true);
     try {
-      const selectedParty = parties.find((p) => p.id === formData.partyId);
+      const selectedSupplier = suppliers.find((s) => String(s.id) === formData.partyId);
 
       await PaymentService.create({
         ...formData,
-        partyName: selectedParty?.name || 'Unknown',
+        partyName: selectedSupplier?.name || 'Unknown',
         type: 'OUT',
       } as Payment);
 
@@ -159,23 +160,27 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, onRefresh }) => {
             </thead>
 
             <tbody className="bg-white divide-y divide-slate-100">
-              {paginatedPayments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-slate-600">
-                    <div className="flex items-center space-x-2">
-                      <Calendar size={14} />
-                      <span>{new Date(payment.date).toLocaleDateString()}</span>
-                    </div>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
-                    {payment.partyName}
-                    {payment.note && (
-                      <div className="text-xs text-slate-400 font-normal mt-0.5">
-                        {payment.note}
+              {paginatedPayments.map((payment) => {
+                const supplier = suppliers.find((s) => String(s.id) === String(payment.partyId));
+                const displayName = supplier?.name || payment.partyName;
+                
+                return (
+                  <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                      <div className="flex items-center space-x-2">
+                        <Calendar size={14} />
+                        <span>{new Date(payment.date).toLocaleDateString()}</span>
                       </div>
-                    )}
-                  </td>
+                    </td>
+
+                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
+                      {displayName}
+                      {payment.note && (
+                        <div className="text-xs text-slate-400 font-normal mt-0.5">
+                          {payment.note}
+                        </div>
+                      )}
+                    </td>
 
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md font-medium">
@@ -183,11 +188,12 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, onRefresh }) => {
                     </span>
                   </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-orange-600">
-                    - ₹{payment.amount.toLocaleString()}
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-orange-600">
+                      - ₹{payment.amount.toLocaleString()}
+                    </td>
+                  </tr>
+                );
+              })}
 
               {filteredPayments.length === 0 && (
                 <tr>
@@ -260,10 +266,10 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, onRefresh }) => {
                   value={formData.partyId}
                   onChange={(e) => setFormData({ ...formData, partyId: e.target.value })}
                 >
-                  <option value="">Select Party</option>
-                  {parties.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
+                  <option value="">Select Supplier</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
                     </option>
                   ))}
                 </select>

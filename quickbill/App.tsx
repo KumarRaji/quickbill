@@ -113,6 +113,9 @@ const App: React.FC = () => {
         } else if (path.startsWith("/purchases/create")) {
           const i = await ItemService.getAll();
           setItems(i);
+        } else if (path.startsWith("/purchases/payment-out")) {
+          const s = await SupplierService.getAll();
+          setSuppliers(s);
         } else if (path.startsWith("/purchases")) {
           const [inv, p] = await Promise.all([InvoiceService.getAll(), PartyService.getAll()]);
           setInvoices(inv);
@@ -463,7 +466,7 @@ const App: React.FC = () => {
           }
         />
 
-        <Route path="/purchases/payment-out" element={<PaymentOut parties={parties} onRefresh={refreshData} />} />
+        <Route path="/purchases/payment-out" element={<PaymentOut parties={parties} suppliers={suppliers} onRefresh={refreshData} />} />
 
         {/* Sale Return */}
         <Route

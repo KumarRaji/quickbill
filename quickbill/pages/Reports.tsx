@@ -493,7 +493,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
-          <div className="font-bold text-slate-700">Party Statement / Balances</div>
+          <div className="font-bold text-slate-700">Customer Statement / Balances</div>
 
           {/* ✅ Page size dropdown (Parties) */}
           <div className="flex items-center gap-2">

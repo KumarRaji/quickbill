@@ -29,6 +29,8 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [reason, setReason] = useState<string>("");
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
 
   const selectedInvoice = useMemo(() => {
     const inv = purchaseInvoices.find((i) => String(i.id) === selectedInvoiceId);
@@ -58,11 +60,12 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
   const filteredInvoices = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return purchaseInvoices;
-    return purchaseInvoices.filter(
-      (inv) =>
-        String(inv.invoiceNumber || "").toLowerCase().includes(q) ||
-        String(inv.partyName || "").toLowerCase().includes(q)
-    );
+    
+    return purchaseInvoices.filter((inv) => {
+      const invoiceNum = String(inv.invoiceNumber || "").trim().toLowerCase();
+      const partyName = String(inv.partyName || "").trim().toLowerCase();
+      return invoiceNum.includes(q) || partyName.includes(q);
+    });
   }, [purchaseInvoices, searchQuery]);
 
   const updateQty = (itemId: string, qty: number) => {
@@ -149,14 +152,61 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
       {/* Select Purchase Bill */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-4">
         <div className="grid md:grid-cols-3 gap-3">
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 relative">
             <label className="text-sm text-slate-600">Search Bill (Invoice No / Supplier)</label>
             <input
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+                setHighlightedIndex(-1);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              onKeyDown={(e) => {
+                if (!showSuggestions || filteredInvoices.length === 0) return;
+                
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setHighlightedIndex((prev) => 
+                    prev < filteredInvoices.length - 1 ? prev + 1 : prev
+                  );
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+                } else if (e.key === "Enter" && highlightedIndex >= 0) {
+                  e.preventDefault();
+                  const selected = filteredInvoices[highlightedIndex];
+                  setSelectedInvoiceId(String(selected.id));
+                  setSearchQuery("");
+                  setShowSuggestions(false);
+                  setHighlightedIndex(-1);
+                }
+              }}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200"
               placeholder="Search..."
             />
+            {showSuggestions && searchQuery.trim() && filteredInvoices.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                {filteredInvoices.map((inv, index) => (
+                  <div
+                    key={inv.id}
+                    onClick={() => {
+                      setSelectedInvoiceId(String(inv.id));
+                      setSearchQuery("");
+                      setShowSuggestions(false);
+                      setHighlightedIndex(-1);
+                    }}
+                    className={`px-3 py-2 cursor-pointer border-b border-slate-100 last:border-b-0 ${
+                      highlightedIndex === index ? "bg-blue-100" : "hover:bg-blue-50"
+                    }`}
+                  >
+                    <div className="font-medium text-slate-800">{inv.invoiceNumber}</div>
+                    <div className="text-sm text-slate-500">{inv.partyName}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="text-sm text-slate-600">Select Purchase Bill</label>
@@ -186,7 +236,12 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
         </div>
       </div>
 
-      {!selectedInvoice ? (
+      {purchaseInvoices.length === 0 ? (
+        <div className="text-slate-500 text-center py-10">
+          <FileText className="mx-auto mb-2" />
+          No purchase bills found.
+        </div>
+      ) : !selectedInvoice ? (
         <div className="text-slate-500 text-center py-10">
           <FileText className="mx-auto mb-2" />
           Select a purchase bill to return items.
