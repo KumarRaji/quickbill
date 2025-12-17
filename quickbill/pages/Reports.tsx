@@ -551,7 +551,11 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4">
                     <div className="font-medium text-slate-800">{item.name}</div>
-                    {item.code && <div className="text-xs text-slate-400">Code: {item.code}</div>}
+                    <div className="text-xs text-slate-400 mt-1">
+                      {item.code && <span>Code: {item.code}</span>}
+                      {item.code && item.barcode && <span className="mx-1">•</span>}
+                      {item.barcode && <span>Barcode: {item.barcode}</span>}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-right text-slate-600">
                     {item.mrp && item.mrp > 0 ? `₹${item.mrp}` : '-'}
