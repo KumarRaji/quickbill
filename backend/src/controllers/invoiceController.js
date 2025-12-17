@@ -277,6 +277,8 @@ exports.createInvoice = async (req, res) => {
         });
       }
 
+      const generatedInvoiceNo = invoiceNo || `${type === 'RETURN' || type === 'PURCHASE_RETURN' ? 'CN' : 'TXN'}-${Date.now().toString().slice(-6)}`;
+      
       const invSql =
         'INSERT INTO invoices (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?)';
 
@@ -284,7 +286,7 @@ exports.createInvoice = async (req, res) => {
         invSql,
         [
           partyIdNum,
-          invoiceNo || `${type === 'RETURN' || type === 'PURCHASE_RETURN' ? 'CN' : 'TXN'}-${Date.now().toString().slice(-6)}`,
+          generatedInvoiceNo,
           type,
           total,
           date ? new Date(date) : new Date(),
@@ -356,7 +358,7 @@ exports.createInvoice = async (req, res) => {
                   res.status(201).json({
                     id: invoiceId.toString(),
                     partyId: partyIdNum.toString(),
-                    invoiceNumber: invoiceNo,
+                    invoiceNumber: generatedInvoiceNo,
                     type,
                     totalAmount: total,
                     totalTax: totalTax,
