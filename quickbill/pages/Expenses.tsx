@@ -21,7 +21,7 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
     category: '',
     amount: 0,
     date: new Date().toISOString().split('T')[0],
-    note: '',
+    notes: '',
   });
 
   const CATEGORIES = ['Rent', 'Salaries', 'Electricity', 'Internet', 'Office Supplies', 'Travel', 'Food', 'Other'];
@@ -46,7 +46,7 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
         category: '',
         amount: 0,
         date: new Date().toISOString().split('T')[0],
-        note: '',
+        notes: '',
       });
       setIsModalOpen(false);
       await fetchExpenses();
@@ -63,7 +63,7 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
     return expenses.filter(
       (e) =>
         e.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (e.note && e.note.toLowerCase().includes(searchTerm.toLowerCase()))
+        (e.notes && e.notes.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [expenses, searchTerm]);
 
@@ -92,7 +92,15 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
         </div>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setFormData({
+              category: '',
+              amount: 0,
+              date: new Date().toISOString().split('T')[0],
+              notes: '',
+            });
+            setIsModalOpen(true);
+          }}
           className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors shadow-sm"
         >
           <Plus size={18} />
@@ -148,7 +156,7 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
                   Category
                 </th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  Note
+                  Notes
                 </th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
                   Amount
@@ -173,7 +181,7 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-slate-500 text-sm">
-                    {expense.note || '-'}
+                    {expense.notes || '-'}
                   </td>
 
                   <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-slate-800">
@@ -236,7 +244,15 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h2 className="text-lg font-bold text-slate-800">Add Expense</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => {
+                setIsModalOpen(false);
+                setFormData({
+                  category: '',
+                  amount: 0,
+                  date: new Date().toISOString().split('T')[0],
+                  notes: '',
+                });
+              }} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -290,8 +306,8 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
                 <textarea
                   rows={2}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none resize-none"
-                  value={formData.note}
-                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Optional description..."
                 />
               </div>
@@ -299,7 +315,15 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
               <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setFormData({
+                      category: '',
+                      amount: 0,
+                      date: new Date().toISOString().split('T')[0],
+                      notes: '',
+                    });
+                  }}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
                   Cancel

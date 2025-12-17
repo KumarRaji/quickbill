@@ -3,7 +3,7 @@ const pool = require('../config/db');
 
 // GET /api/expenses
 exports.getExpenses = (req, res) => {
-  const sql = 'SELECT * FROM expenses ORDER BY expense_date DESC';
+  const sql = 'SELECT * FROM expenses ORDER BY id DESC';
   pool.query(sql, (err, rows) => {
     if (err) {
       console.error('Error fetching expenses:', err);

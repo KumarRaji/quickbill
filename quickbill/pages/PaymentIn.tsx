@@ -88,7 +88,16 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Payment In (Receipts)</h1>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setFormData({
+              partyId: '',
+              amount: 0,
+              date: new Date().toISOString().split('T')[0],
+              mode: 'CASH',
+              note: '',
+            });
+            setIsModalOpen(true);
+          }}
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors shadow-sm"
         >
           <Plus size={18} />
@@ -241,7 +250,16 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h2 className="text-lg font-bold text-slate-800">Receive Payment</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => {
+                setIsModalOpen(false);
+                setFormData({
+                  partyId: '',
+                  amount: 0,
+                  date: new Date().toISOString().split('T')[0],
+                  mode: 'CASH',
+                  note: '',
+                });
+              }} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -326,7 +344,16 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
               <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setFormData({
+                      partyId: '',
+                      amount: 0,
+                      date: new Date().toISOString().split('T')[0],
+                      mode: 'CASH',
+                      note: '',
+                    });
+                  }}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
                   Cancel

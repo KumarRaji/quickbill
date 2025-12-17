@@ -1,14 +1,16 @@
 import React, { useMemo, useState } from 'react';
 import { Party, Item, Invoice } from '../types';
 import { Package, Users, TrendingUp } from 'lucide-react';
+import { StockItem } from '../services/api';
 
 interface ReportsProps {
   invoices: Invoice[];
   parties: Party[];
   items: Item[];
+  stock: StockItem[];
 }
 
-type ReportTab = 'STOCK' | 'SALES' | 'SALE_RETURNS' | 'PARTIES';
+type ReportTab = 'STOCK' | 'ITEMS' | 'SALES' | 'SALE_RETURNS' | 'PARTIES';
 
 type PagerProps = {
   currentPage: number;
@@ -68,7 +70,7 @@ const PaginationBar: React.FC<PagerProps> = ({
   );
 };
 
-const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
+const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) => {
   const [activeTab, setActiveTab] = useState<ReportTab>('STOCK');
 
   // -----------------------
@@ -78,6 +80,10 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
   // STOCK pagination + page size select ✅
   const [stockPage, setStockPage] = useState(1);
   const [stockPageSize, setStockPageSize] = useState(10);
+
+  // ITEMS pagination + page size select ✅
+  const [itemsPage, setItemsPage] = useState(1);
+  const [itemsPageSize, setItemsPageSize] = useState(10);
 
   // SALES pagination + page size select ✅
   const [salesPage, setSalesPage] = useState(1);
@@ -97,10 +103,10 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
   // -----------------------
 
   const stockSummary = useMemo(() => {
-    const totalStockValue = items.reduce((sum, item) => sum + item.stock * item.purchasePrice, 0);
-    const lowStockCount = items.filter((i) => i.stock < 10).length;
+    const totalStockValue = stock.reduce((sum, item) => sum + item.quantity * item.purchase_price, 0);
+    const lowStockCount = stock.filter((i) => i.quantity <= 5).length;
     return { totalStockValue, lowStockCount };
-  }, [items]);
+  }, [stock]);
 
   const salesSummary = useMemo(() => {
     const relevantInvoices = invoices.filter((i) => i.type === 'SALE' || i.type === 'RETURN');
@@ -134,10 +140,16 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
   // -----------------------
 
   // STOCK
-  const stockTotalPages = Math.max(1, Math.ceil(items.length / stockPageSize));
+  const stockTotalPages = Math.max(1, Math.ceil(stock.length / stockPageSize));
   const stockCurrentPage = Math.min(stockPage, stockTotalPages);
   const stockStartIndex = (stockCurrentPage - 1) * stockPageSize;
-  const paginatedStockItems = items.slice(stockStartIndex, stockStartIndex + stockPageSize);
+  const paginatedStockItems = stock.slice(stockStartIndex, stockStartIndex + stockPageSize);
+
+  // ITEMS
+  const itemsTotalPages = Math.max(1, Math.ceil(items.length / itemsPageSize));
+  const itemsCurrentPage = Math.min(itemsPage, itemsTotalPages);
+  const itemsStartIndex = (itemsCurrentPage - 1) * itemsPageSize;
+  const paginatedItems = items.slice(itemsStartIndex, itemsStartIndex + itemsPageSize);
 
   // SALES
   const salesList = salesSummary.invoices;
@@ -163,6 +175,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
   const changeTab = (tab: ReportTab) => {
     setActiveTab(tab);
     if (tab === 'STOCK') setStockPage(1);
+    if (tab === 'ITEMS') setItemsPage(1);
     if (tab === 'SALES') setSalesPage(1);
     if (tab === 'SALE_RETURNS') setReturnPage(1);
     if (tab === 'PARTIES') setPartyPage(1);
@@ -182,8 +195,8 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
           </div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <div className="text-sm text-slate-500 mb-1">Total Items</div>
-          <div className="text-2xl font-bold text-slate-800">{items.length}</div>
+          <div className="text-sm text-slate-500 mb-1">Total Products</div>
+          <div className="text-2xl font-bold text-slate-800">{stock.length}</div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <div className="text-sm text-slate-500 mb-1">Low Stock Items</div>
@@ -193,7 +206,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
-          <div className="font-bold text-slate-700">Item Wise Stock Detail</div>
+          <div className="font-bold text-slate-700">Stock Detail</div>
 
           {/* ✅ Page size dropdown at TOP (Stock only) */}
           <div className="flex items-center gap-2">
@@ -220,9 +233,9 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-3">Item Name</th>
+                <th className="px-6 py-3">Supplier</th>
                 <th className="px-6 py-3 text-right">Purchase Price</th>
-                <th className="px-6 py-3 text-right">Sale Price</th>
-                <th className="px-6 py-3 text-center">Current Stock</th>
+                <th className="px-6 py-3 text-center">Quantity</th>
                 <th className="px-6 py-3 text-right">Stock Value</th>
               </tr>
             </thead>
@@ -232,28 +245,29 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4">
                     <div className="font-medium text-slate-800">{item.name}</div>
-                    {item.code && <div className="text-xs text-slate-400">{item.code}</div>}
+                    {item.code && <div className="text-xs text-slate-400">Code: {item.code}</div>}
+                    {item.barcode && <div className="text-xs text-slate-400">Barcode: {item.barcode}</div>}
                   </td>
-                  <td className="px-6 py-4 text-right text-slate-600">₹{item.purchasePrice}</td>
-                  <td className="px-6 py-4 text-right text-slate-600">₹{item.sellingPrice}</td>
+                  <td className="px-6 py-4 text-slate-600">{item.supplier_name || '-'}</td>
+                  <td className="px-6 py-4 text-right text-slate-600">₹{item.purchase_price}</td>
                   <td className="px-6 py-4 text-center">
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-bold ${item.stock < 10 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                      className={`px-2 py-1 rounded-full text-xs font-bold ${item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                         }`}
                     >
-                      {item.stock} {item.unit}
+                      {item.quantity} {item.unit}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right font-bold text-slate-800">
-                    ₹{(item.stock * item.purchasePrice).toLocaleString()}
+                    ₹{(item.quantity * item.purchase_price).toLocaleString()}
                   </td>
                 </tr>
               ))}
 
-              {items.length === 0 && (
+              {stock.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
-                    No items found
+                    No stock found
                   </td>
                 </tr>
               )}
@@ -267,8 +281,8 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
           totalPages={stockTotalPages}
           startIndex={stockStartIndex}
           pageCount={paginatedStockItems.length}
-          totalCount={items.length}
-          label="items"
+          totalCount={stock.length}
+          label="stock items"
           onPrevious={() => setStockPage((p) => Math.max(1, p - 1))}
           onNext={() => setStockPage((p) => Math.min(stockTotalPages, p + 1))}
         />
@@ -478,6 +492,110 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
     </div>
   );
 
+  const ItemsReport = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="text-sm text-slate-500 mb-1">Total Items</div>
+          <div className="text-2xl font-bold text-slate-800">{items.length}</div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="text-sm text-slate-500 mb-1">Total Stock Value</div>
+          <div className="text-2xl font-bold text-slate-800">
+            ₹{items.reduce((sum, i) => sum + i.stock * i.purchasePrice, 0).toLocaleString()}
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="text-sm text-slate-500 mb-1">Low Stock Items</div>
+          <div className="text-2xl font-bold text-orange-600">{items.filter(i => i.stock <= 5).length}</div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
+          <div className="font-bold text-slate-700">Items Summary</div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-600">Rows:</span>
+            <select
+              value={itemsPageSize}
+              onChange={(e) => {
+                setItemsPageSize(Number(e.target.value));
+                setItemsPage(1);
+              }}
+              className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {[10, 20, 50, 100].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+              <tr>
+                <th className="px-6 py-3">Item Name</th>
+                <th className="px-6 py-3 text-right">MRP</th>
+                <th className="px-6 py-3 text-right">Selling Price</th>
+                <th className="px-6 py-3 text-right">Purchase Price</th>
+                <th className="px-6 py-3 text-center">Stock</th>
+                <th className="px-6 py-3 text-right">Stock Value</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-100">
+              {paginatedItems.map((item) => (
+                <tr key={item.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-4">
+                    <div className="font-medium text-slate-800">{item.name}</div>
+                    {item.code && <div className="text-xs text-slate-400">Code: {item.code}</div>}
+                  </td>
+                  <td className="px-6 py-4 text-right text-slate-600">
+                    {item.mrp && item.mrp > 0 ? `₹${item.mrp}` : '-'}
+                  </td>
+                  <td className="px-6 py-4 text-right text-slate-600">₹{item.sellingPrice}</td>
+                  <td className="px-6 py-4 text-right text-slate-600">₹{item.purchasePrice}</td>
+                  <td className="px-6 py-4 text-center">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-bold ${item.stock <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+                    >
+                      {item.stock} {item.unit}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right font-bold text-slate-800">
+                    ₹{(item.stock * item.purchasePrice).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
+                    No items found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <PaginationBar
+          currentPage={itemsCurrentPage}
+          totalPages={itemsTotalPages}
+          startIndex={itemsStartIndex}
+          pageCount={paginatedItems.length}
+          totalCount={items.length}
+          label="items"
+          onPrevious={() => setItemsPage((p) => Math.max(1, p - 1))}
+          onNext={() => setItemsPage((p) => Math.min(itemsTotalPages, p + 1))}
+        />
+      </div>
+    </div>
+  );
+
   const PartyReport = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -606,6 +724,15 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
         </button>
 
         <button
+          onClick={() => changeTab('ITEMS')}
+          className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'ITEMS' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+        >
+          <Package size={18} />
+          <span>Items Summary</span>
+        </button>
+
+        <button
           onClick={() => changeTab('SALES')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'SALES' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'
             }`}
@@ -636,6 +763,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items }) => {
       {/* Content */}
       <div className="flex-1 overflow-auto">
         {activeTab === 'STOCK' && <StockReport />}
+        {activeTab === 'ITEMS' && <ItemsReport />}
         {activeTab === 'SALES' && <SalesReport />}
         {activeTab === 'SALE_RETURNS' && <SaleReturnReport />}
         {activeTab === 'PARTIES' && <PartyReport />}

@@ -25,12 +25,14 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
     amount: 0,
     date: new Date().toISOString().split('T')[0],
     mode: 'CASH',
-    note: '',
+    notes: '',
   });
 
   const fetchPayments = async () => {
     const data = await PaymentService.getAll();
-    setPayments(data.filter((p) => p.type === 'OUT'));
+    const outPayments = data.filter((p) => p.type === 'OUT');
+    outPayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setPayments(outPayments);
   };
 
   useEffect(() => {
@@ -56,7 +58,7 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
         amount: 0,
         date: new Date().toISOString().split('T')[0],
         mode: 'CASH',
-        note: '',
+        notes: '',
       });
 
       setIsModalOpen(false);
@@ -93,7 +95,16 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
         </h1>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setFormData({
+              partyId: '',
+              amount: 0,
+              date: new Date().toISOString().split('T')[0],
+              mode: 'CASH',
+              notes: '',
+            });
+            setIsModalOpen(true);
+          }}
           className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors shadow-sm"
         >
           <Plus size={18} />
@@ -153,6 +164,9 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                   Mode
                 </th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                  Notes
+                </th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
                   Amount Paid
                 </th>
@@ -175,11 +189,6 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
 
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
                       {displayName}
-                      {payment.note && (
-                        <div className="text-xs text-slate-400 font-normal mt-0.5">
-                          {payment.note}
-                        </div>
-                      )}
                     </td>
 
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -187,6 +196,10 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
                       {payment.mode}
                     </span>
                   </td>
+
+                    <td className="px-6 py-4 text-slate-600">
+                      {payment.notes || '-'}
+                    </td>
 
                     <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-orange-600">
                       - ₹{payment.amount.toLocaleString()}
@@ -197,7 +210,7 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
 
               {filteredPayments.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
                     <TrendingUp size={48} className="mx-auto mb-2 opacity-20" />
                     No payments made yet.
                   </td>
@@ -250,7 +263,16 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h2 className="text-lg font-bold text-slate-800">Record Payment Out</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => {
+                setIsModalOpen(false);
+                setFormData({
+                  partyId: '',
+                  amount: 0,
+                  date: new Date().toISOString().split('T')[0],
+                  mode: 'CASH',
+                  notes: '',
+                });
+              }} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -326,8 +348,8 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
                 <textarea
                   rows={2}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none resize-none"
-                  value={formData.note}
-                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Optional description..."
                 />
               </div>
@@ -335,7 +357,16 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
               <div className="pt-4 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setFormData({
+                      partyId: '',
+                      amount: 0,
+                      date: new Date().toISOString().split('T')[0],
+                      mode: 'CASH',
+                      notes: '',
+                    });
+                  }}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
                 >
                   Cancel

@@ -74,7 +74,7 @@ export interface Payment {
   amount: number;
   type: PaymentType;
   mode: PaymentModeSimple;
-  note?: string;
+  notes?: string;
 }
 
 export interface Expense {
@@ -82,7 +82,7 @@ export interface Expense {
   date: string;
   category: string;
   amount: number;
-  note?: string;
+  notes?: string;
 }
 
 export type UserRole = "SUPER_ADMIN" | "ADMIN" | "STAFF";
@@ -111,6 +111,7 @@ export type ViewState =
   | "SUPPLIERS"
   | "ITEMS"
   | "STOCK"
+  | "STOCK_MANAGEMENT"
   | "SALES_INVOICES"
   | "SALE_RETURN_NEW"
   | "PAYMENT_IN"

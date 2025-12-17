@@ -12,6 +12,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 const suppliersRoutes = require("./routes/suppliers.routes");
 const purchaseBillRoutes = require("./routes/purchaseBillRoutes");
+const stockRoutes = require("./routes/stock.routes");
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/suppliers", suppliersRoutes);
 app.use("/api/purchase-bills", purchaseBillRoutes);
+app.use("/api/stock", stockRoutes);
 
 // Fallback error handler
 app.use((err, req, res, next) => {

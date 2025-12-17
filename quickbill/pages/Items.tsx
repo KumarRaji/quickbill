@@ -152,7 +152,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
   return (
     <div className="max-w-7xl mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Items / Inventory</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Items</h1>
 
         {/* ✅ Buttons */}
         <div className="flex gap-2">

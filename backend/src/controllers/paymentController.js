@@ -7,7 +7,7 @@ exports.getPayments = (req, res) => {
     SELECT p.*, pt.name as party_name 
     FROM payments p 
     LEFT JOIN parties pt ON p.party_id = pt.id 
-    ORDER BY p.payment_date DESC
+    ORDER BY p.id DESC
   `;
   pool.query(sql, (err, rows) => {
     if (err) {
@@ -23,7 +23,7 @@ exports.getPayments = (req, res) => {
       amount: Number(p.amount),
       date: p.payment_date,
       mode: p.mode,
-      note: p.notes,
+      notes: p.notes,
     }));
 
     res.json(payments);

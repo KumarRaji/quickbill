@@ -372,3 +372,71 @@ export const PurchaseBillService = {
     return handleResponse<PurchaseBill[]>(res);
   },
 };
+
+// ========================
+// STOCK SERVICE
+// ========================
+export interface StockItem {
+  id: string;
+  name: string;
+  code?: string;
+  barcode?: string;
+  supplier_id?: string;
+  supplier_name?: string;
+  purchase_price: number;
+  quantity: number;
+  unit: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const StockService = {
+  getAll: async (): Promise<StockItem[]> => {
+    const res = await fetch(`${API_BASE}/stock`);
+    return handleResponse<StockItem[]>(res);
+  },
+
+  create: async (stock: Omit<StockItem, 'id'>): Promise<StockItem> => {
+    const res = await fetch(`${API_BASE}/stock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(stock),
+    });
+    return handleResponse<StockItem>(res);
+  },
+
+  update: async (id: string, data: Partial<StockItem>): Promise<void> => {
+    const res = await fetch(`${API_BASE}/stock/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    await handleResponse(res);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/stock/${id}`, {
+      method: 'DELETE',
+    });
+    await handleResponse(res);
+  },
+
+  moveToItems: async (id: string, data: { selling_price: number; mrp?: number; tax_rate: number }): Promise<{ itemId: string }> => {
+    const res = await fetch(`${API_BASE}/stock/${id}/move-to-items`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<{ itemId: string }>(res);
+  },
+
+  bulkUpload: async (file: File): Promise<{ message: string; totalRows: number; affectedRows: number }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/stock/bulk-upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    return handleResponse(res);
+  },
+};

@@ -8,6 +8,7 @@ import Parties from "./pages/Parties";
 import Suppliers from "./pages/Suppliers";
 import Items from "./pages/Items";
 import Stock from "./pages/Stock";
+import StockManagement from "./pages/StockManagement";
 import InvoiceList from "./pages/InvoiceList";
 import InvoiceCreate from "./pages/InvoiceCreate";
 import InvoiceView from "./pages/InvoiceView";
@@ -24,7 +25,7 @@ import PurchaseBills from "./pages/PurchaseBills";
 import PurchaseInvoiceCreate from "./pages/PurchaseInvoiceCreate";
 
 import { Party, Item, Invoice, ViewState, TransactionType, User, Expense } from "./types";
-import { PartyService, ItemService, InvoiceService, AuthService, ExpenseService, SupplierService, Supplier } from "./services/api";
+import { PartyService, ItemService, InvoiceService, AuthService, ExpenseService, SupplierService, Supplier, StockService, StockItem } from "./services/api";
 
 const App: React.FC = () => {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ const App: React.FC = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [stock, setStock] = useState<StockItem[]>([]);
 
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [autoPrint, setAutoPrint] = useState(false);
@@ -60,18 +62,20 @@ const App: React.FC = () => {
   // ===================== DATA HELPERS =====================
   const refreshData = async () => {
     try {
-      const [p, s, i, inv, exp] = await Promise.all([
+      const [p, s, i, inv, exp, st] = await Promise.all([
         PartyService.getAll(),
         SupplierService.getAll(),
         ItemService.getAll(),
         InvoiceService.getAll(),
         ExpenseService.getAll(),
+        StockService.getAll(),
       ]);
       setParties(p);
       setSuppliers(s);
       setItems(i);
       setInvoices(inv);
       setExpenses(exp);
+      setStock(st);
     } catch (error) {
       console.error("Failed to fetch data", error);
     }
@@ -166,6 +170,7 @@ const App: React.FC = () => {
       SUPPLIERS: "/suppliers",
       ITEMS: "/items",
       STOCK: "/stock",
+      STOCK_MANAGEMENT: "/stock-management",
       SALES_INVOICES: "/sales/invoices",
       SALE_RETURN_NEW: "/sale-return",
       PAYMENT_IN: "/sales/payment-in",
@@ -242,6 +247,7 @@ const App: React.FC = () => {
       "/suppliers": "SUPPLIERS",
       "/items": "ITEMS",
       "/stock": "STOCK",
+      "/stock-management": "STOCK_MANAGEMENT",
       "/sales/invoices": "SALES_INVOICES",
       "/sale-return": "SALE_RETURN_NEW",
       "/sales/payment-in": "PAYMENT_IN",
@@ -357,6 +363,7 @@ const App: React.FC = () => {
         <Route path="/suppliers" element={<Suppliers suppliers={suppliers} onRefresh={refreshData} />} />
         <Route path="/items" element={<Items items={items} onRefresh={refreshData} userRole={user?.role} />} />
         <Route path="/stock" element={<Stock items={items} onRefresh={refreshData} userRole={user?.role} />} />
+        <Route path="/stock-management" element={<StockManagement onRefresh={refreshData} />} />
 
         {/* Sales */}
         <Route
@@ -513,7 +520,7 @@ const App: React.FC = () => {
             !canManageData ? (
               <div className="p-8 text-center text-red-500">Access Denied</div>
             ) : (
-              <Reports invoices={invoices} parties={parties} items={items} />
+              <Reports invoices={invoices} parties={parties} items={items} stock={stock} />
             )
           }
         />
