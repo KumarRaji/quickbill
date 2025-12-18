@@ -3,7 +3,7 @@ import { Party, Item, Invoice, Payment, Expense, User } from "../types";
 // ========================
 // CONFIG
 // ========================
-const API_BASE = "http://192.168.1.4:4000/api"; // change if needed
+const API_BASE = "http://localhost:4000/api"; // change if needed
 
 const KEYS = {
   SESSION: "quickbill_session",

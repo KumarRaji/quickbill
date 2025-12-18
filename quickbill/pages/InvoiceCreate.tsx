@@ -8,19 +8,20 @@ import { Plus, Trash2, Save, ArrowLeft, Printer, ScanBarcode, X } from 'lucide-r
 interface InvoiceCreateProps {
   parties: Party[];
   items: Item[];
+  editInvoice?: Invoice | null;
   onCancel: () => void;
   onSuccess: (invoice: Invoice, shouldPrint?: boolean) => void;
   initialType?: TransactionType;
   hideAddItemButton?: boolean;
 }
 
-const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel, onSuccess, initialType = 'SALE', hideAddItemButton = false }) => {
-  const [transactionType, setTransactionType] = useState<TransactionType>(initialType);
-  const [selectedPartyId, setSelectedPartyId] = useState<string>('');
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
-  const [invoiceNumber, setInvoiceNumber] = useState(`${initialType === 'RETURN' || initialType === 'PURCHASE_RETURN' ? 'CN' : 'TXN'}-${Date.now().toString().slice(-6)}`);
-  const [originalRefNumber, setOriginalRefNumber] = useState('');
-  const [paymentMode, setPaymentMode] = useState<'CASH' | 'ONLINE' | 'CHEQUE' | 'CREDIT'>('CASH');
+const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoice, onCancel, onSuccess, initialType = 'SALE', hideAddItemButton = false }) => {
+  const [transactionType, setTransactionType] = useState<TransactionType>(editInvoice?.type || initialType);
+  const [selectedPartyId, setSelectedPartyId] = useState<string>(editInvoice?.partyId || '');
+  const [invoiceDate, setInvoiceDate] = useState(editInvoice?.date.split('T')[0] || new Date().toISOString().split('T')[0]);
+  const [invoiceNumber, setInvoiceNumber] = useState(editInvoice?.invoiceNumber || `${initialType === 'RETURN' || initialType === 'PURCHASE_RETURN' ? 'CN' : 'TXN'}-${Date.now().toString().slice(-6)}`);
+  const [originalRefNumber, setOriginalRefNumber] = useState(editInvoice?.originalRefNumber || '');
+  const [paymentMode, setPaymentMode] = useState<'CASH' | 'ONLINE' | 'CHEQUE' | 'CREDIT'>(editInvoice?.paymentMode || 'CASH');
   
   // Barcode Scanning State
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -29,7 +30,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
   
-  const [rows, setRows] = useState<InvoiceItem[]>([]);
+  const [rows, setRows] = useState<InvoiceItem[]>(editInvoice?.items || []);
   const [loading, setLoading] = useState(false);
   
   // Add New Item Modal State
@@ -246,9 +247,14 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
     };
 
     try {
-      const newInvoice = await InvoiceService.create(invoiceData);
-      console.log('Created Invoice Response:', newInvoice);
-      onSuccess(newInvoice, shouldPrint);
+      let resultInvoice;
+      if (editInvoice) {
+        resultInvoice = await InvoiceService.update(editInvoice.id, invoiceData);
+      } else {
+        resultInvoice = await InvoiceService.create(invoiceData);
+      }
+      console.log('Saved Invoice Response:', resultInvoice);
+      onSuccess(resultInvoice, shouldPrint);
     } catch (e) {
       console.error(e);
       alert('Error saving transaction');
@@ -258,12 +264,13 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, onCancel,
   };
 
   const getTitle = () => {
+    const prefix = editInvoice ? 'Edit' : 'New';
     switch (transactionType) {
-      case 'SALE': return 'New Sale Invoice';
-      case 'RETURN': return 'Sale Return / Credit Note';
-      case 'PURCHASE': return 'New Purchase Bill';
-      case 'PURCHASE_RETURN': return 'Purchase Return / Debit Note';
-      default: return 'New Transaction';
+      case 'SALE': return `${prefix} Sale Invoice`;
+      case 'RETURN': return `${prefix} Sale Return / Credit Note`;
+      case 'PURCHASE': return `${prefix} Purchase Bill`;
+      case 'PURCHASE_RETURN': return `${prefix} Purchase Return / Debit Note`;
+      default: return `${prefix} Transaction`;
     }
   };
 

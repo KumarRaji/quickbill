@@ -376,7 +376,8 @@ const App: React.FC = () => {
               onCreate={() => startTransaction("SALE")}
               onEdit={(inv) => {
                 setSelectedInvoice(inv);
-                navigate("/quick-sale");
+                setLastListPath("/sales/invoices");
+                navigate("/sales/edit");
               }}
               onDelete={async (inv) => {
                 if (confirm(`Delete invoice ${inv.invoiceNumber}?`)) {
@@ -394,6 +395,36 @@ const App: React.FC = () => {
           }
         />
         <Route path="/sales/payment-in" element={<PaymentIn parties={parties} onRefresh={refreshData} />} />
+
+        {/* ✅ Sale Invoice Edit Route */}
+        <Route
+          path="/sales/edit"
+          element={
+            <InvoiceCreate
+              parties={parties}
+              items={items}
+              editInvoice={selectedInvoice}
+              onCancel={() => {
+                setSelectedInvoice(null);
+                navigate("/sales/invoices");
+              }}
+              onSuccess={(invoice, shouldPrint) => {
+                setSelectedInvoice(null);
+                refreshData();
+                if (shouldPrint) {
+                  setLastListPath("/sales/invoices");
+                  setSelectedInvoice(invoice);
+                  setAutoPrint(true);
+                  setCurrentView("VIEW_INVOICE");
+                } else {
+                  navigate("/sales/invoices");
+                }
+              }}
+              initialType="SALE"
+              hideAddItemButton={true}
+            />
+          }
+        />
 
         {/* Purchases */}
         <Route
