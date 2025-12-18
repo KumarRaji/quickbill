@@ -9,8 +9,8 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('superadmin');
+  const [password, setPassword] = useState('password');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -88,7 +88,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+          <div className="mt-4 pt-3 border-t border-slate-100 text-center">
              <p className="text-xs text-slate-400 mb-2">Demo Credentials (user / pass):</p>
              <div className="flex justify-center flex-wrap gap-2 text-xs text-slate-500">
                <span className="bg-purple-50 text-purple-700 border-purple-200 px-2 py-1 rounded border">superadmin/ password</span>
