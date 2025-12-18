@@ -184,8 +184,8 @@ exports.moveToItems = (req, res) => {
 
         // Insert into items
         const insertSql = `
-          INSERT INTO items (name, code, barcode, mrp, selling_price, purchase_price, stock, unit, tax_rate)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO items (name, code, barcode, supplier_id, mrp, selling_price, purchase_price, stock, unit, tax_rate)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         conn.query(
@@ -194,6 +194,7 @@ exports.moveToItems = (req, res) => {
             stock.name,
             stock.code,
             stock.barcode,
+            stock.supplier_id,
             mrp || stock.purchase_price,
             selling_price,
             stock.purchase_price,

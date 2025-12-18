@@ -25,7 +25,7 @@ const normalizeBarcode = (v) => {
 /* ----------------------------- GET /api/items ----------------------------- */
 exports.getItems = (req, res) => {
   const sql =
-    'SELECT id, name, code, barcode, selling_price, purchase_price, stock, mrp, unit, tax_rate FROM items ORDER BY id DESC';
+    'SELECT id, name, code, barcode, supplier_id, selling_price, purchase_price, stock, mrp, unit, tax_rate FROM items ORDER BY id DESC';
 
   pool.query(sql, (err, rows) => {
     if (err) {
@@ -38,6 +38,7 @@ exports.getItems = (req, res) => {
       name: i.name,
       code: i.code,
       barcode: i.barcode,
+      supplierId: i.supplier_id,
       sellingPrice: Number(i.selling_price),
       purchasePrice: Number(i.purchase_price),
       stock: Number(i.stock),

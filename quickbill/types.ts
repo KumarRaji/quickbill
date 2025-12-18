@@ -13,6 +13,7 @@ export interface Item {
   name: string;
   code?: string;
   barcode?: string;        // Scannable barcode (UPC/EAN)
+  supplierId?: number;
   mrp?: number;
   sellingPrice: number;
   purchasePrice: number;

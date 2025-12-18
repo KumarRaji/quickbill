@@ -107,10 +107,34 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
   // -----------------------
 
   const stockSummary = useMemo(() => {
-    const totalStockValue = stock.reduce((sum, item) => sum + item.quantity * item.purchase_price, 0);
-    const lowStockCount = stock.filter((i) => i.quantity <= 5).length;
-    return { totalStockValue, lowStockCount };
-  }, [stock]);
+    const combinedStock = [
+      ...stock.filter(s => s.supplier_id).map(s => ({
+        id: s.id,
+        name: s.name,
+        code: s.code,
+        barcode: s.barcode,
+        supplier_name: s.supplier_name,
+        purchase_price: s.purchase_price,
+        mrp: s.mrp,
+        quantity: s.quantity,
+        unit: s.unit
+      })),
+      ...items.filter(i => i.stock > 0 && i.supplierId).map(i => ({
+        id: i.id,
+        name: i.name,
+        code: i.code,
+        barcode: i.barcode,
+        supplier_name: 'Moved to Items',
+        purchase_price: i.purchasePrice,
+        mrp: i.mrp,
+        quantity: i.stock,
+        unit: i.unit
+      }))
+    ];
+    const totalStockValue = combinedStock.reduce((sum, item) => sum + item.quantity * item.purchase_price, 0);
+    const lowStockCount = combinedStock.filter((i) => i.quantity <= 5).length;
+    return { totalStockValue, lowStockCount, filteredStock: combinedStock };
+  }, [stock, items]);
 
   const salesSummary = useMemo(() => {
     const relevantInvoices = invoices.filter((i) => i.type === 'SALE' || i.type === 'RETURN');
@@ -151,10 +175,11 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
   // -----------------------
 
   // STOCK
-  const stockTotalPages = Math.max(1, Math.ceil(stock.length / stockPageSize));
+  const stockList = stockSummary.filteredStock;
+  const stockTotalPages = Math.max(1, Math.ceil(stockList.length / stockPageSize));
   const stockCurrentPage = Math.min(stockPage, stockTotalPages);
   const stockStartIndex = (stockCurrentPage - 1) * stockPageSize;
-  const paginatedStockItems = stock.slice(stockStartIndex, stockStartIndex + stockPageSize);
+  const paginatedStockItems = stockList.slice(stockStartIndex, stockStartIndex + stockPageSize);
 
   // ITEMS
   const itemsTotalPages = Math.max(1, Math.ceil(items.length / itemsPageSize));
@@ -215,7 +240,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <div className="text-sm text-slate-500 mb-1">Total Products</div>
-          <div className="text-2xl font-bold text-slate-800">{stock.length}</div>
+          <div className="text-2xl font-bold text-slate-800">{stockList.length}</div>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
           <div className="text-sm text-slate-500 mb-1">Low Stock Items</div>
@@ -285,7 +310,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                 </tr>
               ))}
 
-              {stock.length === 0 && (
+              {stockList.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
                     No stock found
@@ -302,7 +327,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
           totalPages={stockTotalPages}
           startIndex={stockStartIndex}
           pageCount={paginatedStockItems.length}
-          totalCount={stock.length}
+          totalCount={stockList.length}
           label="stock items"
           onPrevious={() => setStockPage((p) => Math.max(1, p - 1))}
           onNext={() => setStockPage((p) => Math.min(stockTotalPages, p + 1))}
