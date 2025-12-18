@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Item, UserRole } from '../types';
-import { Search, Plus, Edit2, Trash2, ScanBarcode, X, Upload } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, ScanBarcode, X, Upload, Sparkles, Printer } from 'lucide-react';
 import { ItemService } from '../services/api';
+import Barcode from 'react-barcode';
+import JsBarcode from 'jsbarcode';
 
 interface ItemsProps {
   items: Item[];
@@ -32,8 +34,124 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [showBarcodePreview, setShowBarcodePreview] = useState(false);
+  const barcodeRef = useRef<HTMLDivElement>(null);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
   const canDelete = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+
+  // Generate random barcode (EAN-13 format)
+  const generateBarcode = () => {
+    const randomDigits = Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+    setFormData({ ...formData, barcode: randomDigits });
+    setShowBarcodePreview(true);
+  };
+
+  // Print barcode
+  const printBarcode = () => {
+    if (!barcodeRef.current) return;
+    const printWindow = window.open('', '', 'width=600,height=400');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Barcode</title>
+          <style>
+            body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial; }
+            .barcode-container { text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="barcode-container">${barcodeRef.current.innerHTML}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
+  // Print selected barcodes
+  const printSelectedBarcodes = () => {
+    const itemsToPrint = items.filter(item => selectedItems.includes(item.id) && item.barcode);
+    if (itemsToPrint.length === 0) {
+      alert('No items with barcodes selected');
+      return;
+    }
+    
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    document.body.appendChild(tempDiv);
+    
+    itemsToPrint.forEach(item => {
+      const container = document.createElement('div');
+      container.style.cssText = 'page-break-inside: avoid; margin: 20px; text-align: center; display: inline-block; width: 200px;';
+      const name = document.createElement('div');
+      name.style.cssText = 'font-weight: bold; margin-bottom: 5px;';
+      name.textContent = item.name;
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      container.appendChild(name);
+      container.appendChild(svg);
+      tempDiv.appendChild(container);
+    });
+    
+    setTimeout(() => {
+      const svgs = tempDiv.querySelectorAll('svg');
+      itemsToPrint.forEach((item, idx) => {
+        const canvas = document.createElement('canvas');
+        JsBarcode(canvas, item.barcode, { width: 1.5, height: 50, fontSize: 12 });
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL();
+        svgs[idx].parentElement?.replaceChild(img, svgs[idx]);
+      });
+      
+      setTimeout(() => {
+        const printWindow = window.open('', '', 'width=800,height=600');
+        if (!printWindow) {
+          document.body.removeChild(tempDiv);
+          return;
+        }
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Print Barcodes</title>
+              <style>
+                body { font-family: Arial; padding: 20px; }
+                @media print { body { padding: 10px; } }
+              </style>
+            </head>
+            <body>${tempDiv.innerHTML}</body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => {
+          printWindow.print();
+          document.body.removeChild(tempDiv);
+        }, 250);
+      }, 100);
+    }, 100);
+  };
+
+  // Toggle item selection
+  const toggleItemSelection = (id: string) => {
+    setSelectedItems(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  // Select all items
+  const selectAllItems = () => {
+    if (selectedItems.length === filteredItems.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(filteredItems.map(i => i.id));
+    }
+  };
 
   const filteredItems = items.filter(
     (i) =>
@@ -156,6 +274,16 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
         {/* ✅ Buttons */}
         <div className="flex gap-2">
+          {selectedItems.length > 0 && (
+            <button
+              onClick={printSelectedBarcodes}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <Printer size={18} />
+              <span>Print Barcodes ({selectedItems.length})</span>
+            </button>
+          )}
+          
           <button
             onClick={() => setBulkOpen(true)}
             className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
@@ -220,6 +348,14 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.length === filteredItems.length && filteredItems.length > 0}
+                    onChange={selectAllItems}
+                    className="w-4 h-4 cursor-pointer"
+                  />
+                </th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                   Item Name
                 </th>
@@ -244,6 +380,14 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
             <tbody className="bg-white divide-y divide-slate-100">
               {paginatedItems.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(item.id)}
+                      onChange={() => toggleItemSelection(item.id)}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="font-medium text-slate-900">{item.name}</div>
                     <div className="flex space-x-3 text-xs text-slate-400 mt-1">
@@ -306,7 +450,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     No items found.
                   </td>
                 </tr>
@@ -355,7 +499,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
       {/* Item Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h2 className="text-lg font-bold text-slate-800">
                 {editingId ? 'Edit Item' : 'Add New Item'}
@@ -368,7 +512,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Item Name *
@@ -399,12 +543,25 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">
                     Barcode
                   </label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.barcode || ''}
-                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={formData.barcode || ''}
+                      onChange={(e) => {
+                        setFormData({ ...formData, barcode: e.target.value });
+                        setShowBarcodePreview(!!e.target.value);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={generateBarcode}
+                      className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-1"
+                      title="Generate Barcode"
+                    >
+                      <Sparkles size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -512,6 +669,25 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   />
                 </div>
               </div>
+
+              {showBarcodePreview && formData.barcode && formData.barcode.length >= 8 && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs text-slate-600">Barcode Preview:</p>
+                    <button
+                      type="button"
+                      onClick={printBarcode}
+                      className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1 text-xs"
+                    >
+                      <Printer size={14} />
+                      Print
+                    </button>
+                  </div>
+                  <div ref={barcodeRef} className="flex justify-center">
+                    <Barcode value={formData.barcode} width={1.5} height={50} fontSize={12} />
+                  </div>
+                </div>
+              )}
 
               <div className="pt-4 flex justify-end space-x-3">
                 <button

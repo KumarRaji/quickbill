@@ -267,7 +267,7 @@ const Layout: React.FC<LayoutProps> = ({
               <NavItem active={currentView === "SUPPLIERS"} onClick={() => go("SUPPLIERS")} icon={Building2} label="Suppliers" />
               <NavItem active={currentView === "ITEMS"} onClick={() => go("ITEMS")} icon={Package} label="Items" />
               <NavItem active={currentView === "STOCK"} onClick={() => go("STOCK")} icon={Boxes} label="Stock" />
-              <NavItem active={currentView === "STOCK_MANAGEMENT"} onClick={() => go("STOCK_MANAGEMENT")} icon={Package} label="Stock Management" />
+              {/* <NavItem active={currentView === "STOCK_MANAGEMENT"} onClick={() => go("STOCK_MANAGEMENT")} icon={Package} label="Stock Management" /> */}
               {canManageData && (
                 <NavItem active={currentView === "REPORTS"} onClick={() => go("REPORTS")} icon={BarChart3} label="Reports" />
               )}
