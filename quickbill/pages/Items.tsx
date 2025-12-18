@@ -55,7 +55,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Print Barcode</title>
+          <title>Print Barcodes</title>
           <style>
             body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial; }
             .barcode-container { text-align: center; }
@@ -70,8 +70,8 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
     printWindow.focus();
     setTimeout(() => {
       printWindow.print();
-      printWindow.close();
-    }, 250);
+      setTimeout(() => printWindow.close(), 100);
+    }, 500);
   };
 
   // Print selected barcodes
@@ -131,6 +131,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
         printWindow.focus();
         setTimeout(() => {
           printWindow.print();
+          setTimeout(() => printWindow.close(), 100);
           document.body.removeChild(tempDiv);
         }, 250);
       }, 100);
