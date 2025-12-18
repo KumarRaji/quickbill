@@ -21,3 +21,13 @@ View your app in AI Studio: https://ai.studio/apps/drive/1iNmch62xtf-xe0Iqemcew0
 
 
 Parties chaned name for the Customers 
+
+Fill the data's for mandator in add supplier and add customer
+
+Internal-Supplier
+879789
+1000.00
+
+Walkin-Customer
+1234567890
+

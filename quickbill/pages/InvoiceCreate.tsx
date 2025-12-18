@@ -17,7 +17,15 @@ interface InvoiceCreateProps {
 
 const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoice, onCancel, onSuccess, initialType = 'SALE', hideAddItemButton = false }) => {
   const [transactionType, setTransactionType] = useState<TransactionType>(editInvoice?.type || initialType);
-  const [selectedPartyId, setSelectedPartyId] = useState<string>(editInvoice?.partyId || '');
+  
+  // Set default party to Walkin-Customer if not editing
+  const getDefaultPartyId = () => {
+    if (editInvoice?.partyId) return editInvoice.partyId;
+    const walkinCustomer = parties.find(p => p.name === 'Walkin-Customer');
+    return walkinCustomer?.id || '';
+  };
+  
+  const [selectedPartyId, setSelectedPartyId] = useState<string>(getDefaultPartyId());
   const [invoiceDate, setInvoiceDate] = useState(editInvoice?.date.split('T')[0] || new Date().toISOString().split('T')[0]);
   const [invoiceNumber, setInvoiceNumber] = useState(editInvoice?.invoiceNumber || `${initialType === 'RETURN' || initialType === 'PURCHASE_RETURN' ? 'CN' : 'TXN'}-${Date.now().toString().slice(-6)}`);
   const [originalRefNumber, setOriginalRefNumber] = useState(editInvoice?.originalRefNumber || '');
@@ -227,6 +235,10 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoi
 
   const handleSave = async (shouldPrint: boolean = false) => {
     if (rows.length === 0) return;
+    if (!selectedPartyId && transactionType === 'SALE') {
+      alert('Please select a customer');
+      return;
+    }
     
     setLoading(true);
     const party = parties.find(p => p.id === selectedPartyId);
@@ -322,14 +334,15 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoi
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <div className="md:col-span-1">
             <label className="block text-sm font-bold text-slate-700 mb-1">
-              {isPurchase ? 'Supplier (Optional)' : 'Customer (Optional)'}
+              {isPurchase ? 'Supplier (Optional)' : 'Customer *'}
             </label>
             <select
+              required
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
               value={selectedPartyId}
               onChange={(e) => setSelectedPartyId(e.target.value)}
             >
-              <option value="">Walk-in Customer</option>
+              <option value="">Select Customer</option>
               {parties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>

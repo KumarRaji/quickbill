@@ -44,15 +44,9 @@ function getBalanceDelta(type, total) {
 exports.getInvoices = (req, res) => {
   const sql = `
     SELECT i.*, 
-      CASE 
-        WHEN i.type IN ('PURCHASE', 'PURCHASE_RETURN') THEN s.name
-        ELSE p.name
-      END as party_name,
-      orig.invoice_no as original_invoice_no
+      COALESCE(p.name, 'Cash Customer') as party_name
     FROM invoices i 
-    LEFT JOIN parties p ON i.party_id = p.id AND i.type NOT IN ('PURCHASE', 'PURCHASE_RETURN')
-    LEFT JOIN suppliers s ON i.party_id = s.id AND i.type IN ('PURCHASE', 'PURCHASE_RETURN')
-    LEFT JOIN invoices orig ON i.original_invoice_id = orig.id
+    LEFT JOIN parties p ON i.party_id = p.id
     ORDER BY i.id DESC
   `;
   pool.query(sql, (err, invoices) => {
@@ -114,7 +108,7 @@ exports.getInvoices = (req, res) => {
           paymentMode: inv.payment_mode,
           status: 'PAID',
           partyName: inv.party_name || "Cash Customer",
-          originalRefNumber: inv.original_invoice_no || null,
+          originalRefNumber: null,
           items: invoiceItems,
         };
       });
@@ -185,15 +179,14 @@ exports.getInvoiceById = (req, res) => {
 exports.createInvoice = async (req, res) => {
   let { partyId, type, date, items, totalAmount, invoiceNo, notes, paymentMode } = req.body;
 
-  console.log(
-    '📥 Incoming invoice payload:',
-    JSON.stringify(req.body, null, 2)
-  );
+  console.log('📥 Incoming invoice payload:', JSON.stringify(req.body, null, 2));
+  console.log('📥 partyId:', partyId, '| type:', type);
 
   // Handle walk-in customers (empty partyId)
   let partyIdNum;
   if (!partyId || partyId === 'CASH' || partyId === 'cash' || partyId === '') {
     partyIdNum = CASH_PARTY_ID;
+    console.log('✅ Using CASH_PARTY_ID:', partyIdNum);
   } else {
     partyIdNum = Number(partyId);
     if (!partyIdNum) {
