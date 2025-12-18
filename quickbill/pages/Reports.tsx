@@ -254,6 +254,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                 <th className="px-6 py-3">Item Name</th>
                 <th className="px-6 py-3">Supplier</th>
                 <th className="px-6 py-3 text-right">Purchase Price</th>
+                <th className="px-6 py-3 text-right">MRP</th>
                 <th className="px-6 py-3 text-center">Quantity</th>
                 <th className="px-6 py-3 text-right">Stock Value</th>
               </tr>
@@ -269,6 +270,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                   </td>
                   <td className="px-6 py-4 text-slate-600">{item.supplier_name || '-'}</td>
                   <td className="px-6 py-4 text-right text-slate-600">₹{item.purchase_price}</td>
+                  <td className="px-6 py-4 text-right text-slate-600">{item.mrp ? `₹${item.mrp}` : '-'}</td>
                   <td className="px-6 py-4 text-center">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-bold ${item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
@@ -285,7 +287,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
               {stock.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
+                  <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
                     No stock found
                   </td>
                 </tr>

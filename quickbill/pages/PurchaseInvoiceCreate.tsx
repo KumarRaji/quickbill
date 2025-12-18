@@ -77,7 +77,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
       itemId: String(it.itemId ?? ""),
       itemName: it.itemName ?? "",
       quantity: Number(it.quantity ?? 1),
-      mrp: Number((it as any).mrp ?? 0),
+      mrp: Number(it.mrp ?? 0),
       price: Number(it.price ?? 0),
       taxRate: Number(it.taxRate ?? 0),
       amount: Number(it.amount ?? 0),

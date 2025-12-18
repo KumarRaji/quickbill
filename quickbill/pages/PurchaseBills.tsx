@@ -123,6 +123,7 @@ export default function PurchaseBills({
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Supplier</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Items</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Tax Rate (%)</th>
                   <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Amount</th>
                   <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Status</th>
                   <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Action</th>
@@ -156,6 +157,10 @@ export default function PurchaseBills({
                             <div className="text-xs text-slate-400">+{items.length - 2} more</div>
                           )}
                         </div>
+                      </td>
+
+                      <td className="px-6 py-4 text-sm text-slate-600 text-right">
+                        {items.length > 0 ? `${items[0].taxRate || 0}%` : '-'}
                       </td>
 
                       <td className="px-6 py-4 text-sm text-slate-900 text-right font-medium">

@@ -369,6 +369,9 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
                   Purchase Price
                 </th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
+                  Tax Rate (%)
+                </th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-center">
                   Stock
                 </th>
@@ -413,6 +416,10 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     ₹{item.purchasePrice}
                   </td>
 
+                  <td className="px-6 py-4 text-right whitespace-nowrap text-slate-500">
+                    {item.taxRate}%
+                  </td>
+
                   <td className="px-6 py-4 text-center">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-semibold ${
@@ -451,7 +458,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
                     No items found.
                   </td>
                 </tr>

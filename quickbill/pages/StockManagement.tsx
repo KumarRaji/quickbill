@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StockService, StockItem, SupplierService, Supplier } from '../services/api';
-import { Plus, Search, Package, ArrowRight, Edit2, Trash2, X, Barcode, Upload } from 'lucide-react';
+import { Plus, Search, Package, ArrowRight, Edit2, Trash2, X, Barcode, Upload, Sparkles } from 'lucide-react';
 
 interface StockManagementProps {
   onRefresh: () => void;
@@ -25,6 +25,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
     barcode: '',
     supplier_id: '',
     purchase_price: 0,
+    mrp: 0,
     quantity: 0,
     unit: 'PCS',
   });
@@ -57,6 +58,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
       barcode: '',
       supplier_id: '',
       purchase_price: 0,
+      mrp: 0,
       quantity: 0,
       unit: 'PCS',
     });
@@ -94,6 +96,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
       barcode: item.barcode,
       supplier_id: item.supplier_id,
       purchase_price: item.purchase_price,
+      mrp: item.mrp || 0,
       quantity: item.quantity,
       unit: item.unit,
     });
@@ -114,7 +117,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
 
   const handleMoveToItems = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStock || !moveData.selling_price || !moveData.tax_rate) return;
+    if (!selectedStock || !moveData.selling_price || moveData.tax_rate === undefined || moveData.tax_rate === null) return;
 
     setLoading(true);
     try {
@@ -256,6 +259,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase">ITEM Info</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Supplier</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">Purchase Price</th>
+                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">MRP</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">Quantity</th>
                 <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-center">Actions</th>
               </tr>
@@ -278,6 +282,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                   </td>
                   <td className="px-6 py-4 text-slate-600">{item.supplier_name || '-'}</td>
                   <td className="px-6 py-4 text-right text-slate-600">₹{Number(item.purchase_price).toFixed(2)}</td>
+                  <td className="px-6 py-4 text-right text-slate-600">{item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}</td>
                   <td className="px-6 py-4 text-center">
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-bold ${
@@ -293,9 +298,9 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                         onClick={() => {
                           setSelectedStock(item);
                           setMoveData({
-                            selling_price: item.purchase_price * 1.2,
-                            mrp: item.purchase_price * 1.3,
-                            tax_rate: 18,
+                            selling_price: 0,
+                            mrp: item.mrp || 0,
+                            tax_rate: 0,
                           });
                           setIsMoveModalOpen(true);
                         }}
@@ -324,7 +329,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
               ))}
               {filteredStock.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
                     <Package size={48} className="mx-auto mb-2 opacity-20" />
                     No stock items found
                   </td>
@@ -404,12 +409,25 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Barcode</label>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.barcode}
-                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={formData.barcode}
+                      onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const randomDigits = Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+                        setFormData({ ...formData, barcode: randomDigits });
+                      }}
+                      className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-1"
+                      title="Generate Barcode"
+                    >
+                      <Sparkles size={16} />
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Supplier</label>
@@ -433,6 +451,16 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.purchase_price}
                     onChange={(e) => setFormData({ ...formData, purchase_price: parseFloat(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">MRP</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.mrp}
+                    onChange={(e) => setFormData({ ...formData, mrp: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
                 <div>
@@ -494,6 +522,11 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
               </button>
             </div>
             <form onSubmit={handleMoveToItems} className="p-6 space-y-4">
+              {moveData.mrp > 0 && moveData.selling_price > moveData.mrp && (
+                <div className="bg-red-50 border border-red-200 p-3 rounded-lg mb-4">
+                  <p className="text-sm font-medium text-red-700">Selling price cannot be greater than MRP</p>
+                </div>
+              )}
               <div className="bg-blue-50 p-3 rounded-lg mb-4">
                 <p className="text-sm font-medium text-blue-900">{selectedStock.name}</p>
                 <p className="text-xs text-blue-600">Purchase Price: ₹{selectedStock.purchase_price}</p>
@@ -520,19 +553,19 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%) *</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
                 <input
-                  required
                   type="number"
                   step="0.01"
+                  min="0"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   value={moveData.tax_rate}
-                  onChange={(e) => setMoveData({ ...moveData, tax_rate: parseFloat(e.target.value) })}
+                  onChange={(e) => setMoveData({ ...moveData, tax_rate: parseFloat(e.target.value) || 0 })}
                 />
               </div>
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => { setIsMoveModalOpen(false); setSelectedStock(null); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                <button type="submit" disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">{loading ? 'Moving...' : 'Move to Items'}</button>
+                <button type="submit" disabled={loading || (moveData.mrp > 0 && moveData.selling_price > moveData.mrp)} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">{loading ? 'Moving...' : 'Move to Items'}</button>
               </div>
             </form>
           </div>

@@ -136,6 +136,9 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                 Items
               </th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-right">
+                MRP
+              </th>
+              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-right">
                 Amount
               </th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center">
@@ -180,6 +183,10 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                       <div className="text-xs text-slate-400">+{inv.items.length - 2} more</div>
                     )}
                   </div>
+                </td>
+
+                <td className="px-6 py-4 text-sm text-slate-600 text-right">
+                  {inv.items.length > 0 && inv.items[0].mrp ? `₹${inv.items[0].mrp}` : '-'}
                 </td>
 
                 <td
@@ -251,7 +258,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
 
             {filteredInvoices.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
                   {type === 'SALE' && <FileText size={48} className="mx-auto mb-2 opacity-20" />}
                   {type === 'RETURN' && <Undo2 size={48} className="mx-auto mb-2 opacity-20" />}
                   {type === 'PURCHASE' && <ShoppingCart size={48} className="mx-auto mb-2 opacity-20" />}

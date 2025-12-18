@@ -384,6 +384,7 @@ export interface StockItem {
   supplier_id?: string;
   supplier_name?: string;
   purchase_price: number;
+  mrp?: number;
   quantity: number;
   unit: string;
   created_at?: string;

@@ -88,6 +88,7 @@ exports.getInvoices = (req, res) => {
           itemId: it.item_id.toString(),
           itemName: it.name,
           quantity: Number(it.quantity),
+          mrp: Number(it.mrp || 0),
           price: Number(it.price),
           taxRate: Number(it.tax_rate),
           amount: Number(it.total),
@@ -309,7 +310,7 @@ exports.createInvoice = async (req, res) => {
           const invoiceId = invResult.insertId;
 
           const insertItemSql =
-            'INSERT INTO invoice_items (invoice_id, item_id, name, quantity, price, tax_rate, total) VALUES (?, ?, ?, ?, ?, ?, ?)';
+            'INSERT INTO invoice_items (invoice_id, item_id, name, quantity, mrp, price, tax_rate, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
           const updateStockSql =
             'UPDATE items SET stock = stock + ? WHERE id = ?';
 
@@ -401,6 +402,7 @@ exports.createInvoice = async (req, res) => {
                 it.itemId,
                 it.itemName || it.name || null,
                 qty,
+                Number(it.mrp || 0),
                 price,
                 taxRate,
                 lineTotal, // ✅ not null now
@@ -637,10 +639,10 @@ exports.updateInvoice = async (req, res) => {
 
                           const stockDelta = getStockDelta(type || oldInv.type, qty);
 
-                          const insertItemSql = 'INSERT INTO invoice_items (invoice_id, item_id, name, quantity, price, tax_rate, total) VALUES (?, ?, ?, ?, ?, ?, ?)';
+                          const insertItemSql = 'INSERT INTO invoice_items (invoice_id, item_id, name, quantity, mrp, price, tax_rate, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
                           conn.query(
                             insertItemSql,
-                            [id, it.itemId, it.itemName || it.name || null, qty, price, taxRate, lineTotal],
+                            [id, it.itemId, it.itemName || it.name || null, qty, Number(it.mrp || 0), price, taxRate, lineTotal],
                             (itemErr) => {
                               if (itemErr) {
                                 return conn.rollback(() => {
