@@ -299,6 +299,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
                   <input
                     required
                     type="tel"
+                    maxLength={15}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
