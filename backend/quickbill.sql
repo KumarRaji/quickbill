@@ -16,11 +16,6 @@ CREATE TABLE users (
 INSERT INTO users (name, username, password_hash, role) VALUES
 ('Super Admin', 'superadmin', '$2a$10$rZ5YhJKvXqKqJqKqJqKqJuN5YhJKvXqKqJqKqJqKqJqKqJqKqJqKq', 'SUPER_ADMIN');
 
--- Insert default parties
-INSERT INTO parties (id, name, phone, gstin, address, balance) VALUES
-(1, 'Cash Customer', '', '', '', 0),
-(2, 'Walkin-Customer', '1234567890', '', '', 0);
-
 -- PARTIES TABLE (Customers)
 CREATE TABLE parties (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -32,6 +27,10 @@ CREATE TABLE parties (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 );
+-- Insert default parties
+INSERT INTO parties (id, name, phone, gstin, address, balance) VALUES
+(1, 'Cash Customer', '', '', '', 0),
+(2, 'Walkin-Customer', '1234567890', '', '', 0);
 
 -- SUPPLIERS TABLE
 CREATE TABLE suppliers (
