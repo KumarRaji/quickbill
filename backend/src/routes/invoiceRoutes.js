@@ -11,7 +11,7 @@ router.post("/", invoiceController.createInvoice);
 router.patch("/:id", invoiceController.updateInvoice);
 router.delete("/:id", invoiceController.deleteInvoice);
 
-// ✅ add return routes ONLY if controller functions exist (prevents crash)
+// ✅ return routes (register only if exported)
 if (typeof invoiceController.applySaleReturn === "function") {
   router.post("/:id/sale-return", invoiceController.applySaleReturn);
 } else {

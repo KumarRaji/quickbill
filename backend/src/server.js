@@ -45,6 +45,7 @@ app.use("/api/purchase-bills", require("./routes/purchaseBillRoutes"));
 
 app.use("/api/stock", stockRoutes);
 
+
 // Fallback error handler
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);

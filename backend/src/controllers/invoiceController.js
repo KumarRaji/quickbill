@@ -1062,3 +1062,481 @@ exports.deleteInvoice = (req, res) => {
     });
   });
 };
+
+
+// ==============================
+// POST /api/invoices/:id/sale-return
+// Body: { items:[{itemId, quantity}], reason?, processedBy? }
+// ==============================
+exports.applySaleReturn = (req, res) => {
+  const originalId = Number(req.params.id);
+  const { items, reason } = req.body;
+
+  if (!originalId) return res.status(400).json({ message: "Invalid invoice id" });
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "Return items are required" });
+  }
+
+  pool.getConnection((connErr, conn) => {
+    if (connErr) return res.status(500).json({ message: "Failed to process return", error: connErr.message });
+
+    const rollback = (status, payload) =>
+      conn.rollback(() => {
+        conn.release();
+        res.status(status).json(payload);
+      });
+
+    conn.beginTransaction((txErr) => {
+      if (txErr) return rollback(500, { message: "Failed to process return", error: txErr.message });
+
+      // 1) Load original invoice (must be SALE and not closed)
+      conn.query(
+        "SELECT * FROM sale_invoices WHERE id = ? LIMIT 1",
+        [originalId],
+        (invErr, invRows) => {
+          if (invErr) return rollback(500, { message: "Failed to load invoice", error: invErr.message });
+          if (!invRows || invRows.length === 0) return rollback(404, { message: "Invoice not found" });
+
+          const original = invRows[0];
+          if (original.type !== "SALE") {
+            return rollback(400, { message: "Sale return allowed only for SALE invoices" });
+          }
+          if (Number(original.is_closed) === 1) {
+            return rollback(400, { message: "Invoice is closed. Cannot return." });
+          }
+
+          // 2) Load original items
+          conn.query(
+            "SELECT * FROM sale_invoice_items WHERE invoice_id = ?",
+            [originalId],
+            (itemsErr, origItems) => {
+              if (itemsErr) return rollback(500, { message: "Failed to load invoice items", error: itemsErr.message });
+
+              const lines = Array.isArray(origItems) ? origItems : [];
+              if (lines.length === 0) return rollback(400, { message: "No items found in original invoice" });
+
+              const lineMap = {};
+              lines.forEach((r) => (lineMap[String(r.item_id)] = r));
+
+              // 3) Normalize + validate return payload
+              const normalized = items.map((it) => ({
+                itemId: String(it.itemId),
+                quantity: Number(it.quantity),
+              }));
+
+              for (const it of normalized) {
+                const row = lineMap[it.itemId];
+                if (!row) return rollback(400, { message: `Item ${it.itemId} not found in original invoice` });
+
+                if (!Number.isFinite(it.quantity) || it.quantity <= 0) {
+                  return rollback(400, { message: "Invalid return quantity" });
+                }
+
+                const qtyLeft = Number(row.quantity || 0);
+                if (it.quantity > qtyLeft) {
+                  return rollback(400, { message: `Cannot return more than sold. Item ${it.itemId} left: ${qtyLeft}` });
+                }
+              }
+
+              // 4) Compute return totals (base + tax)
+              let returnGrand = 0;
+              const computedItems = normalized.map((it) => {
+                const row = lineMap[it.itemId];
+                const price = Number(row.price || 0);
+                const taxRate = Number(row.tax_rate || 0);
+
+                const sub = price * it.quantity;
+                const tax = (sub * taxRate) / 100;
+                const total = Number((sub + tax).toFixed(2));
+
+                returnGrand += total;
+
+                return {
+                  item_id: Number(it.itemId),
+                  name: row.name && String(row.name).trim() ? row.name : "Unknown",
+                  mrp: Number(row.mrp || 0),
+                  price,
+                  tax_rate: taxRate,
+                  quantity: it.quantity,
+                  total,
+                  original_row_id: row.id,
+                  original_qty_left: Number(row.quantity || 0),
+                };
+              });
+
+              returnGrand = Number(returnGrand.toFixed(2));
+
+              // 5) Insert RETURN invoice
+              const returnInvoiceNo = `CN-${Date.now().toString().slice(-8)}`;
+              conn.query(
+                `INSERT INTO sale_invoices
+                 (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, original_invoice_id)
+                 VALUES (?, ?, 'RETURN', ?, ?, ?, ?, ?)`,
+                [
+                  original.party_id,
+                  returnInvoiceNo,
+                  returnGrand,
+                  new Date(),
+                  reason ? `Sale Return: ${reason}` : `Sale Return for ${original.invoice_no}`,
+                  original.payment_mode || "CASH",
+                  originalId,
+                ],
+                (insErr, insRes) => {
+                  if (insErr) return rollback(500, { message: "Failed to create return invoice", error: insErr.message });
+
+                  const returnInvoiceId = insRes.insertId;
+
+                  // 6) Insert return items + update original qty + stock back
+                  let idx = 0;
+                  const insertSql =
+                    "INSERT INTO sale_invoice_items (invoice_id, item_id, name, quantity, mrp, price, tax_rate, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+                  const step = () => {
+                    if (idx >= computedItems.length) {
+                      // 7) Update original invoice totals
+                      conn.query(
+                        "SELECT COALESCE(SUM(total),0) AS total_amount FROM sale_invoice_items WHERE invoice_id = ?",
+                        [originalId],
+                        (sumErr, sumRows) => {
+                          if (sumErr) return rollback(500, { message: "Failed to recalc original total", error: sumErr.message });
+
+                          const newOriginalTotal = Number(sumRows?.[0]?.total_amount || 0);
+
+                          conn.query(
+                            "UPDATE sale_invoices SET total_amount = ? WHERE id = ?",
+                            [newOriginalTotal, originalId],
+                            (updTotErr) => {
+                              if (updTotErr) return rollback(500, { message: "Failed to update original total", error: updTotErr.message });
+
+                              // 8) party balance: SALE_RETURN means customer owes less => balance -= returnGrand
+                              conn.query(
+                                "UPDATE parties SET balance = balance - ? WHERE id = ?",
+                                [returnGrand, original.party_id],
+                                (balErr) => {
+                                  if (balErr) return rollback(500, { message: "Failed to update party balance", error: balErr.message });
+
+                                  // 9) close if fully returned (all qty left = 0)
+                                  conn.query(
+                                    "SELECT COALESCE(SUM(quantity),0) AS qty_left FROM sale_invoice_items WHERE invoice_id = ?",
+                                    [originalId],
+                                    (leftErr, leftRows) => {
+                                      if (leftErr) return rollback(500, { message: "Failed to check qty left", error: leftErr.message });
+
+                                      const qtyLeft = Number(leftRows?.[0]?.qty_left || 0);
+                                      const closeSql = qtyLeft <= 0 ? "UPDATE sale_invoices SET is_closed = 1 WHERE id = ?" : null;
+
+                                      const finish = () => {
+                                        conn.commit((cErr) => {
+                                          if (cErr) return rollback(500, { message: "Commit failed", error: cErr.message });
+                                          conn.release();
+                                          return res.status(201).json({
+                                            message: "Sale return processed",
+                                            returnInvoiceId: String(returnInvoiceId),
+                                            invoiceNumber: returnInvoiceNo,
+                                            totalAmount: returnGrand,
+                                          });
+                                        });
+                                      };
+
+                                      if (!closeSql) return finish();
+
+                                      conn.query(closeSql, [originalId], (closeErr) => {
+                                        if (closeErr) return rollback(500, { message: "Failed to close invoice", error: closeErr.message });
+                                        finish();
+                                      });
+                                    }
+                                  );
+                                }
+                              );
+                            }
+                          );
+                        }
+                      );
+                      return;
+                    }
+
+                    const it = computedItems[idx];
+
+                    conn.query(
+                      insertSql,
+                      [returnInvoiceId, it.item_id, it.name, it.quantity, it.mrp, it.price, it.tax_rate, it.total],
+                      (itemErr) => {
+                        if (itemErr) return rollback(500, { message: "Failed to insert return item", error: itemErr.message });
+
+                        // reduce qty left in original invoice item row
+                        const newQty = it.original_qty_left - it.quantity;
+                        const newSub = it.price * newQty;
+                        const newTax = (newSub * it.tax_rate) / 100;
+                        const newTotal = Number((newSub + newTax).toFixed(2));
+
+                        conn.query(
+                          "UPDATE sale_invoice_items SET quantity = ?, total = ? WHERE id = ?",
+                          [newQty, newTotal, it.original_row_id],
+                          (updLineErr) => {
+                            if (updLineErr) return rollback(500, { message: "Failed to update original item qty", error: updLineErr.message });
+
+                            // stock back
+                            conn.query(
+                              "UPDATE items SET stock = stock + ? WHERE id = ?",
+                              [it.quantity, it.item_id],
+                              (stockErr) => {
+                                if (stockErr) return rollback(500, { message: "Failed to update stock", error: stockErr.message });
+                                idx++;
+                                step();
+                              }
+                            );
+                          }
+                        );
+                      }
+                    );
+                  };
+
+                  step();
+                }
+              );
+            }
+          );
+        }
+      );
+    });
+  });
+};
+
+// ==============================
+// POST /api/invoices/:id/purchase-return
+// Body: { items:[{itemId, quantity}], reason?, processedBy? }
+// ==============================
+exports.applyPurchaseReturn = (req, res) => {
+  const originalId = Number(req.params.id);
+  const { items, reason } = req.body;
+
+  if (!originalId) return res.status(400).json({ message: "Invalid invoice id" });
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ message: "Return items are required" });
+  }
+
+  pool.getConnection((connErr, conn) => {
+    if (connErr) return res.status(500).json({ message: "Failed to process return", error: connErr.message });
+
+    const rollback = (status, payload) =>
+      conn.rollback(() => {
+        conn.release();
+        res.status(status).json(payload);
+      });
+
+    conn.beginTransaction((txErr) => {
+      if (txErr) return rollback(500, { message: "Failed to process return", error: txErr.message });
+
+      // 1) Load original invoice (must be PURCHASE and not closed)
+      conn.query(
+        "SELECT * FROM sale_invoices WHERE id = ? LIMIT 1",
+        [originalId],
+        (invErr, invRows) => {
+          if (invErr) return rollback(500, { message: "Failed to load invoice", error: invErr.message });
+          if (!invRows || invRows.length === 0) return rollback(404, { message: "Invoice not found" });
+
+          const original = invRows[0];
+          if (original.type !== "PURCHASE") {
+            return rollback(400, { message: "Purchase return allowed only for PURCHASE invoices" });
+          }
+          if (Number(original.is_closed) === 1) {
+            return rollback(400, { message: "Invoice is closed. Cannot return." });
+          }
+
+          // 2) Load original items
+          conn.query(
+            "SELECT * FROM sale_invoice_items WHERE invoice_id = ?",
+            [originalId],
+            (itemsErr, origItems) => {
+              if (itemsErr) return rollback(500, { message: "Failed to load invoice items", error: itemsErr.message });
+
+              const lines = Array.isArray(origItems) ? origItems : [];
+              if (lines.length === 0) return rollback(400, { message: "No items found in original invoice" });
+
+              const lineMap = {};
+              lines.forEach((r) => (lineMap[String(r.item_id)] = r));
+
+              // 3) Normalize + validate
+              const normalized = items.map((it) => ({
+                itemId: String(it.itemId),
+                quantity: Number(it.quantity),
+              }));
+
+              for (const it of normalized) {
+                const row = lineMap[it.itemId];
+                if (!row) return rollback(400, { message: `Item ${it.itemId} not found in original invoice` });
+
+                if (!Number.isFinite(it.quantity) || it.quantity <= 0) {
+                  return rollback(400, { message: "Invalid return quantity" });
+                }
+
+                const qtyLeft = Number(row.quantity || 0);
+                if (it.quantity > qtyLeft) {
+                  return rollback(400, { message: `Cannot return more than purchased. Item ${it.itemId} left: ${qtyLeft}` });
+                }
+              }
+
+              // 4) Compute totals (base + tax)
+              let returnGrand = 0;
+              const computedItems = normalized.map((it) => {
+                const row = lineMap[it.itemId];
+                const price = Number(row.price || 0);
+                const taxRate = Number(row.tax_rate || 0);
+
+                const sub = price * it.quantity;
+                const tax = (sub * taxRate) / 100;
+                const total = Number((sub + tax).toFixed(2));
+
+                returnGrand += total;
+
+                return {
+                  item_id: Number(it.itemId),
+                  name: row.name && String(row.name).trim() ? row.name : "Unknown",
+                  mrp: Number(row.mrp || 0),
+                  price,
+                  tax_rate: taxRate,
+                  quantity: it.quantity,
+                  total,
+                  original_row_id: row.id,
+                  original_qty_left: Number(row.quantity || 0),
+                };
+              });
+
+              returnGrand = Number(returnGrand.toFixed(2));
+
+              // 5) Insert PURCHASE_RETURN invoice
+              const returnInvoiceNo = `PRN-${Date.now().toString().slice(-8)}`;
+              conn.query(
+                `INSERT INTO sale_invoices
+                 (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, original_invoice_id)
+                 VALUES (?, ?, 'PURCHASE_RETURN', ?, ?, ?, ?, ?)`,
+                [
+                  original.party_id,
+                  returnInvoiceNo,
+                  returnGrand,
+                  new Date(),
+                  reason ? `Purchase Return: ${reason}` : `Purchase Return for ${original.invoice_no}`,
+                  original.payment_mode || "CASH",
+                  originalId,
+                ],
+                (insErr, insRes) => {
+                  if (insErr) return rollback(500, { message: "Failed to create return invoice", error: insErr.message });
+
+                  const returnInvoiceId = insRes.insertId;
+
+                  // 6) Insert return items + update original qty + stock decreases (sent back to supplier)
+                  let idx = 0;
+                  const insertSql =
+                    "INSERT INTO sale_invoice_items (invoice_id, item_id, name, quantity, mrp, price, tax_rate, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+                  const step = () => {
+                    if (idx >= computedItems.length) {
+                      // 7) Recalc original invoice totals
+                      conn.query(
+                        "SELECT COALESCE(SUM(total),0) AS total_amount FROM sale_invoice_items WHERE invoice_id = ?",
+                        [originalId],
+                        (sumErr, sumRows) => {
+                          if (sumErr) return rollback(500, { message: "Failed to recalc original total", error: sumErr.message });
+
+                          const newOriginalTotal = Number(sumRows?.[0]?.total_amount || 0);
+
+                          conn.query(
+                            "UPDATE sale_invoices SET total_amount = ? WHERE id = ?",
+                            [newOriginalTotal, originalId],
+                            (updTotErr) => {
+                              if (updTotErr) return rollback(500, { message: "Failed to update original total", error: updTotErr.message });
+
+                              // 8) party balance: PURCHASE_RETURN means we owe supplier less => balance += returnGrand
+                              conn.query(
+                                "UPDATE parties SET balance = balance + ? WHERE id = ?",
+                                [returnGrand, original.party_id],
+                                (balErr) => {
+                                  if (balErr) return rollback(500, { message: "Failed to update party balance", error: balErr.message });
+
+                                  // 9) close if fully returned
+                                  conn.query(
+                                    "SELECT COALESCE(SUM(quantity),0) AS qty_left FROM sale_invoice_items WHERE invoice_id = ?",
+                                    [originalId],
+                                    (leftErr, leftRows) => {
+                                      if (leftErr) return rollback(500, { message: "Failed to check qty left", error: leftErr.message });
+
+                                      const qtyLeft = Number(leftRows?.[0]?.qty_left || 0);
+                                      const closeSql = qtyLeft <= 0 ? "UPDATE sale_invoices SET is_closed = 1 WHERE id = ?" : null;
+
+                                      const finish = () => {
+                                        conn.commit((cErr) => {
+                                          if (cErr) return rollback(500, { message: "Commit failed", error: cErr.message });
+                                          conn.release();
+                                          return res.status(201).json({
+                                            message: "Purchase return processed",
+                                            returnInvoiceId: String(returnInvoiceId),
+                                            invoiceNumber: returnInvoiceNo,
+                                            totalAmount: returnGrand,
+                                          });
+                                        });
+                                      };
+
+                                      if (!closeSql) return finish();
+
+                                      conn.query(closeSql, [originalId], (closeErr) => {
+                                        if (closeErr) return rollback(500, { message: "Failed to close invoice", error: closeErr.message });
+                                        finish();
+                                      });
+                                    }
+                                  );
+                                }
+                              );
+                            }
+                          );
+                        }
+                      );
+                      return;
+                    }
+
+                    const it = computedItems[idx];
+
+                    conn.query(
+                      insertSql,
+                      [returnInvoiceId, it.item_id, it.name, it.quantity, it.mrp, it.price, it.tax_rate, it.total],
+                      (itemErr) => {
+                        if (itemErr) return rollback(500, { message: "Failed to insert return item", error: itemErr.message });
+
+                        // reduce qty left in original purchase invoice item row
+                        const newQty = it.original_qty_left - it.quantity;
+                        const newSub = it.price * newQty;
+                        const newTax = (newSub * it.tax_rate) / 100;
+                        const newTotal = Number((newSub + newTax).toFixed(2));
+
+                        conn.query(
+                          "UPDATE sale_invoice_items SET quantity = ?, total = ? WHERE id = ?",
+                          [newQty, newTotal, it.original_row_id],
+                          (updLineErr) => {
+                            if (updLineErr) return rollback(500, { message: "Failed to update original item qty", error: updLineErr.message });
+
+                            // stock decreases
+                            conn.query(
+                              "UPDATE items SET stock = stock - ? WHERE id = ?",
+                              [it.quantity, it.item_id],
+                              (stockErr) => {
+                                if (stockErr) return rollback(500, { message: "Failed to update stock", error: stockErr.message });
+                                idx++;
+                                step();
+                              }
+                            );
+                          }
+                        );
+                      }
+                    );
+                  };
+
+                  step();
+                }
+              );
+            }
+          );
+        }
+      );
+    });
+  });
+};
+
