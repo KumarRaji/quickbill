@@ -18,10 +18,9 @@ CREATE TABLE IF NOT EXISTS users (
 
 INSERT INTO users (name, username, password_hash, role)
 VALUES ('Super Admin', 'superadmin',
-        '$2a$10$rZ5YhJKvXqKqJqKqJqKqJuN5YhJKvXqKqJqKqJqKqJqKqJqKqJqKq',
+        '$2a$12$B.eyQ6.6qe.xlhUhytSkv.OeFaWs2VeRwRrYLhLgExokaElXhfGbq',
         'SUPER_ADMIN')
 ON DUPLICATE KEY UPDATE username = username;
-
 
 -- 2) PARTIES TABLE (Customers)
 CREATE TABLE IF NOT EXISTS parties (
@@ -274,3 +273,6 @@ CREATE TABLE IF NOT EXISTS sale_invoice_items (
     ON UPDATE CASCADE
     ON DELETE RESTRICT
 ) ENGINE=InnoDB;
+
+
+
