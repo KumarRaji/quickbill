@@ -34,13 +34,6 @@ CREATE TABLE IF NOT EXISTS parties (
   PRIMARY KEY (id)
 ) ENGINE=InnoDB;
 
--- Default parties
-INSERT INTO parties (id, name, phone, gstin, address, balance) VALUES
-(1, 'Cash Customer', NULL, NULL, NULL, 0),
-(2, 'Walkin-Customer', '1234567890', NULL, NULL, 0)
-ON DUPLICATE KEY UPDATE name = VALUES(name);
-
-
 -- 3) SUPPLIERS TABLE
 CREATE TABLE IF NOT EXISTS suppliers (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
