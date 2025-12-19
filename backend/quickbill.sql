@@ -29,8 +29,7 @@ CREATE TABLE parties (
 );
 -- Insert default parties
 INSERT INTO parties (id, name, phone, gstin, address, balance) VALUES
-(1, 'Cash Customer', '', '', '', 0),
-(2, 'Walkin-Customer', '1234567890', '', '', 0);
+(1, 'Walkin-Customer', '1234567890', '', '', 0);
 
 -- SUPPLIERS TABLE
 CREATE TABLE suppliers (

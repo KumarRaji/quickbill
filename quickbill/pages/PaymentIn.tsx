@@ -86,7 +86,7 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
   return (
     <div className="max-w-7xl mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Payment In (Receipts)</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Cash Deposit (Receipts)</h1>
         <button
           onClick={() => {
             setFormData({

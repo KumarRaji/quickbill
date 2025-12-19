@@ -131,7 +131,7 @@ const Layout: React.FC<LayoutProps> = ({
             active={currentView === "PAYMENT_IN"}
             onClick={() => onChangeView("PAYMENT_IN")}
             icon={TrendingDown}
-            label="Payment In"
+            label="Cash Deposit"
           />
           <NavItem
             active={currentView === "SALE_RETURN_NEW"}
