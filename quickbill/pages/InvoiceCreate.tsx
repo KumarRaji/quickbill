@@ -580,7 +580,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoi
            </button>
            <button 
              onClick={() => handleSave(false)}
-             disabled={loading || rows.length === 0}
+             disabled={loading || !rows.some(r => r.itemId)}
              className={`px-6 py-2 bg-${getColor()}-600 text-white rounded-lg font-medium hover:bg-${getColor()}-700 shadow-md flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed`}
            >
              <Save size={18} />
@@ -588,7 +588,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoi
            </button>
            <button 
              onClick={() => handleSave(true)}
-             disabled={loading || rows.length === 0}
+             disabled={loading || !rows.some(r => r.itemId)}
              className={`px-6 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 shadow-md flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed`}
            >
              <Printer size={18} />
