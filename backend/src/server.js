@@ -7,11 +7,10 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const partyRoutes = require("./routes/partyRoutes");
 const itemRoutes = require("./routes/itemRoutes");
-const invoiceRoutes = require("./routes/invoiceRoutes"); // ✅ keep this single import
+const invoiceRoutes = require("./routes/invoiceRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 const suppliersRoutes = require("./routes/suppliers.routes");
-const purchaseBillRoutes = require("./routes/purchaseBillRoutes");
 const stockRoutes = require("./routes/stock.routes");
 
 const app = express();
@@ -34,13 +33,16 @@ app.use("/api/users", userRoutes);
 app.use("/api/parties", partyRoutes);
 app.use("/api/items", itemRoutes);
 
-// ✅ ONLY ONCE (this must exist)
+// ✅ sale/return invoices API
 app.use("/api/invoices", invoiceRoutes);
 
 app.use("/api/payments", paymentRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/suppliers", suppliersRoutes);
-app.use("/api/purchase-bills", purchaseBillRoutes);
+
+// ✅ purchase bills API (inline require)
+app.use("/api/purchase-bills", require("./routes/purchaseBillRoutes"));
+
 app.use("/api/stock", stockRoutes);
 
 // Fallback error handler

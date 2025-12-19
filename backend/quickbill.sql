@@ -85,26 +85,59 @@ CREATE TABLE stock (
   PRIMARY KEY (id)
 );
 
--- INVOICES TABLE
-CREATE TABLE invoices (
+-- SALE INVOICES TABLE
+CREATE TABLE IF NOT EXISTS sale_invoices (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   party_id INT UNSIGNED NOT NULL,
-  invoice_no VARCHAR(50),
-  type ENUM('SALE','RETURN','PURCHASE','PURCHASE_RETURN') NOT NULL,
-  total_amount DECIMAL(12,2) NOT NULL,
+  invoice_no VARCHAR(50) NOT NULL,
+  type ENUM('SALE','RETURN') NOT NULL,
+  total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
   invoice_date DATETIME NOT NULL,
   notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   payment_mode ENUM('CASH','ONLINE','CHEQUE','CREDIT') NOT NULL DEFAULT 'CASH',
-  original_invoice_id INT NULL,
+  original_invoice_id INT UNSIGNED NULL,
   is_closed TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
-  CONSTRAINT fk_invoices_party FOREIGN KEY (party_id) REFERENCES parties(id),
-  KEY idx_original_invoice (original_invoice_id)
-);
+  KEY idx_sale_invoices_party (party_id),
+  KEY idx_sale_original (original_invoice_id),
+  CONSTRAINT fk_sale_invoices_party
+    FOREIGN KEY (party_id) REFERENCES parties(id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_sale_invoices_original
+    FOREIGN KEY (original_invoice_id) REFERENCES sale_invoices(id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
+) ENGINE=InnoDB;
 
--- INVOICE ITEMS TABLE
-CREATE TABLE invoice_items (
+-- PURCHASE INVOICES TABLE
+CREATE TABLE IF NOT EXISTS purchase_invoices (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  supplier_id INT UNSIGNED NOT NULL,
+  invoice_no VARCHAR(50) NOT NULL,
+  total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  invoice_date DATETIME NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  payment_mode ENUM('CASH','ONLINE','CHEQUE','CREDIT') NOT NULL DEFAULT 'CASH',
+  original_purchase_invoice_id INT UNSIGNED NULL,
+  is_closed TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY idx_purchase_invoices_supplier (supplier_id),
+  KEY idx_purchase_original (original_purchase_invoice_id),
+  CONSTRAINT fk_purchase_invoices_supplier
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+  CONSTRAINT fk_purchase_invoices_original
+    FOREIGN KEY (original_purchase_invoice_id) REFERENCES purchase_invoices(id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- SALE INVOICE ITEMS TABLE
+CREATE TABLE sale_invoice_items (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   invoice_id INT UNSIGNED NOT NULL,
   item_id INT UNSIGNED NOT NULL,
@@ -115,9 +148,25 @@ CREATE TABLE invoice_items (
   tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
   total DECIMAL(12,2) NOT NULL,
   PRIMARY KEY (id),
-  CONSTRAINT fk_invoice_items_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id),
-  CONSTRAINT fk_invoice_items_item FOREIGN KEY (item_id) REFERENCES items(id)
-);
+  CONSTRAINT fk_sale_invoice_items_invoice FOREIGN KEY (invoice_id) REFERENCES sale_invoices(id),
+  CONSTRAINT fk_sale_invoice_items_item FOREIGN KEY (item_id) REFERENCES items(id)
+) ENGINE=InnoDB;
+
+-- PURCHASE INVOICE ITEMS TABLE
+CREATE TABLE purchase_invoice_items (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  invoice_id INT UNSIGNED NOT NULL,
+  item_id INT UNSIGNED NOT NULL,
+  name VARCHAR(150),
+  quantity DECIMAL(12,2) NOT NULL,
+  mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
+  price DECIMAL(12,2) NOT NULL,
+  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+  total DECIMAL(12,2) NOT NULL,
+  PRIMARY KEY (id),
+  CONSTRAINT fk_purchase_invoice_items_invoice FOREIGN KEY (invoice_id) REFERENCES purchase_invoices(id),
+  CONSTRAINT fk_purchase_invoice_items_item FOREIGN KEY (item_id) REFERENCES items(id)
+) ENGINE=InnoDB;
 
 -- PAYMENTS TABLE
 CREATE TABLE payments (

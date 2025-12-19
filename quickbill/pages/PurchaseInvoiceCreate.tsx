@@ -266,6 +266,10 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
   const handleSave = async (shouldPrint: boolean = false) => {
     if (!rows.some((r) => r.itemId)) return;
+    if (!selectedPartyId) {
+      alert('Please select a supplier');
+      return;
+    }
 
     setLoading(true);
     const supplier = suppliers.find((s) => String(s.id) === selectedPartyId);
@@ -332,13 +336,14 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
         {/* Party & Details */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Supplier (Optional)</label>
+            <label className="block text-sm font-bold text-slate-700 mb-1">Supplier *</label>
             <select
+              required
               className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
               value={selectedPartyId}
               onChange={(e) => setSelectedPartyId(e.target.value)}
             >
-              <option value="">Cash Purchase</option>
+              <option value="">Select Supplier</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}

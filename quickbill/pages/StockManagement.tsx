@@ -44,10 +44,6 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
   const fetchSuppliers = async () => {
     const data = await SupplierService.getAll();
     setSuppliers(data);
-    const internalSupplier = data.find(s => s.name.toLowerCase() === 'internal-supplier');
-    if (internalSupplier && !selectedStock) {
-      setFormData(prev => ({ ...prev, supplier_id: String(internalSupplier.id) }));
-    }
   };
 
   useEffect(() => {
@@ -175,10 +171,6 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
           <button
             onClick={() => {
               resetForm();
-              const internalSupplier = suppliers.find(s => s.name.toLowerCase() === 'internal-supplier');
-              if (internalSupplier) {
-                setFormData(prev => ({ ...prev, supplier_id: String(internalSupplier.id) }));
-              }
               setIsModalOpen(true);
             }}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"

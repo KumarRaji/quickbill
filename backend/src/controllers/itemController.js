@@ -1,36 +1,36 @@
 // src/controllers/itemController.js
-const pool = require('../config/db');
-const xlsx = require('xlsx');
-const { parse } = require('csv-parse/sync');
+const pool = require("../config/db");
+const xlsx = require("xlsx");
+const { parse } = require("csv-parse/sync");
 
 /* ----------------------------- helpers ----------------------------- */
 const toNum = (v, def = 0) => {
-  if (v === null || v === undefined || v === '') return def;
+  if (v === null || v === undefined || v === "") return def;
   const n = Number(v);
   return Number.isFinite(n) ? n : def;
 };
 
 const pick = (row, keys) => {
   for (const k of keys) {
-    if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k];
+    if (row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
   }
   return undefined;
 };
 
 const normalizeBarcode = (v) => {
-  const s = String(v ?? '').trim();
+  const s = String(v ?? "").trim();
   return s.length ? s : null;
 };
 
 /* ----------------------------- GET /api/items ----------------------------- */
 exports.getItems = (req, res) => {
   const sql =
-    'SELECT id, name, code, barcode, supplier_id, selling_price, purchase_price, stock, mrp, unit, tax_rate FROM items ORDER BY id DESC';
+    "SELECT id, name, code, barcode, supplier_id, selling_price, purchase_price, stock, mrp, unit, tax_rate FROM items ORDER BY id DESC";
 
   pool.query(sql, (err, rows) => {
     if (err) {
-      console.error('Error fetching items:', err);
-      return res.status(500).json({ message: 'Failed to fetch items' });
+      console.error("Error fetching items:", err);
+      return res.status(500).json({ message: "Failed to fetch items" });
     }
 
     const items = rows.map((i) => ({
@@ -53,26 +53,16 @@ exports.getItems = (req, res) => {
 
 /* ----------------------------- POST /api/items ----------------------------- */
 exports.createItem = (req, res) => {
-  const {
-    name,
-    code,
-    barcode,
-    sellingPrice,
-    purchasePrice,
-    stock,
-    unit,
-    taxRate,
-    mrp,
-  } = req.body;
+  const { name, code, barcode, sellingPrice, purchasePrice, stock, unit, taxRate, mrp } = req.body;
 
   if (!name || sellingPrice == null || purchasePrice == null) {
-    return res
-      .status(400)
-      .json({ message: 'Name, sellingPrice & purchasePrice are required' });
+    return res.status(400).json({
+      message: "Name, sellingPrice & purchasePrice are required",
+    });
   }
 
   const sql =
-    'INSERT INTO items (name, code, barcode, selling_price, purchase_price, mrp, stock, unit, tax_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    "INSERT INTO items (name, code, barcode, selling_price, purchase_price, mrp, stock, unit, tax_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
   pool.query(
     sql,
@@ -84,13 +74,13 @@ exports.createItem = (req, res) => {
       toNum(purchasePrice, 0),
       toNum(mrp, 0),
       toNum(stock, 0),
-      unit || 'pcs',
+      unit || "pcs",
       toNum(taxRate, 0),
     ],
     (err, result) => {
       if (err) {
-        console.error('Error creating item:', err);
-        return res.status(500).json({ message: 'Failed to create item' });
+        console.error("Error creating item:", err);
+        return res.status(500).json({ message: "Failed to create item" });
       }
 
       res.status(201).json({
@@ -102,7 +92,7 @@ exports.createItem = (req, res) => {
         purchasePrice: toNum(purchasePrice, 0),
         mrp: toNum(mrp, 0),
         stock: toNum(stock, 0),
-        unit: unit || 'pcs',
+        unit: unit || "pcs",
         taxRate: toNum(taxRate, 0),
       });
     }
@@ -110,25 +100,12 @@ exports.createItem = (req, res) => {
 };
 
 /* ----------------------------- PUT /api/items/:id ----------------------------- */
-/**
- * ✅ FIXED: your previous SQL + params order was wrong
- */
 exports.updateItem = (req, res) => {
   const { id } = req.params;
-  const {
-    name,
-    code,
-    barcode,
-    sellingPrice,
-    purchasePrice,
-    stock,
-    unit,
-    taxRate,
-    mrp,
-  } = req.body;
+  const { name, code, barcode, sellingPrice, purchasePrice, stock, unit, taxRate, mrp } = req.body;
 
   const sql =
-    'UPDATE items SET name=?, code=?, barcode=?, selling_price=?, purchase_price=?, mrp=?, stock=?, unit=?, tax_rate=? WHERE id=?';
+    "UPDATE items SET name=?, code=?, barcode=?, selling_price=?, purchase_price=?, mrp=?, stock=?, unit=?, tax_rate=? WHERE id=?";
 
   pool.query(
     sql,
@@ -140,57 +117,68 @@ exports.updateItem = (req, res) => {
       toNum(purchasePrice, 0),
       toNum(mrp, 0),
       toNum(stock, 0),
-      unit || 'pcs',
+      unit || "pcs",
       toNum(taxRate, 0),
       id,
     ],
     (err, result) => {
       if (err) {
-        console.error('Error updating item:', err);
-        return res.status(500).json({ message: 'Failed to update item' });
+        console.error("Error updating item:", err);
+        return res.status(500).json({ message: "Failed to update item" });
       }
 
       if (result.affectedRows === 0) {
-        return res.status(404).json({ message: 'Item not found' });
+        return res.status(404).json({ message: "Item not found" });
       }
 
-      res.status(204).end();
+      return res.status(204).end();
     }
   );
 };
 
 /* ----------------------------- DELETE /api/items/:id ----------------------------- */
+/**
+ * ✅ FIXED:
+ * - Check correct table: sale_invoice_items (your DB error shows this)
+ * - If used -> block delete with clear message
+ * - If not used -> delete item
+ */
 exports.deleteItem = (req, res) => {
   const { id } = req.params;
 
-  // Check for dependencies in invoices
-  const checkSql = 'SELECT COUNT(*) AS cnt FROM invoice_items WHERE item_id = ?';
+  const checkSql = "SELECT COUNT(*) AS cnt FROM sale_invoice_items WHERE item_id = ?";
   pool.query(checkSql, [id], (checkErr, rows) => {
     if (checkErr) {
-      console.error('Error checking item invoices:', checkErr);
-      return res.status(500).json({ message: 'Failed to delete item' });
-    }
-
-    const count = rows[0].cnt;
-    if (count > 0) {
-      return res.status(400).json({
-        message:
-          'Cannot delete item: It is included in existing invoices. Please delete the invoices first.',
+      console.error("Error checking item usage:", checkErr);
+      return res.status(500).json({
+        message: "Failed to delete item",
+        error: checkErr.message,
       });
     }
 
-    const delSql = 'DELETE FROM items WHERE id = ?';
+    const usedCount = Number(rows?.[0]?.cnt || 0);
+    if (usedCount > 0) {
+      return res.status(400).json({
+        message: `Cannot delete item. This item is used in ${usedCount} invoice item(s).`,
+        hint: "Instead of deleting, you can disable the item (soft delete) and hide it from UI.",
+      });
+    }
+
+    const delSql = "DELETE FROM items WHERE id = ?";
     pool.query(delSql, [id], (delErr, result) => {
       if (delErr) {
-        console.error('Error deleting item:', delErr);
-        return res.status(500).json({ message: 'Failed to delete item' });
+        console.error("Error deleting item:", delErr);
+        return res.status(500).json({
+          message: "Failed to delete item",
+          error: delErr.message,
+        });
       }
 
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: 'Item not found' });
+      if (!result || result.affectedRows === 0) {
+        return res.status(404).json({ message: "Item not found" });
       }
 
-      res.status(204).end();
+      return res.json({ message: "Item deleted successfully" });
     });
   });
 };
@@ -202,52 +190,47 @@ exports.adjustStock = (req, res) => {
 
   const qty = Number(addedQuantity);
   if (!Number.isFinite(qty)) {
-    return res.status(400).json({ message: 'addedQuantity must be a number' });
+    return res.status(400).json({ message: "addedQuantity must be a number" });
   }
 
-  const sql = 'UPDATE items SET stock = stock + ? WHERE id = ?';
+  const sql = "UPDATE items SET stock = stock + ? WHERE id = ?";
   pool.query(sql, [qty, id], (err, result) => {
     if (err) {
-      console.error('Error adjusting stock:', err);
-      return res.status(500).json({ message: 'Failed to adjust stock' });
+      console.error("Error adjusting stock:", err);
+      return res.status(500).json({ message: "Failed to adjust stock" });
     }
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({ message: 'Item not found' });
+      return res.status(404).json({ message: "Item not found" });
     }
 
-    res.status(204).end();
+    return res.status(204).end();
   });
 };
 
 /* ----------------------------- POST /api/items/bulk-upload ----------------------------- */
-/**
- * CSV/XLSX bulk upload
- * - Upsert by UNIQUE barcode
- * - If barcode is empty -> insert new row (barcode NULL)
- */
 exports.bulkUploadItems = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'File is required (csv/xlsx)' });
+      return res.status(400).json({ message: "File is required (csv/xlsx)" });
     }
 
-    const ext = (req.file.originalname.split('.').pop() || '').toLowerCase();
+    const ext = (req.file.originalname.split(".").pop() || "").toLowerCase();
     let rows = [];
 
-    if (ext === 'csv') {
-      const text = req.file.buffer.toString('utf8');
+    if (ext === "csv") {
+      const text = req.file.buffer.toString("utf8");
       rows = parse(text, { columns: true, skip_empty_lines: true, trim: true });
-    } else if (ext === 'xlsx' || ext === 'xls') {
-      const wb = xlsx.read(req.file.buffer, { type: 'buffer' });
+    } else if (ext === "xlsx" || ext === "xls") {
+      const wb = xlsx.read(req.file.buffer, { type: "buffer" });
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      rows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+      rows = xlsx.utils.sheet_to_json(sheet, { defval: "" });
     } else {
-      return res.status(400).json({ message: 'Unsupported file type. Upload csv/xlsx' });
+      return res.status(400).json({ message: "Unsupported file type. Upload csv/xlsx" });
     }
 
     if (!rows.length) {
-      return res.status(400).json({ message: 'No rows found in file' });
+      return res.status(400).json({ message: "No rows found in file" });
     }
 
     const errors = [];
@@ -256,43 +239,38 @@ exports.bulkUploadItems = async (req, res) => {
     rows.forEach((r, idx) => {
       const rowNo = idx + 2;
 
-      const name = String(pick(r, ['name', 'Name', 'itemName', 'Item Name']) || '').trim();
-      const codeVal = pick(r, ['code', 'Code']);
-      const barcodeVal = pick(r, ['barcode', 'Barcode']);
+      const name = String(pick(r, ["name", "Name", "itemName", "Item Name"]) || "").trim();
+      const codeVal = pick(r, ["code", "Code"]);
+      const barcodeVal = pick(r, ["barcode", "Barcode"]);
 
-      const sellingPrice = toNum(pick(r, ['sellingPrice', 'selling_price', 'Selling Price', 'selling price']), 0);
-      const purchasePrice = toNum(pick(r, ['purchasePrice', 'purchase_price', 'Purchase Price', 'purchase price']), 0);
-      const mrp = toNum(pick(r, ['mrp', 'MRP']), 0);
-      const stock = toNum(pick(r, ['stock', 'Stock']), 0);
-      const unit = String(pick(r, ['unit', 'Unit']) || 'pcs').trim() || 'pcs';
-      const taxRate = toNum(pick(r, ['taxRate', 'tax_rate', 'Tax Rate', 'tax rate']), 0);
+      const sellingPrice = toNum(
+        pick(r, ["sellingPrice", "selling_price", "Selling Price", "selling price"]),
+        0
+      );
+      const purchasePrice = toNum(
+        pick(r, ["purchasePrice", "purchase_price", "Purchase Price", "purchase price"]),
+        0
+      );
+      const mrp = toNum(pick(r, ["mrp", "MRP"]), 0);
+      const stock = toNum(pick(r, ["stock", "Stock"]), 0);
+      const unit = String(pick(r, ["unit", "Unit"]) || "pcs").trim() || "pcs";
+      const taxRate = toNum(pick(r, ["taxRate", "tax_rate", "Tax Rate", "tax rate"]), 0);
 
       const code = codeVal ? String(codeVal).trim() : null;
       const barcode = normalizeBarcode(barcodeVal);
 
-      // validations
-      if (!name) errors.push({ row: rowNo, message: 'name is required' });
-      if (sellingPrice < 0) errors.push({ row: rowNo, message: 'sellingPrice cannot be negative' });
-      if (purchasePrice < 0) errors.push({ row: rowNo, message: 'purchasePrice cannot be negative' });
-      if (mrp < 0) errors.push({ row: rowNo, message: 'mrp cannot be negative' });
-      if (taxRate < 0) errors.push({ row: rowNo, message: 'taxRate cannot be negative' });
+      if (!name) errors.push({ row: rowNo, message: "name is required" });
+      if (sellingPrice < 0) errors.push({ row: rowNo, message: "sellingPrice cannot be negative" });
+      if (purchasePrice < 0) errors.push({ row: rowNo, message: "purchasePrice cannot be negative" });
+      if (mrp < 0) errors.push({ row: rowNo, message: "mrp cannot be negative" });
+      if (taxRate < 0) errors.push({ row: rowNo, message: "taxRate cannot be negative" });
 
-      values.push([
-        name,
-        code,
-        barcode,          // NULL allowed
-        sellingPrice,
-        purchasePrice,
-        mrp,
-        stock,
-        unit,
-        taxRate,
-      ]);
+      values.push([name, code, barcode, sellingPrice, purchasePrice, mrp, stock, unit, taxRate]);
     });
 
     if (errors.length) {
       return res.status(400).json({
-        message: 'Validation failed',
+        message: "Validation failed",
         errors: errors.slice(0, 50),
       });
     }
@@ -314,18 +292,18 @@ exports.bulkUploadItems = async (req, res) => {
 
     pool.query(sql, [values], (err, result) => {
       if (err) {
-        console.error('Bulk upload error:', err);
-        return res.status(500).json({ message: 'Bulk upload failed', error: err.message });
+        console.error("Bulk upload error:", err);
+        return res.status(500).json({ message: "Bulk upload failed", error: err.message });
       }
 
       res.json({
-        message: 'Bulk upload success',
+        message: "Bulk upload success",
         totalRows: values.length,
         affectedRows: result.affectedRows,
       });
     });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ message: 'Bulk upload failed', error: e.message });
+    res.status(500).json({ message: "Bulk upload failed", error: e.message });
   }
 };

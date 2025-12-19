@@ -2,24 +2,26 @@
 const express = require("express");
 const router = express.Router();
 
-// ✅ import controller
 const invoiceController = require("../controllers/invoiceController");
 
-// routes
+// ✅ basic invoices
 router.get("/", invoiceController.getInvoices);
 router.get("/:id", invoiceController.getInvoiceById);
 router.post("/", invoiceController.createInvoice);
-
-// ✅ UPDATE invoice
 router.patch("/:id", invoiceController.updateInvoice);
-
-// ✅ DELETE invoice
 router.delete("/:id", invoiceController.deleteInvoice);
 
-// ✅ sale return route
-router.post("/:id/sale-return", invoiceController.applySaleReturn);
+// ✅ add return routes ONLY if controller functions exist (prevents crash)
+if (typeof invoiceController.applySaleReturn === "function") {
+  router.post("/:id/sale-return", invoiceController.applySaleReturn);
+} else {
+  console.warn("⚠️ applySaleReturn is not exported from invoiceController.js");
+}
 
-// ✅ purchase return route
-router.post("/:id/purchase-return", invoiceController.applyPurchaseReturn);
+if (typeof invoiceController.applyPurchaseReturn === "function") {
+  router.post("/:id/purchase-return", invoiceController.applyPurchaseReturn);
+} else {
+  console.warn("⚠️ applyPurchaseReturn is not exported from invoiceController.js");
+}
 
 module.exports = router;

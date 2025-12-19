@@ -1,7 +1,10 @@
-const express = require('express');
+// src/routes/purchaseBillRoutes.js
+const express = require("express");
 const router = express.Router();
-const { getPurchaseBills } = require('../controllers/purchaseBillController');
 
-router.get('/', getPurchaseBills);
+const purchaseBillController = require("../controllers/purchaseBillController");
+
+router.get("/", purchaseBillController.getPurchaseBills);
+router.post("/", purchaseBillController.createPurchaseBill);
 
 module.exports = router;

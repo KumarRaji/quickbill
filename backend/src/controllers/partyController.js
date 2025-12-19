@@ -77,7 +77,7 @@ exports.deleteParty = (req, res) => {
   // First check if party has any invoices or payments
   const checkSql = `
     SELECT 
-      (SELECT COUNT(*) FROM invoices WHERE party_id = ?) as invoice_count,
+      (SELECT COUNT(*) FROM sale_invoices WHERE party_id = ?) as invoice_count,
       (SELECT COUNT(*) FROM payments WHERE party_id = ?) as payment_count
   `;
   
