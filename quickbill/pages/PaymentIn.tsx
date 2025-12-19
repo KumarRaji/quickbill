@@ -24,7 +24,7 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
     amount: 0,
     date: new Date().toISOString().split('T')[0],
     mode: 'CASH',
-    note: '',
+    notes: '',
   });
 
   const fetchPayments = async () => {
@@ -54,7 +54,7 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
         amount: 0,
         date: new Date().toISOString().split('T')[0],
         mode: 'CASH',
-        note: '',
+        notes: '',
       });
 
       setIsModalOpen(false);
@@ -94,7 +94,7 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
               amount: 0,
               date: new Date().toISOString().split('T')[0],
               mode: 'CASH',
-              note: '',
+              notes: '',
             });
             setIsModalOpen(true);
           }}
@@ -176,9 +176,9 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
 
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
                     {payment.partyName}
-                    {payment.note && (
+                    {payment.notes && (
                       <div className="text-xs text-slate-400 font-normal mt-0.5">
-                        {payment.note}
+                        {payment.notes}
                       </div>
                     )}
                   </td>
@@ -257,7 +257,7 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
                   amount: 0,
                   date: new Date().toISOString().split('T')[0],
                   mode: 'CASH',
-                  note: '',
+                  notes: '',
                 });
               }} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
@@ -335,8 +335,8 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
                 <textarea
                   rows={2}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none resize-none"
-                  value={formData.note}
-                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Optional description..."
                 />
               </div>
@@ -351,7 +351,7 @@ const PaymentIn: React.FC<PaymentInProps> = ({ parties, onRefresh }) => {
                       amount: 0,
                       date: new Date().toISOString().split('T')[0],
                       mode: 'CASH',
-                      note: '',
+                      notes: '',
                     });
                   }}
                   className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
