@@ -16,6 +16,11 @@ CREATE TABLE users (
 INSERT INTO users (name, username, password_hash, role) VALUES
 ('Super Admin', 'superadmin', '$2a$10$rZ5YhJKvXqKqJqKqJqKqJuN5YhJKvXqKqJqKqJqKqJqKqJqKqJqKq', 'SUPER_ADMIN');
 
+-- Insert default parties
+INSERT INTO parties (id, name, phone, gstin, address, balance) VALUES
+(1, 'Cash Customer', '', '', '', 0),
+(2, 'Walkin-Customer', '1234567890', '', '', 0);
+
 -- PARTIES TABLE (Customers)
 CREATE TABLE parties (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -87,17 +92,17 @@ CREATE TABLE invoices (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   party_id INT UNSIGNED NOT NULL,
   invoice_no VARCHAR(50),
-  original_ref_number VARCHAR(50) NULL,
   type ENUM('SALE','RETURN','PURCHASE','PURCHASE_RETURN') NOT NULL,
   total_amount DECIMAL(12,2) NOT NULL,
-  total_tax DECIMAL(12,2) NOT NULL DEFAULT 0,
   invoice_date DATETIME NOT NULL,
-  payment_mode VARCHAR(50) DEFAULT 'CASH',
-  status VARCHAR(20) DEFAULT 'PAID',
   notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  payment_mode ENUM('CASH','ONLINE','CHEQUE','CREDIT') NOT NULL DEFAULT 'CASH',
+  original_invoice_id INT NULL,
+  is_closed TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
-  CONSTRAINT fk_invoices_party FOREIGN KEY (party_id) REFERENCES parties(id)
+  CONSTRAINT fk_invoices_party FOREIGN KEY (party_id) REFERENCES parties(id),
+  KEY idx_original_invoice (original_invoice_id)
 );
 
 -- INVOICE ITEMS TABLE

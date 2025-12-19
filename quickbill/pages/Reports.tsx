@@ -488,6 +488,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                 <th className="px-6 py-3">Credit Note No.</th>
                 <th className="px-6 py-3">Original Invoice</th>
                 <th className="px-6 py-3">Party Name</th>
+                <th className="px-6 py-3">Reason</th>
                 <th className="px-6 py-3 text-right">Tax</th>
                 <th className="px-6 py-3 text-right">Return Amount</th>
               </tr>
@@ -506,6 +507,13 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                     )}
                   </td>
                   <td className="px-6 py-4 text-slate-600">{inv.partyName}</td>
+                  <td className="px-6 py-4 text-slate-600">
+                    {inv.notes && inv.notes.trim() !== '' ? (
+                      <span className="text-slate-700">{inv.notes}</span>
+                    ) : (
+                      <span className="text-slate-400 italic">-</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right text-slate-600">₹{inv.totalTax.toFixed(2)}</td>
                   <td className="px-6 py-4 text-right font-bold text-red-600">
                     ₹{inv.totalAmount.toLocaleString()}
@@ -515,7 +523,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
               {returnList.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-slate-400">
+                  <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
                     No sale returns found
                   </td>
                 </tr>

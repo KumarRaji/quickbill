@@ -44,9 +44,11 @@ function getBalanceDelta(type, total) {
 exports.getInvoices = (req, res) => {
   const sql = `
     SELECT i.*, 
-      COALESCE(p.name, 'Cash Customer') as party_name
+      COALESCE(p.name, 'Cash Customer') as party_name,
+      orig.invoice_no as original_invoice_no
     FROM invoices i 
     LEFT JOIN parties p ON i.party_id = p.id
+    LEFT JOIN invoices orig ON i.original_invoice_id = orig.id
     ORDER BY i.id DESC
   `;
   pool.query(sql, (err, invoices) => {
@@ -108,7 +110,7 @@ exports.getInvoices = (req, res) => {
           paymentMode: inv.payment_mode,
           status: 'PAID',
           partyName: inv.party_name || "Cash Customer",
-          originalRefNumber: null,
+          originalRefNumber: inv.original_invoice_no || null,
           items: invoiceItems,
         };
       });
@@ -192,36 +194,6 @@ exports.createInvoice = async (req, res) => {
     if (!partyIdNum) {
       return res.status(400).json({ message: 'Invalid partyId' });
     }
-    
-    // For PURCHASE invoices, sync supplier to parties table
-    if (type === 'PURCHASE' || type === 'PURCHASE_RETURN') {
-      try {
-        const checkSupplier = await new Promise((resolve, reject) => {
-          pool.query('SELECT * FROM suppliers WHERE id = ?', [partyIdNum], (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-          });
-        });
-        
-        if (checkSupplier && checkSupplier.length > 0) {
-          const supplier = checkSupplier[0];
-          // Upsert to parties table
-          await new Promise((resolve, reject) => {
-            pool.query(
-              'INSERT INTO parties (id, name, phone, gstin, address, balance) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), phone = VALUES(phone), gstin = VALUES(gstin), address = VALUES(address)',
-              [supplier.id, supplier.name, supplier.phone, supplier.gstin, supplier.address, supplier.balance || 0],
-              (err, result) => {
-                if (err) reject(err);
-                else resolve(result);
-              }
-            );
-          });
-        }
-      } catch (syncErr) {
-        console.error('Error syncing supplier to parties:', syncErr);
-        return res.status(500).json({ message: 'Failed to sync supplier data', error: syncErr.message });
-      }
-    }
   }
 
   if (!type || !items || !Array.isArray(items) || !items.length) {
@@ -271,13 +243,46 @@ exports.createInvoice = async (req, res) => {
         });
       }
 
-      const generatedInvoiceNo = invoiceNo || `${type === 'RETURN' || type === 'PURCHASE_RETURN' ? 'CN' : 'TXN'}-${Date.now().toString().slice(-6)}`;
-      
-      const invSql =
-        'INSERT INTO invoices (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?)';
+      // For PURCHASE invoices, sync supplier to parties table INSIDE transaction
+      const syncSupplier = (callback) => {
+        if ((type === 'PURCHASE' || type === 'PURCHASE_RETURN') && partyIdNum !== CASH_PARTY_ID) {
+          conn.query('SELECT * FROM suppliers WHERE id = ?', [partyIdNum], (err, rows) => {
+            if (err) return callback(err);
+            if (!rows || rows.length === 0) {
+              return callback(new Error(`Supplier with ID ${partyIdNum} not found`));
+            }
+            
+            const supplier = rows[0];
+            conn.query(
+              'INSERT INTO parties (id, name, phone, gstin, address, balance) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), phone = VALUES(phone), gstin = VALUES(gstin), address = VALUES(address)',
+              [supplier.id, supplier.name, supplier.phone, supplier.gstin, supplier.address, supplier.balance || 0],
+              (syncErr) => callback(syncErr)
+            );
+          });
+        } else {
+          callback(null);
+        }
+      };
 
-      conn.query(
-        invSql,
+      syncSupplier((syncErr) => {
+        if (syncErr) {
+          console.error('Error syncing supplier:', syncErr);
+          return conn.rollback(() => {
+            conn.release();
+            res.status(500).json({
+              message: 'Failed to sync supplier data',
+              error: syncErr.message,
+            });
+          });
+        }
+
+        const generatedInvoiceNo = invoiceNo || `${type === 'RETURN' || type === 'PURCHASE_RETURN' ? 'CN' : 'TXN'}-${Date.now().toString().slice(-6)}`;
+        
+        const invSql =
+          'INSERT INTO invoices (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode) VALUES (?, ?, ?, ?, ?, ?, ?)';
+
+        conn.query(
+          invSql,
         [
           partyIdNum,
           generatedInvoiceNo,
@@ -445,6 +450,7 @@ exports.createInvoice = async (req, res) => {
           processNextItem();
         }
       );
+      });
     });
   });
 };
