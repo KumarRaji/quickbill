@@ -1,51 +1,63 @@
--- Complete QuickBill Database Schema with All Updates
-CREATE DATABASE IF NOT EXISTS quickbilldb;
+-- Complete QuickBill Database Schema (Corrected)
+CREATE DATABASE IF NOT EXISTS quickbilldb
+  DEFAULT CHARACTER SET utf8mb4
+  DEFAULT COLLATE utf8mb4_unicode_ci;
+
 USE quickbilldb;
 
--- USERS TABLE
-CREATE TABLE users (
+-- 1) USERS TABLE
+CREATE TABLE IF NOT EXISTS users (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(100) NOT NULL,
   username VARCHAR(50) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   role ENUM('SUPER_ADMIN', 'ADMIN', 'STAFF') NOT NULL DEFAULT 'STAFF',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
-);
+) ENGINE=InnoDB;
 
-INSERT INTO users (name, username, password_hash, role) VALUES
-('Super Admin', 'superadmin', '$2a$10$rZ5YhJKvXqKqJqKqJqKqJuN5YhJKvXqKqJqKqJqKqJqKqJqKqJqKq', 'SUPER_ADMIN');
+INSERT INTO users (name, username, password_hash, role)
+VALUES ('Super Admin', 'superadmin',
+        '$2a$10$rZ5YhJKvXqKqJqKqJqKqJuN5YhJKvXqKqJqKqJqKqJqKqJqKqJqKq',
+        'SUPER_ADMIN')
+ON DUPLICATE KEY UPDATE username = username;
 
--- PARTIES TABLE (Customers)
-CREATE TABLE parties (
+
+-- 2) PARTIES TABLE (Customers)
+CREATE TABLE IF NOT EXISTS parties (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(150) NOT NULL,
   phone VARCHAR(20),
   gstin VARCHAR(20),
   balance DECIMAL(12,2) NOT NULL DEFAULT 0,
   address VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
-);
--- Insert default parties
+) ENGINE=InnoDB;
+
+-- Default parties
 INSERT INTO parties (id, name, phone, gstin, address, balance) VALUES
-(1, 'Walkin-Customer', '1234567890', '', '', 0);
+(1, 'Cash Customer', NULL, NULL, NULL, 0),
+(2, 'Walkin-Customer', '1234567890', NULL, NULL, 0)
+ON DUPLICATE KEY UPDATE name = VALUES(name);
 
--- SUPPLIERS TABLE
-CREATE TABLE suppliers (
+
+-- 3) SUPPLIERS TABLE
+CREATE TABLE IF NOT EXISTS suppliers (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(150) NOT NULL,
   phone VARCHAR(20),
   gstin VARCHAR(20),
   address VARCHAR(255),
   balance DECIMAL(12,2) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
-);
+) ENGINE=InnoDB;
 
--- ITEMS TABLE
-CREATE TABLE items (
+
+-- 4) ITEMS TABLE
+CREATE TABLE IF NOT EXISTS items (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(150) NOT NULL,
   category VARCHAR(100) NULL,
@@ -59,38 +71,49 @@ CREATE TABLE items (
   expiry_date DATE NULL,
   unit VARCHAR(20) NOT NULL DEFAULT 'pcs',
   tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   mrp DECIMAL(10,2) NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uniq_barcode (barcode),
   KEY idx_category (category),
   KEY idx_supplier (supplier_id),
-  KEY idx_stock (stock)
-);
+  KEY idx_stock (stock),
+  CONSTRAINT fk_items_supplier
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
+) ENGINE=InnoDB;
 
--- STOCK TABLE
-CREATE TABLE stock (
+
+-- 5) STOCK TABLE
+CREATE TABLE IF NOT EXISTS stock (
   id INT NOT NULL AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
   code VARCHAR(100) NULL,
   barcode VARCHAR(100) NULL,
-  supplier_id INT NULL,
+  supplier_id INT UNSIGNED NULL,
   purchase_price DECIMAL(10,2) NOT NULL DEFAULT 0,
   mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
   quantity INT NOT NULL DEFAULT 0,
   unit VARCHAR(50) NULL DEFAULT 'PCS',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (id)
-);
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_stock_supplier (supplier_id),
+  CONSTRAINT fk_stock_supplier
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL
+) ENGINE=InnoDB;
 
--- SALE INVOICES TABLE
+
+-- 6) SALE INVOICES TABLE
 CREATE TABLE IF NOT EXISTS sale_invoices (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   party_id INT UNSIGNED NOT NULL,
   invoice_no VARCHAR(50) NOT NULL,
-  type ENUM('SALE','RETURN') NOT NULL,
+  type ENUM('SALE','RETURN','PURCHASE','PURCHASE_RETURN') NOT NULL,
   total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
   invoice_date DATETIME NOT NULL,
   notes TEXT,
@@ -111,7 +134,9 @@ CREATE TABLE IF NOT EXISTS sale_invoices (
     ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- PURCHASE INVOICES TABLE
+
+
+-- 7) PURCHASE INVOICES TABLE
 CREATE TABLE IF NOT EXISTS purchase_invoices (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   supplier_id INT UNSIGNED NOT NULL,
@@ -136,8 +161,9 @@ CREATE TABLE IF NOT EXISTS purchase_invoices (
     ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- SALE INVOICE ITEMS TABLE
-CREATE TABLE sale_invoice_items (
+
+-- 8) INVOICE ITEMS TABLE (linked to SALE invoices)
+CREATE TABLE IF NOT EXISTS invoice_items (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   invoice_id INT UNSIGNED NOT NULL,
   item_id INT UNSIGNED NOT NULL,
@@ -148,28 +174,21 @@ CREATE TABLE sale_invoice_items (
   tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
   total DECIMAL(12,2) NOT NULL,
   PRIMARY KEY (id),
-  CONSTRAINT fk_sale_invoice_items_invoice FOREIGN KEY (invoice_id) REFERENCES sale_invoices(id),
-  CONSTRAINT fk_sale_invoice_items_item FOREIGN KEY (item_id) REFERENCES items(id)
+  KEY idx_invoice_items_invoice (invoice_id),
+  KEY idx_invoice_items_item (item_id),
+  CONSTRAINT fk_invoice_items_invoice
+    FOREIGN KEY (invoice_id) REFERENCES sale_invoices(id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT fk_invoice_items_item
+    FOREIGN KEY (item_id) REFERENCES items(id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
--- PURCHASE INVOICE ITEMS TABLE
-CREATE TABLE purchase_invoice_items (
-  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  invoice_id INT UNSIGNED NOT NULL,
-  item_id INT UNSIGNED NOT NULL,
-  name VARCHAR(150),
-  quantity DECIMAL(12,2) NOT NULL,
-  mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
-  price DECIMAL(12,2) NOT NULL,
-  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
-  total DECIMAL(12,2) NOT NULL,
-  PRIMARY KEY (id),
-  CONSTRAINT fk_purchase_invoice_items_invoice FOREIGN KEY (invoice_id) REFERENCES purchase_invoices(id),
-  CONSTRAINT fk_purchase_invoice_items_item FOREIGN KEY (item_id) REFERENCES items(id)
-) ENGINE=InnoDB;
 
--- PAYMENTS TABLE
-CREATE TABLE payments (
+-- 9) PAYMENTS TABLE
+CREATE TABLE IF NOT EXISTS payments (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   party_id INT UNSIGNED NOT NULL,
   type ENUM('IN','OUT') NOT NULL,
@@ -177,24 +196,30 @@ CREATE TABLE payments (
   payment_date DATETIME NOT NULL,
   mode VARCHAR(50),
   notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  CONSTRAINT fk_payments_party FOREIGN KEY (party_id) REFERENCES parties(id)
-);
+  KEY idx_payments_party (party_id),
+  CONSTRAINT fk_payments_party
+    FOREIGN KEY (party_id) REFERENCES parties(id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+) ENGINE=InnoDB;
 
--- EXPENSES TABLE
-CREATE TABLE expenses (
+
+-- 10) EXPENSES TABLE
+CREATE TABLE IF NOT EXISTS expenses (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   category VARCHAR(100),
   amount DECIMAL(12,2) NOT NULL,
   expense_date DATETIME NOT NULL,
   notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
-);
+) ENGINE=InnoDB;
 
--- SALE RETURN AUDIT TABLE
-CREATE TABLE sale_return_audit (
+
+-- 11) SALE RETURN AUDIT TABLE
+CREATE TABLE IF NOT EXISTS sale_return_audit (
   id INT NOT NULL AUTO_INCREMENT,
   original_invoice_id INT NOT NULL,
   return_invoice_id INT NOT NULL,
@@ -202,15 +227,16 @@ CREATE TABLE sale_return_audit (
   quantity DECIMAL(12,3) NOT NULL,
   reason VARCHAR(255) NULL,
   processed_by VARCHAR(80) NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_original_invoice (original_invoice_id),
   KEY idx_return_invoice (return_invoice_id),
   KEY idx_item (item_id)
-);
+) ENGINE=InnoDB;
 
--- PURCHASE RETURN AUDIT TABLE
-CREATE TABLE purchase_return_audit (
+
+-- 12) PURCHASE RETURN AUDIT TABLE
+CREATE TABLE IF NOT EXISTS purchase_return_audit (
   id INT NOT NULL AUTO_INCREMENT,
   original_invoice_id INT NOT NULL,
   return_invoice_id INT NOT NULL,
@@ -218,9 +244,33 @@ CREATE TABLE purchase_return_audit (
   quantity DECIMAL(12,3) NOT NULL,
   reason VARCHAR(255) NULL,
   processed_by VARCHAR(80) NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_original_invoice (original_invoice_id),
   KEY idx_return_invoice (return_invoice_id),
   KEY idx_item (item_id)
-);
+) ENGINE=InnoDB;
+
+-- 13) sale_invoice_items TABLE
+CREATE TABLE IF NOT EXISTS sale_invoice_items (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  invoice_id INT UNSIGNED NOT NULL,
+  item_id INT UNSIGNED NOT NULL,
+  name VARCHAR(150),
+  quantity DECIMAL(12,2) NOT NULL,
+  mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
+  price DECIMAL(12,2) NOT NULL,
+  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+  total DECIMAL(12,2) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_sale_invoice_items_invoice (invoice_id),
+  KEY idx_sale_invoice_items_item (item_id),
+  CONSTRAINT fk_sale_invoice_items_invoice
+    FOREIGN KEY (invoice_id) REFERENCES sale_invoices(id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT fk_sale_invoice_items_item
+    FOREIGN KEY (item_id) REFERENCES items(id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+) ENGINE=InnoDB;
