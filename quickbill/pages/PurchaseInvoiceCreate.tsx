@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Plus, Printer, Save, ScanBarcode, Trash2, X } from "lucide-react";
+import { ArrowLeft, Plus, Printer, Save, ScanBarcode, Sparkles, Trash2, X } from "lucide-react";
 import { Item, Invoice, InvoiceItem } from "../types";
 import { InvoiceService, ItemService, SupplierService, Supplier } from "../services/api";
 
@@ -53,6 +53,12 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     unit: "pcs",
     taxRate: 0,
   });
+
+  // Generate random barcode (EAN-13 format)
+  const generateBarcode = () => {
+    const randomDigits = Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
+    setItemFormData({ ...itemFormData, barcode: randomDigits });
+  };
 
   useEffect(() => {
     SupplierService.getAll().then(setSuppliers).catch(console.error);
@@ -594,7 +600,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
       {/* Add New Item Modal */}
       {showItemModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h2 className="text-lg font-bold text-slate-800">Add New Item</h2>
               <button onClick={() => setShowItemModal(false)} className="text-slate-400 hover:text-slate-600" type="button">
@@ -644,7 +650,17 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Barcode</label>
-                  <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.barcode} onChange={(e) => setItemFormData({ ...itemFormData, barcode: e.target.value })} />
+                  <div className="flex gap-2">
+                    <input type="text" className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.barcode} onChange={(e) => setItemFormData({ ...itemFormData, barcode: e.target.value })} />
+                    <button
+                      type="button"
+                      onClick={generateBarcode}
+                      className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-1"
+                      title="Generate Barcode"
+                    >
+                      <Sparkles size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
