@@ -56,6 +56,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, su
 const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expenses }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const [timeFilter, setTimeFilter] = useState<'today' | 'month' | 'year'>('today');
 
   // 🔹 Current date & time in AM/PM
   const formattedDateTime = new Date().toLocaleString('en-IN', {
@@ -64,24 +65,55 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
     hour12: true,
   });
 
+  // Filter data based on selected time period
+  const filteredInvoices = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    return invoices.filter(inv => {
+      const invDate = new Date(inv.date);
+      if (timeFilter === 'today') return invDate >= today;
+      if (timeFilter === 'month') return invDate >= monthStart;
+      if (timeFilter === 'year') return invDate >= yearStart;
+      return true;
+    });
+  }, [invoices, timeFilter]);
+
+  const filteredExpenses = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    return expenses.filter(exp => {
+      const expDate = new Date(exp.date);
+      if (timeFilter === 'today') return expDate >= today;
+      if (timeFilter === 'month') return expDate >= monthStart;
+      if (timeFilter === 'year') return expDate >= yearStart;
+      return true;
+    });
+  }, [expenses, timeFilter]);
+
   const stats = useMemo(() => {
     // Calculate Net Sales (Sales - Returns)
-    const totalSales = invoices.reduce((sum, inv) => {
+    const totalSales = filteredInvoices.reduce((sum, inv) => {
       if (inv.type === 'SALE') return sum + inv.totalAmount;
       if (inv.type === 'RETURN') return sum - inv.totalAmount;
       return sum;
     }, 0);
 
     // Calculate Total Expenses
-    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
 
     // Count only Sales invoices for "Invoices Created" metric
-    const totalInvoices = invoices.filter((i) => i.type === 'SALE').length;
+    const totalInvoices = filteredInvoices.filter((i) => i.type === 'SALE').length;
     const totalParties = parties.length;
     const lowStockItems = items.filter((i) => i.stock < 10).length;
 
     return { totalSales, totalExpenses, totalInvoices, totalParties, lowStockItems };
-  }, [invoices, parties, items, expenses]);
+  }, [filteredInvoices, parties, items, filteredExpenses]);
 
   const lowStockItemsList = useMemo(() => 
     items.filter((i) => i.stock < 10).sort((a, b) => a.stock - b.stock),
@@ -98,7 +130,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
   const chartData = useMemo(() => {
     const salesByDate: Record<string, number> = {};
 
-    invoices.forEach((inv) => {
+    filteredInvoices.forEach((inv) => {
       if (inv.type !== 'SALE' && inv.type !== 'RETURN') return;
 
       const date = new Date(inv.date).toLocaleDateString('en-US', {
@@ -130,7 +162,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
     return Object.entries(salesByDate)
       .map(([name, sales]) => ({ name, sales }))
       .slice(-7);
-  }, [invoices]);
+  }, [filteredInvoices]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -143,6 +175,28 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
             {formattedDateTime}
           </span>
         </div>
+      </div>
+
+      {/* Time Filter Tabs */}
+      <div className="flex space-x-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-fit">
+        <button
+          onClick={() => setTimeFilter('today')}
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+        >
+          Today
+        </button>
+        <button
+          onClick={() => setTimeFilter('month')}
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'month' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+        >
+          This Month
+        </button>
+        <button
+          onClick={() => setTimeFilter('year')}
+          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'year' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+        >
+          This Year
+        </button>
       </div>
 
       {/* Stat cards */}
@@ -232,7 +286,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
                 </tr>
               </thead>
               <tbody>
-                {invoices.slice(0, 5).map((inv) => (
+                {filteredInvoices.slice(0, 5).map((inv) => (
                   <tr
                     key={inv.id}
                     className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
@@ -267,7 +321,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
                     </td>
                   </tr>
                 ))}
-                {invoices.length === 0 && (
+                {filteredInvoices.length === 0 && (
                   <tr>
                     <td
                       colSpan={3}

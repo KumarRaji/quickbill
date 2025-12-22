@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Party, Item, Invoice } from '../types';
-import { Package, Users, TrendingUp } from 'lucide-react';
+import { Package, Users, TrendingUp, Download, FileSpreadsheet, FileText, Printer } from 'lucide-react';
 import { StockItem } from '../services/api';
 
 interface ReportsProps {
@@ -68,6 +68,62 @@ const PaginationBar: React.FC<PagerProps> = ({
       </div>
     </div>
   );
+};
+
+// Export helpers
+const exportToCSV = (data: any[], filename: string) => {
+  if (data.length === 0) return;
+  const headers = Object.keys(data[0]).join(',');
+  const rows = data.map(row => Object.values(row).map(v => `"${v}"`).join(',')).join('\n');
+  const csv = `${headers}\n${rows}`;
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const exportToExcel = (data: any[], filename: string) => {
+  if (data.length === 0) return;
+  const headers = Object.keys(data[0]).join('\t');
+  const rows = data.map(row => Object.values(row).join('\t')).join('\n');
+  const excel = `${headers}\n${rows}`;
+  const blob = new Blob([excel], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.xls`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const printTable = (title: string, tableHTML: string) => {
+  const printWindow = window.open('', '', 'width=800,height=600');
+  if (!printWindow) return;
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: Arial; padding: 20px; }
+          h1 { text-align: center; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background-color: #f8f9fa; }
+          @media print { body { padding: 10px; } }
+        </style>
+      </head>
+      <body>
+        <h1>${title}</h1>
+        ${tableHTML}
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 250);
 };
 
 const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) => {
@@ -271,14 +327,16 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
           <div className="font-bold text-slate-700">Stock Detail</div>
 
-          {/* ✅ Page size dropdown at TOP (Stock only) */}
           <div className="flex items-center gap-2">
+            <button onClick={() => exportToCSV(stockList.map(i => ({ Name: i.name, Supplier: i.supplier_name, PurchasePrice: i.purchase_price, MRP: i.mrp, Quantity: i.quantity, Unit: i.unit, StockValue: i.quantity * i.purchase_price })), 'stock-report')} className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center gap-1"><Download size={14} />CSV</button>
+            <button onClick={() => exportToExcel(stockList.map(i => ({ Name: i.name, Supplier: i.supplier_name, PurchasePrice: i.purchase_price, MRP: i.mrp, Quantity: i.quantity, Unit: i.unit, StockValue: i.quantity * i.purchase_price })), 'stock-report')} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center gap-1"><FileSpreadsheet size={14} />Excel</button>
+            <button onClick={() => printTable('Stock Report', document.querySelector('.stock-table')?.outerHTML || '')} className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center gap-1"><Printer size={14} />Print</button>
             <span className="text-xs font-medium text-slate-600">Rows:</span>
             <select
               value={stockPageSize}
               onChange={(e) => {
                 setStockPageSize(Number(e.target.value));
-                setStockPage(1); // reset to page 1
+                setStockPage(1);
               }}
               className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -292,7 +350,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left stock-table">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-3">Item Name</th>
@@ -372,8 +430,10 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
           <div className="font-bold text-slate-700">Transaction History (Sales & Returns)</div>
 
-          {/* ✅ Page size dropdown (Sales) */}
           <div className="flex items-center gap-2">
+            <button onClick={() => exportToCSV(salesList.map(i => ({ Date: new Date(i.date).toLocaleDateString(), Type: i.type, InvoiceNumber: i.invoiceNumber, PartyName: i.partyName, Tax: i.totalTax, TotalAmount: i.totalAmount })), 'sales-report')} className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center gap-1"><Download size={14} />CSV</button>
+            <button onClick={() => exportToExcel(salesList.map(i => ({ Date: new Date(i.date).toLocaleDateString(), Type: i.type, InvoiceNumber: i.invoiceNumber, PartyName: i.partyName, Tax: i.totalTax, TotalAmount: i.totalAmount })), 'sales-report')} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center gap-1"><FileSpreadsheet size={14} />Excel</button>
+            <button onClick={() => printTable('Sales Report', document.querySelector('.sales-table')?.outerHTML || '')} className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center gap-1"><Printer size={14} />Print</button>
             <span className="text-xs font-medium text-slate-600">Rows:</span>
             <select
               value={salesPageSize}
@@ -394,7 +454,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left sales-table">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-3">Date</th>
@@ -481,6 +541,9 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
           <div className="font-bold text-slate-700">Sale Return / Credit Note History</div>
 
           <div className="flex items-center gap-2">
+            <button onClick={() => exportToCSV(returnList.map(i => ({ Date: new Date(i.date).toLocaleDateString(), CreditNoteNo: i.invoiceNumber, OriginalInvoice: i.originalRefNumber, PartyName: i.partyName, Reason: i.notes, Tax: i.totalTax, ReturnAmount: i.totalAmount })), 'sale-returns-report')} className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center gap-1"><Download size={14} />CSV</button>
+            <button onClick={() => exportToExcel(returnList.map(i => ({ Date: new Date(i.date).toLocaleDateString(), CreditNoteNo: i.invoiceNumber, OriginalInvoice: i.originalRefNumber, PartyName: i.partyName, Reason: i.notes, Tax: i.totalTax, ReturnAmount: i.totalAmount })), 'sale-returns-report')} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center gap-1"><FileSpreadsheet size={14} />Excel</button>
+            <button onClick={() => printTable('Sale Returns Report', document.querySelector('.sale-returns-table')?.outerHTML || '')} className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center gap-1"><Printer size={14} />Print</button>
             <span className="text-xs font-medium text-slate-600">Rows:</span>
             <select
               value={returnPageSize}
@@ -500,7 +563,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left sale-returns-table">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-3">Date</th>
@@ -588,6 +651,9 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
           <div className="font-bold text-slate-700">Items Summary</div>
           <div className="flex items-center gap-2">
+            <button onClick={() => exportToCSV(items.map(i => ({ Name: i.name, Code: i.code, Barcode: i.barcode, MRP: i.mrp, SellingPrice: i.sellingPrice, PurchasePrice: i.purchasePrice, Stock: i.stock, Unit: i.unit, StockValue: i.stock * i.purchasePrice })), 'items-report')} className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center gap-1"><Download size={14} />CSV</button>
+            <button onClick={() => exportToExcel(items.map(i => ({ Name: i.name, Code: i.code, Barcode: i.barcode, MRP: i.mrp, SellingPrice: i.sellingPrice, PurchasePrice: i.purchasePrice, Stock: i.stock, Unit: i.unit, StockValue: i.stock * i.purchasePrice })), 'items-report')} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center gap-1"><FileSpreadsheet size={14} />Excel</button>
+            <button onClick={() => printTable('Items Report', document.querySelector('.items-table')?.outerHTML || '')} className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center gap-1"><Printer size={14} />Print</button>
             <span className="text-xs font-medium text-slate-600">Rows:</span>
             <select
               value={itemsPageSize}
@@ -607,7 +673,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left items-table">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-3">Item Name</th>
@@ -691,6 +757,9 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
           <div className="font-bold text-slate-700">Purchase History</div>
 
           <div className="flex items-center gap-2">
+            <button onClick={() => exportToCSV(purchaseList.map(i => ({ Date: new Date(i.date).toLocaleDateString(), InvoiceNo: i.invoiceNumber, Supplier: i.partyName, Tax: i.totalTax, TotalAmount: i.totalAmount })), 'purchase-report')} className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center gap-1"><Download size={14} />CSV</button>
+            <button onClick={() => exportToExcel(purchaseList.map(i => ({ Date: new Date(i.date).toLocaleDateString(), InvoiceNo: i.invoiceNumber, Supplier: i.partyName, Tax: i.totalTax, TotalAmount: i.totalAmount })), 'purchase-report')} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center gap-1"><FileSpreadsheet size={14} />Excel</button>
+            <button onClick={() => printTable('Purchase Report', document.querySelector('.purchase-table')?.outerHTML || '')} className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center gap-1"><Printer size={14} />Print</button>
             <span className="text-xs font-medium text-slate-600">Rows:</span>
             <select
               value={purchasePageSize}
@@ -710,7 +779,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left purchase-table">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-3">Date</th>
@@ -777,6 +846,9 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
           <div className="font-bold text-slate-700">Purchase Return / Debit Note History</div>
 
           <div className="flex items-center gap-2">
+            <button onClick={() => exportToCSV(purchaseReturnList.map(i => ({ Date: new Date(i.date).toLocaleDateString(), DebitNoteNo: i.invoiceNumber, OriginalInvoice: i.originalRefNumber, Supplier: i.partyName, Reason: i.notes, Tax: i.totalTax, ReturnAmount: i.totalAmount })), 'purchase-returns-report')} className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center gap-1"><Download size={14} />CSV</button>
+            <button onClick={() => exportToExcel(purchaseReturnList.map(i => ({ Date: new Date(i.date).toLocaleDateString(), DebitNoteNo: i.invoiceNumber, OriginalInvoice: i.originalRefNumber, Supplier: i.partyName, Reason: i.notes, Tax: i.totalTax, ReturnAmount: i.totalAmount })), 'purchase-returns-report')} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center gap-1"><FileSpreadsheet size={14} />Excel</button>
+            <button onClick={() => printTable('Purchase Returns Report', document.querySelector('.purchase-returns-table')?.outerHTML || '')} className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center gap-1"><Printer size={14} />Print</button>
             <span className="text-xs font-medium text-slate-600">Rows:</span>
             <select
               value={purchaseReturnPageSize}
@@ -796,7 +868,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left purchase-returns-table">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-3">Date</th>
@@ -878,8 +950,10 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
           <div className="font-bold text-slate-700">Customer Statement / Balances</div>
 
-          {/* ✅ Page size dropdown (Parties) */}
           <div className="flex items-center gap-2">
+            <button onClick={() => exportToCSV(parties.map(p => ({ PartyName: p.name, Phone: p.phone, Balance: p.balance, Status: p.balance > 0 ? 'Receivable' : p.balance < 0 ? 'Payable' : 'Settled' })), 'parties-report')} className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center gap-1"><Download size={14} />CSV</button>
+            <button onClick={() => exportToExcel(parties.map(p => ({ PartyName: p.name, Phone: p.phone, Balance: p.balance, Status: p.balance > 0 ? 'Receivable' : p.balance < 0 ? 'Payable' : 'Settled' })), 'parties-report')} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center gap-1"><FileSpreadsheet size={14} />Excel</button>
+            <button onClick={() => printTable('Parties Report', document.querySelector('.parties-table')?.outerHTML || '')} className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center gap-1"><Printer size={14} />Print</button>
             <span className="text-xs font-medium text-slate-600">Rows:</span>
             <select
               value={partyPageSize}
@@ -900,7 +974,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left parties-table">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
               <tr>
                 <th className="px-6 py-3">Party Name</th>

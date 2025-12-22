@@ -90,11 +90,15 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
     itemsToPrint.forEach(item => {
       const container = document.createElement('div');
       container.style.cssText = 'page-break-inside: avoid; margin: 20px; text-align: center; display: inline-block; width: 200px;';
-      const name = document.createElement('div');
-      name.style.cssText = 'font-weight: bold; margin-bottom: 5px;';
-      name.textContent = item.name;
+      const itemNameDiv = document.createElement('div');
+      itemNameDiv.style.cssText = 'font-size: 14px; margin-bottom: 3px; color: #333; font-weight: bold;';
+      itemNameDiv.textContent = item.name;
+      const mrpDiv = document.createElement('div');
+      mrpDiv.style.cssText = 'font-size: 11px; margin-bottom: 5px;';
+      mrpDiv.textContent = item.mrp && item.mrp > 0 ? `MRP: ₹${item.mrp}` : '';
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      container.appendChild(name);
+      container.appendChild(itemNameDiv);
+      container.appendChild(mrpDiv);
       container.appendChild(svg);
       tempDiv.appendChild(container);
     });
