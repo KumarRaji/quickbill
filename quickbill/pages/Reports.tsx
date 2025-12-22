@@ -10,7 +10,7 @@ interface ReportsProps {
   stock: StockItem[];
 }
 
-type ReportTab = 'STOCK' | 'ITEMS' | 'SALES' | 'SALE_RETURNS' | 'PURCHASES' | 'PARTIES';
+type ReportTab = 'STOCK' | 'ITEMS' | 'SALES' | 'SALE_RETURNS' | 'PURCHASES' | 'PURCHASE_RETURNS' | 'PARTIES';
 
 type PagerProps = {
   currentPage: number;
@@ -101,6 +101,10 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
   const [purchasePage, setPurchasePage] = useState(1);
   const [purchasePageSize, setPurchasePageSize] = useState(10);
 
+  // PURCHASE RETURNS pagination + page size select ✅
+  const [purchaseReturnPage, setPurchaseReturnPage] = useState(1);
+  const [purchaseReturnPageSize, setPurchaseReturnPageSize] = useState(10);
+
 
   // -----------------------
   // Calculations
@@ -170,6 +174,13 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
     return { totalPurchases, totalPurchaseTax, invoices: purchaseInvoices };
   }, [invoices]);
 
+  const purchaseReturnSummary = useMemo(() => {
+    const purchaseReturnInvoices = invoices.filter((i) => i.type === 'PURCHASE_RETURN');
+    const totalPurchaseReturns = purchaseReturnInvoices.reduce((sum, i) => sum + i.totalAmount, 0);
+    const totalPurchaseReturnTax = purchaseReturnInvoices.reduce((sum, i) => sum + i.totalTax, 0);
+    return { totalPurchaseReturns, totalPurchaseReturnTax, invoices: purchaseReturnInvoices };
+  }, [invoices]);
+
   // -----------------------
   // Paginated Data
   // -----------------------
@@ -214,6 +225,13 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
   const purchaseStartIndex = (purchaseCurrentPage - 1) * purchasePageSize;
   const paginatedPurchases = purchaseList.slice(purchaseStartIndex, purchaseStartIndex + purchasePageSize);
 
+  // PURCHASE RETURNS
+  const purchaseReturnList = purchaseReturnSummary.invoices;
+  const purchaseReturnTotalPages = Math.max(1, Math.ceil(purchaseReturnList.length / purchaseReturnPageSize));
+  const purchaseReturnCurrentPage = Math.min(purchaseReturnPage, purchaseReturnTotalPages);
+  const purchaseReturnStartIndex = (purchaseReturnCurrentPage - 1) * purchaseReturnPageSize;
+  const paginatedPurchaseReturns = purchaseReturnList.slice(purchaseReturnStartIndex, purchaseReturnStartIndex + purchaseReturnPageSize);
+
   // Reset page when switching tabs (nice UX)
   const changeTab = (tab: ReportTab) => {
     setActiveTab(tab);
@@ -222,6 +240,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
     if (tab === 'SALES') setSalesPage(1);
     if (tab === 'SALE_RETURNS') setReturnPage(1);
     if (tab === 'PURCHASES') setPurchasePage(1);
+    if (tab === 'PURCHASE_RETURNS') setPurchaseReturnPage(1);
     if (tab === 'PARTIES') setPartyPage(1);
   };
 
@@ -740,6 +759,108 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
     </div>
   );
 
+  const PurchaseReturnReport = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="text-sm text-slate-500 mb-1">Total Purchase Returns</div>
+          <div className="text-2xl font-bold text-red-600">₹{purchaseReturnSummary.totalPurchaseReturns.toLocaleString()}</div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="text-sm text-slate-500 mb-1">Total Return Tax</div>
+          <div className="text-2xl font-bold text-slate-800">₹{purchaseReturnSummary.totalPurchaseReturnTax.toLocaleString()}</div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
+          <div className="font-bold text-slate-700">Purchase Return / Debit Note History</div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-600">Rows:</span>
+            <select
+              value={purchaseReturnPageSize}
+              onChange={(e) => {
+                setPurchaseReturnPageSize(Number(e.target.value));
+                setPurchaseReturnPage(1);
+              }}
+              className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {[10, 20, 50, 100].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+              <tr>
+                <th className="px-6 py-3">Date</th>
+                <th className="px-6 py-3">Debit Note No.</th>
+                <th className="px-6 py-3">Original Invoice</th>
+                <th className="px-6 py-3">Supplier</th>
+                <th className="px-6 py-3">Reason</th>
+                <th className="px-6 py-3 text-right">Tax</th>
+                <th className="px-6 py-3 text-right">Return Amount</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-100">
+              {paginatedPurchaseReturns.map((inv) => (
+                <tr key={inv.id} className="hover:bg-slate-50">
+                  <td className="px-6 py-4 text-slate-600">{new Date(inv.date).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 font-medium text-slate-800">{inv.invoiceNumber}</td>
+                  <td className="px-6 py-4">
+                    {inv.originalRefNumber && inv.originalRefNumber.trim() !== '' ? (
+                      <span className="font-medium text-slate-800">{inv.originalRefNumber}</span>
+                    ) : (
+                      <span className="text-slate-400 italic">Not Specified</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-slate-600">{inv.partyName}</td>
+                  <td className="px-6 py-4 text-slate-600">
+                    {inv.notes && inv.notes.trim() !== '' ? (
+                      <span className="text-slate-700">{inv.notes}</span>
+                    ) : (
+                      <span className="text-slate-400 italic">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right text-slate-600">₹{inv.totalTax.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-right font-bold text-red-600">
+                    ₹{inv.totalAmount.toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+
+              {purchaseReturnList.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-slate-400">
+                    No purchase returns found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <PaginationBar
+          currentPage={purchaseReturnCurrentPage}
+          totalPages={purchaseReturnTotalPages}
+          startIndex={purchaseReturnStartIndex}
+          pageCount={paginatedPurchaseReturns.length}
+          totalCount={purchaseReturnList.length}
+          label="purchase returns"
+          onPrevious={() => setPurchaseReturnPage((p) => Math.max(1, p - 1))}
+          onNext={() => setPurchaseReturnPage((p) => Math.min(purchaseReturnTotalPages, p + 1))}
+        />
+      </div>
+    </div>
+  );
+
   const PartyReport = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -904,6 +1025,15 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         </button>
 
         <button
+          onClick={() => changeTab('PURCHASE_RETURNS')}
+          className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'PURCHASE_RETURNS' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+        >
+          <Package size={18} className="rotate-180" />
+          <span>Purchase Returns</span>
+        </button>
+
+        <button
           onClick={() => changeTab('PARTIES')}
           className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'PARTIES' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'
             }`}
@@ -920,6 +1050,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
         {activeTab === 'SALES' && <SalesReport />}
         {activeTab === 'SALE_RETURNS' && <SaleReturnReport />}
         {activeTab === 'PURCHASES' && <PurchaseReport />}
+        {activeTab === 'PURCHASE_RETURNS' && <PurchaseReturnReport />}
         {activeTab === 'PARTIES' && <PartyReport />}
       </div>
     </div>
