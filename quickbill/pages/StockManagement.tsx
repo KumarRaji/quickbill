@@ -67,7 +67,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.purchase_price || !formData.quantity) return;
+    if (!formData.name || formData.purchase_price === undefined || formData.quantity === undefined) return;
 
     setLoading(true);
     try {
@@ -285,9 +285,8 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                   <td className="px-6 py-4 text-right text-slate-600">{item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}</td>
                   <td className="px-6 py-4 text-center">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                      }`}
+                      className={`px-3 py-1 rounded-full text-xs font-bold ${item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                        }`}
                     >
                       {item.quantity} {item.unit}
                     </span>
@@ -450,9 +449,18 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     type="number"
                     step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.purchase_price}
-                    onChange={(e) => setFormData({ ...formData, purchase_price: parseFloat(e.target.value) })}
+                    value={formData.purchase_price ?? ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setFormData({
+                        ...formData,
+                        purchase_price: e.target.value === '' ? undefined : value,
+                      });
+                    }}
                   />
+
+
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">MRP</label>
@@ -460,9 +468,18 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     type="number"
                     step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.mrp}
-                    onChange={(e) => setFormData({ ...formData, mrp: parseFloat(e.target.value) || 0 })}
+                    value={formData.mrp ?? ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setFormData({
+                        ...formData,
+                        mrp: e.target.value === '' ? undefined : value,
+                      });
+                    }}
                   />
+
+
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Quantity *</label>
@@ -470,10 +487,20 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     required
                     type="number"
                     step="1"
+                    min="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) })}
+                    value={formData.quantity ?? ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setFormData({
+                        ...formData,
+                        quantity: e.target.value === '' ? undefined : value,
+                      });
+                    }}
                   />
+
+
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Unit *</label>

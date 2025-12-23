@@ -24,13 +24,13 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
 
   // 🔹 Pagination state
   const [page, setPage] = useState(1);
- const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
 
 
   const filteredParties = parties.filter(p =>
     (p.type === 'CUSTOMER' || !p.type) &&
     (p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (p.phone && p.phone.includes(searchTerm)))
+      (p.phone && p.phone.includes(searchTerm)))
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredParties.length / pageSize));
@@ -97,57 +97,62 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Customers</h1>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingParty(null);
+            setFormData({ name: '', phone: '', gstin: '', address: '', balance: 0, type: 'CUSTOMER' });
+            setIsModalOpen(true);
+          }}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
         >
+
           <Plus size={18} />
           <span>Add Customer</span>
         </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-       <div className="p-4 border-b border-slate-200 bg-slate-50">
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-    
-    {/* Search */}
-    <div className="relative w-full sm:max-w-md">
-      <Search
-        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-        size={18}
-      />
-      <input
-        type="text"
-        placeholder="Search customers by name or phone..."
-        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        value={searchTerm}
-        onChange={(e) => {
-          setSearchTerm(e.target.value);
-          setPage(1); // ✅ reset to first page on search
-        }}
-      />
-    </div>
+        <div className="p-4 border-b border-slate-200 bg-slate-50">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 
-    {/* Rows dropdown */}
-    <div className="flex items-center gap-2 justify-end">
-      <span className="text-xs font-medium text-slate-600">Rows:</span>
-      <select
-        value={pageSize}
-        onChange={(e) => {
-          setPageSize(Number(e.target.value));
-          setPage(1); // ✅ reset to first page on page size change
-        }}
-        className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        {[10, 20, 50, 100].map((n) => (
-          <option key={n} value={n}>
-            {n}
-          </option>
-        ))}
-      </select>
-    </div>
+            {/* Search */}
+            <div className="relative w-full sm:max-w-md">
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
+                size={18}
+              />
+              <input
+                type="text"
+                placeholder="Search customers by name or phone..."
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1); // ✅ reset to first page on search
+                }}
+              />
+            </div>
 
-  </div>
-</div>
+            {/* Rows dropdown */}
+            <div className="flex items-center gap-2 justify-end">
+              <span className="text-xs font-medium text-slate-600">Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1); // ✅ reset to first page on page size change
+                }}
+                className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {[10, 20, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+          </div>
+        </div>
 
 
         <div className="overflow-auto flex-1">
@@ -185,10 +190,10 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
                   </td>
                   <td
                     className={`px-6 py-4 whitespace-nowrap font-medium ${party.balance > 0
-                        ? 'text-green-600'
-                        : party.balance < 0
-                          ? 'text-red-600'
-                          : 'text-slate-600'
+                      ? 'text-green-600'
+                      : party.balance < 0
+                        ? 'text-red-600'
+                        : 'text-slate-600'
                       }`}
                   >
                     ₹{Math.abs(party.balance).toLocaleString()}{' '}
@@ -336,10 +341,17 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
                   type="number"
                   step="1"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={formData.balance || 0}
-                  onChange={(e) => setFormData({ ...formData, balance: Number(e.target.value) })}
-                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                  value={formData.balance ?? ''}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setFormData({
+                      ...formData,
+                      balance: e.target.value === '' ? undefined : value,
+                    });
+                  }}
                 />
+
               </div>
 
               <div className="pt-4 flex justify-end space-x-3">

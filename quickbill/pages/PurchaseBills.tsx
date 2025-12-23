@@ -16,8 +16,18 @@ export default function PurchaseBills({
 }: PurchaseBillsProps) {
   const [bills, setBills] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // search + filters
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "PAID" | "UNPAID">("ALL");
+  const [fromDate, setFromDate] = useState<string>(""); // yyyy-mm-dd
+  const [toDate, setToDate] = useState<string>(""); // yyyy-mm-dd
+
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const loadBills = useCallback(async () => {
     try {
@@ -48,19 +58,16 @@ export default function PurchaseBills({
     try {
       setDeletingId(bill.id);
 
-      // ✅ Optimistic remove (instant UI)
+      // ✅ Optimistic remove
       setBills((p) => p.filter((x) => x.id !== bill.id));
 
-      await InvoiceService.delete(bill.id); // ✅ API call
+      await InvoiceService.delete(bill.id);
 
-      // ✅ optional: refresh from server to stay accurate
+      // ✅ refresh for accuracy
       await loadBills();
     } catch (err) {
       console.error("Delete failed:", err);
-
-      // rollback
       setBills(prev);
-
       alert("Failed to delete. Please try again.");
     } finally {
       setDeletingId(null);
@@ -69,14 +76,35 @@ export default function PurchaseBills({
 
   const filteredBills = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return bills;
 
     return bills.filter((bill) => {
       const invoiceNo = (bill.invoiceNumber ?? "").toString().toLowerCase();
       const supplier = (bill.partyName ?? "").toString().toLowerCase();
-      return invoiceNo.includes(term) || supplier.includes(term);
+      const status = (bill.status || "UNPAID") as "PAID" | "UNPAID";
+
+      // search
+      const matchesSearch = !term || invoiceNo.includes(term) || supplier.includes(term);
+
+      // status filter
+      const matchesStatus = statusFilter === "ALL" || status === statusFilter;
+
+      // date filter (safe)
+      const billDate = bill.date ? new Date(bill.date) : null;
+      const fromOk = !fromDate || (billDate && billDate >= new Date(fromDate + "T00:00:00"));
+      const toOk = !toDate || (billDate && billDate <= new Date(toDate + "T23:59:59"));
+
+      return matchesSearch && matchesStatus && !!fromOk && !!toOk;
     });
-  }, [bills, searchTerm]);
+  }, [bills, searchTerm, statusFilter, fromDate, toDate]);
+
+  // ✅ paginate
+  const totalPages = Math.max(1, Math.ceil(filteredBills.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedBills = filteredBills.slice(startIndex, startIndex + pageSize);
+
+  const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
+  const handleNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   return (
     <div className="flex flex-col bg-white rounded-xl shadow-sm border border-slate-200">
@@ -95,16 +123,105 @@ export default function PurchaseBills({
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search by bill number or supplier..."
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        {/* Filters Row */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            {/* Search */}
+            <div className="relative md:col-span-5">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search by bill number or supplier..."
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            {/* From Date */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">From</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none"
+              />
+            </div>
+
+            {/* To Date */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">To</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none"
+              />
+            </div>
+
+            {/* Status */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as any);
+                  setPage(1);
+                }}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none"
+              >
+                <option value="ALL">All</option>
+                <option value="UNPAID">Unpaid</option>
+                <option value="PAID">Paid</option>
+              </select>
+            </div>
+
+            {/* Rows */}
+            <div className="md:col-span-1">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Rows</label>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none"
+              >
+                {[10, 20, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Clear filters */}
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setSearchTerm("");
+                setStatusFilter("ALL");
+                setFromDate("");
+                setToDate("");
+                setPage(1);
+              }}
+              className="text-xs font-medium text-slate-600 hover:text-slate-800"
+            >
+              Clear filters
+            </button>
+          </div>
         </div>
       </div>
 
@@ -112,7 +229,7 @@ export default function PurchaseBills({
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="text-center py-12 text-slate-500">Loading...</div>
-        ) : filteredBills.length === 0 ? (
+        ) : paginatedBills.length === 0 ? (
           <div className="text-center py-12 text-slate-500">No purchase bills found</div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
@@ -131,7 +248,7 @@ export default function PurchaseBills({
               </thead>
 
               <tbody className="divide-y divide-slate-200">
-                {filteredBills.map((bill) => {
+                {paginatedBills.map((bill) => {
                   const amount = Number(bill.totalAmount ?? 0);
                   const dateStr = bill.date ? new Date(bill.date).toLocaleDateString() : "-";
                   const supplier = bill.partyName || "-";
@@ -153,14 +270,12 @@ export default function PurchaseBills({
                               {item.itemName} (x{item.quantity})
                             </div>
                           ))}
-                          {items.length > 2 && (
-                            <div className="text-xs text-slate-400">+{items.length - 2} more</div>
-                          )}
+                          {items.length > 2 && <div className="text-xs text-slate-400">+{items.length - 2} more</div>}
                         </div>
                       </td>
 
                       <td className="px-6 py-4 text-sm text-slate-600 text-right">
-                        {items.length > 0 ? `${items[0].taxRate || 0}%` : '-'}
+                        {items.length > 0 ? `${items[0].taxRate || 0}%` : "-"}
                       </td>
 
                       <td className="px-6 py-4 text-sm text-slate-900 text-right font-medium">
@@ -216,15 +331,48 @@ export default function PurchaseBills({
                           </button>
                         </div>
 
-                        {isDeleting && (
-                          <div className="mt-1 text-[11px] text-slate-400">Deleting...</div>
-                        )}
+                        {isDeleting && <div className="mt-1 text-[11px] text-slate-400">Deleting...</div>}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+
+            {/* ✅ Pagination Bar */}
+            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                Showing{" "}
+                <span className="font-medium">
+                  {startIndex + 1}–{Math.min(startIndex + paginatedBills.length, filteredBills.length)}
+                </span>{" "}
+                of <span className="font-medium">{filteredBills.length}</span> bills
+              </p>
+
+              <div className="inline-flex items-center gap-2 text-sm">
+                <button
+                  onClick={handlePrevious}
+                  disabled={currentPage === 1}
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  type="button"
+                >
+                  Previous
+                </button>
+
+                <span className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
+                  {currentPage}
+                </span>
+
+                <button
+                  onClick={handleNext}
+                  disabled={currentPage === totalPages}
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  type="button"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
