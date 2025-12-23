@@ -218,7 +218,17 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Opening Balance</label>
-                <input type="number" step="0.01" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.balance || 0} onChange={(e) => setFormData({ ...formData, balance: Number(e.target.value) })} />
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.balance ?? ''}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    setFormData({ ...formData, balance: !isNaN(value) ? value : undefined });
+                  }}
+                />
               </div>
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={handleCloseModal} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>

@@ -586,10 +586,12 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     type="number"
                     step="0.01"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.mrp || 0}
-                    onChange={(e) =>
-                      setFormData({ ...formData, mrp: parseFloat(e.target.value) || 0 })
-                    }
+                    value={formData.mrp ?? ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      setFormData({ ...formData, mrp: !isNaN(value) ? value : undefined });
+                    }}
                   />
                 </div>
 
@@ -602,13 +604,15 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     type="number"
                     step="0.01"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.sellingPrice || 0}
-                    onChange={(e) =>
+                    value={formData.sellingPrice ?? ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
                       setFormData({
                         ...formData,
-                        sellingPrice: parseFloat(e.target.value) || 0,
-                      })
-                    }
+                        sellingPrice: !isNaN(value) ? value : undefined,
+                      });
+                    }}
                   />
                 </div>
 
@@ -621,13 +625,15 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     type="number"
                     step="0.01"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.purchasePrice || 0}
-                    onChange={(e) =>
+                    value={formData.purchasePrice ?? ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
                       setFormData({
                         ...formData,
-                        purchasePrice: parseFloat(e.target.value) || 0,
-                      })
-                    }
+                        purchasePrice: !isNaN(value) ? value : undefined,
+                      });
+                    }}
                   />
                 </div>
               </div>
@@ -641,10 +647,12 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     type="number"
                     step="0.01"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.stock || 0}
-                    onChange={(e) =>
-                      setFormData({ ...formData, stock: parseFloat(e.target.value) || 0 })
-                    }
+                    value={formData.stock ?? ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      setFormData({ ...formData, stock: !isNaN(value) ? value : undefined });
+                    }}
                   />
                 </div>
 
@@ -674,10 +682,12 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     type="number"
                     step="0.01"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.taxRate || 0}
-                    onChange={(e) =>
-                      setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 0 })
-                    }
+                    value={formData.taxRate ?? ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      setFormData({ ...formData, taxRate: !isNaN(value) ? value : undefined });
+                    }}
                   />
                 </div>
               </div>

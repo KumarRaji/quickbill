@@ -56,7 +56,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, su
 const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expenses }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-  const [timeFilter, setTimeFilter] = useState<'today' | 'month' | 'year'>('today');
+  const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'year'>('today');
 
   // 🔹 Current date & time in AM/PM
   const formattedDateTime = new Date().toLocaleString('en-IN', {
@@ -69,12 +69,18 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
   const filteredInvoices = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart = new Date(now.getFullYear(), 0, 1);
 
     return invoices.filter(inv => {
       const invDate = new Date(inv.date);
       if (timeFilter === 'today') return invDate >= today;
+      if (timeFilter === 'week') return invDate >= weekStart;
       if (timeFilter === 'month') return invDate >= monthStart;
       if (timeFilter === 'year') return invDate >= yearStart;
       return true;
@@ -84,12 +90,18 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
   const filteredExpenses = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart = new Date(now.getFullYear(), 0, 1);
 
     return expenses.filter(exp => {
       const expDate = new Date(exp.date);
       if (timeFilter === 'today') return expDate >= today;
+      if (timeFilter === 'week') return expDate >= weekStart;
       if (timeFilter === 'month') return expDate >= monthStart;
       if (timeFilter === 'year') return expDate >= yearStart;
       return true;
@@ -166,7 +178,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header with date/time */}
+      {/* Header with Title and Date/Time */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard Overview</h1>
         <div className="text-sm text-slate-500">
@@ -178,25 +190,33 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
       </div>
 
       {/* Time Filter Tabs */}
-      <div className="flex space-x-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-fit">
-        <button
-          onClick={() => setTimeFilter('today')}
-          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
-        >
-          Today
-        </button>
-        <button
-          onClick={() => setTimeFilter('month')}
-          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'month' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
-        >
-          This Month
-        </button>
-        <button
-          onClick={() => setTimeFilter('year')}
-          className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'year' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
-        >
-          This Year
-        </button>
+      <div className="flex justify-end">
+        <div className="flex space-x-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-fit">
+          <button
+            onClick={() => setTimeFilter('today')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            Today
+          </button>
+          <button
+            onClick={() => setTimeFilter('week')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'week' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            This Week
+          </button>
+          <button
+            onClick={() => setTimeFilter('month')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'month' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            This Month
+          </button>
+          <button
+            onClick={() => setTimeFilter('year')}
+            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'year' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+          >
+            This Year
+          </button>
+        </div>
       </div>
 
       {/* Stat cards */}
@@ -235,7 +255,9 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Net Sales Trend */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">Net Sales Trend</h3>
+          <h3 className="text-lg font-bold text-slate-800 mb-6">
+            Net Sales Trend ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)})
+          </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
@@ -275,7 +297,9 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
 
         {/* Recent Transactions */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">Recent Transactions</h3>
+          <h3 className="text-lg font-bold text-slate-800 mb-6">
+            Recent Transactions ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)})
+          </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-slate-500 uppercase bg-slate-50">

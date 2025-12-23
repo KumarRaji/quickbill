@@ -42,7 +42,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const dataToSave = { ...formData, type: 'CUSTOMER' as const };
+      const dataToSave = { ...formData, type: 'CUSTOMER' as const, balance: formData.balance ?? 0 };
       if (editingParty) {
         await PartyService.update(editingParty.id, dataToSave);
       } else {
@@ -338,6 +338,7 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   value={formData.balance || 0}
                   onChange={(e) => setFormData({ ...formData, balance: Number(e.target.value) })}
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
                 />
               </div>
 
