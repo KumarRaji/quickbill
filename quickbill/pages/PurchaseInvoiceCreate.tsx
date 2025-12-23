@@ -666,15 +666,15 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">MRP</label>
-                  <input type="number" step="0.01" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.mrp} onChange={(e) => setItemFormData({ ...itemFormData, mrp: Number(e.target.value) })} />
+                  <input type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.mrp} onChange={(e) => setItemFormData({ ...itemFormData, mrp: Number(e.target.value) })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Purchase Price *</label>
-                  <input required type="number" step="0.01" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.purchasePrice} onChange={(e) => setItemFormData({ ...itemFormData, purchasePrice: Number(e.target.value) })} />
+                  <input required type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.purchasePrice} onChange={(e) => setItemFormData({ ...itemFormData, purchasePrice: Number(e.target.value) })} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Selling Price *</label>
-                  <input required type="number" step="0.01" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.sellingPrice} onChange={(e) => setItemFormData({ ...itemFormData, sellingPrice: Number(e.target.value) })} />
+                  <input required type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.sellingPrice} onChange={(e) => setItemFormData({ ...itemFormData, sellingPrice: Number(e.target.value) })} />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -693,7 +693,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
-                  <input type="number" step="0.01" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.taxRate} onChange={(e) => setItemFormData({ ...itemFormData, taxRate: Number(e.target.value) })} />
+                  <input type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.taxRate} onChange={(e) => setItemFormData({ ...itemFormData, taxRate: Number(e.target.value) })} />
                 </div>
               </div>
               <div className="pt-4 flex justify-end space-x-3">

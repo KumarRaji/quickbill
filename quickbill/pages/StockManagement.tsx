@@ -448,7 +448,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                   <input
                     required
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.purchase_price}
                     onChange={(e) => setFormData({ ...formData, purchase_price: parseFloat(e.target.value) })}
@@ -458,7 +458,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                   <label className="block text-sm font-medium text-slate-700 mb-1">MRP</label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.mrp}
                     onChange={(e) => setFormData({ ...formData, mrp: parseFloat(e.target.value) || 0 })}
@@ -469,7 +469,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                   <input
                     required
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) })}
@@ -537,7 +537,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 <input
                   required
                   type="number"
-                  step="0.01"
+                  step="1"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   value={moveData.selling_price}
                   onChange={(e) => setMoveData({ ...moveData, selling_price: parseFloat(e.target.value) })}
@@ -547,7 +547,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">MRP</label>
                 <input
                   type="number"
-                  step="0.01"
+                  step="1"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   value={moveData.mrp}
                   onChange={(e) => setMoveData({ ...moveData, mrp: parseFloat(e.target.value) })}
@@ -557,7 +557,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
                 <input
                   type="number"
-                  step="0.01"
+                  step="1"
                   min="0"
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                   value={moveData.tax_rate}

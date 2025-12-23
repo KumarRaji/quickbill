@@ -584,7 +584,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.mrp ?? ''}
                     onFocus={(e) => e.target.select()}
@@ -602,7 +602,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   <input
                     required
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.sellingPrice ?? ''}
                     onFocus={(e) => e.target.select()}
@@ -623,7 +623,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   <input
                     required
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.purchasePrice ?? ''}
                     onFocus={(e) => e.target.select()}
@@ -645,7 +645,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.stock ?? ''}
                     onFocus={(e) => e.target.select()}
@@ -680,7 +680,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.taxRate ?? ''}
                     onFocus={(e) => e.target.select()}

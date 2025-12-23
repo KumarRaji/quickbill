@@ -689,7 +689,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoi
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={itemFormData.mrp || 0}
                     onChange={(e) =>
@@ -705,7 +705,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoi
                   <input
                     required
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={itemFormData.sellingPrice || 0}
                     onChange={(e) =>
@@ -721,7 +721,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoi
                   <input
                     required
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={itemFormData.purchasePrice || 0}
                     onChange={(e) =>
@@ -738,7 +738,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoi
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={itemFormData.stock || 0}
                     onChange={(e) =>
@@ -773,7 +773,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({ parties, items, editInvoi
                   </label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={itemFormData.taxRate || 0}
                     onChange={(e) =>
