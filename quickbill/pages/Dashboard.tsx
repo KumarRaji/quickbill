@@ -110,9 +110,16 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
 
   const stats = useMemo(() => {
     // Calculate Net Sales (Sales - Returns)
+    // RETURN invoices are stored with negative amounts, so just sum all sale-type invoices
     const totalSales = filteredInvoices.reduce((sum, inv) => {
-      if (inv.type === 'SALE') return sum + inv.totalAmount;
-      if (inv.type === 'RETURN') return sum - inv.totalAmount;
+      if (inv.type === 'SALE' || inv.type === 'RETURN') return sum + inv.totalAmount;
+      return sum;
+    }, 0);
+
+    // Calculate Net Purchases (Purchases - Purchase Returns)
+    // PURCHASE_RETURN invoices are stored with negative amounts, so just sum all purchase-type invoices
+    const totalPurchases = filteredInvoices.reduce((sum, inv) => {
+      if (inv.type === 'PURCHASE' || inv.type === 'PURCHASE_RETURN') return sum + inv.totalAmount;
       return sum;
     }, 0);
 
@@ -124,7 +131,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
     const totalParties = parties.length;
     const lowStockItems = items.filter((i) => i.stock < 10).length;
 
-    return { totalSales, totalExpenses, totalInvoices, totalParties, lowStockItems };
+    return { totalSales, totalPurchases, totalExpenses, totalInvoices, totalParties, lowStockItems };
   }, [filteredInvoices, parties, items, filteredExpenses]);
 
   const lowStockItemsList = useMemo(() => 
@@ -220,13 +227,20 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatCard
           title="Net Sales"
           value={`₹${stats.totalSales.toLocaleString()}`}
           icon={TrendingUp}
           color="bg-green-500"
           subText="Sales - Returns"
+        />
+        <StatCard
+          title="Net Purchases"
+          value={`₹${stats.totalPurchases.toLocaleString()}`}
+          icon={Package}
+          color="bg-purple-500"
+          subText="Purchases - Returns"
         />
         <StatCard
           title="Total Expenses"

@@ -1542,7 +1542,7 @@ exports.applySaleReturn = (req, res) => {
                 [
                   original.party_id,
                   returnInvoiceNo,
-                  returnGrand,
+                  -returnGrand,
                   new Date(),
                   reason ? `Sale Return: ${reason}` : `Sale Return for ${original.invoice_no}`,
                   original.payment_mode || "CASH",
@@ -1592,65 +1592,50 @@ exports.applySaleReturn = (req, res) => {
                       insertAudit();
 
                       function updateOriginalInvoice() {
-                        // 8) Update original invoice totals
+                        // 8) Do NOT update original invoice total_amount
+                        // The original invoice stays unchanged, and the RETURN invoice (with negative amount)
+                        // handles the reduction. This prevents double counting.
+
+                        // 9) party balance: SALE_RETURN means customer owes less => balance -= returnGrand
                         conn.query(
-                          "SELECT COALESCE(SUM(total),0) AS total_amount FROM sale_invoice_items WHERE invoice_id = ?",
-                          [originalId],
-                          (sumErr, sumRows) => {
-                            if (sumErr) return rollback(500, { message: "Failed to recalc original total", error: sumErr.message });
+                          "UPDATE parties SET balance = balance - ? WHERE id = ?",
+                          [returnGrand, original.party_id],
+                          (balErr) => {
+                            if (balErr) return rollback(500, { message: "Failed to update party balance", error: balErr.message });
 
-                            const newOriginalTotal = Number(sumRows?.[0]?.total_amount || 0);
-
+                            // 10) close if fully returned (all qty left = 0)
                             conn.query(
-                              "UPDATE sale_invoices SET total_amount = ? WHERE id = ?",
-                              [newOriginalTotal, originalId],
-                              (updTotErr) => {
-                                if (updTotErr) return rollback(500, { message: "Failed to update original total", error: updTotErr.message });
+                            "SELECT COALESCE(SUM(quantity),0) AS qty_left FROM sale_invoice_items WHERE invoice_id = ?",
+                            [originalId],
+                            (leftErr, leftRows) => {
+                              if (leftErr) return rollback(500, { message: "Failed to check qty left", error: leftErr.message });
 
-                                // 9) party balance: SALE_RETURN means customer owes less => balance -= returnGrand
-                                conn.query(
-                                  "UPDATE parties SET balance = balance - ? WHERE id = ?",
-                                  [returnGrand, original.party_id],
-                                  (balErr) => {
-                                    if (balErr) return rollback(500, { message: "Failed to update party balance", error: balErr.message });
+                              const qtyLeft = Number(leftRows?.[0]?.qty_left || 0);
+                              const closeSql = qtyLeft <= 0 ? "UPDATE sale_invoices SET is_closed = 1 WHERE id = ?" : null;
 
-                                    // 10) close if fully returned (all qty left = 0)
-                                    conn.query(
-                                    "SELECT COALESCE(SUM(quantity),0) AS qty_left FROM sale_invoice_items WHERE invoice_id = ?",
-                                    [originalId],
-                                    (leftErr, leftRows) => {
-                                      if (leftErr) return rollback(500, { message: "Failed to check qty left", error: leftErr.message });
+                              const finish = () => {
+                                conn.commit((cErr) => {
+                                  if (cErr) return rollback(500, { message: "Commit failed", error: cErr.message });
+                                  conn.release();
+                                  return res.status(201).json({
+                                    message: "Sale return processed",
+                                    returnInvoiceId: String(returnInvoiceId),
+                                    invoiceNumber: returnInvoiceNo,
+                                    totalAmount: returnGrand,
+                                  });
+                                });
+                              };
 
-                                      const qtyLeft = Number(leftRows?.[0]?.qty_left || 0);
-                                      const closeSql = qtyLeft <= 0 ? "UPDATE sale_invoices SET is_closed = 1 WHERE id = ?" : null;
+                              if (!closeSql) return finish();
 
-                                      const finish = () => {
-                                        conn.commit((cErr) => {
-                                          if (cErr) return rollback(500, { message: "Commit failed", error: cErr.message });
-                                          conn.release();
-                                          return res.status(201).json({
-                                            message: "Sale return processed",
-                                            returnInvoiceId: String(returnInvoiceId),
-                                            invoiceNumber: returnInvoiceNo,
-                                            totalAmount: returnGrand,
-                                          });
-                                        });
-                                      };
-
-                                      if (!closeSql) return finish();
-
-                                      conn.query(closeSql, [originalId], (closeErr) => {
-                                        if (closeErr) return rollback(500, { message: "Failed to close invoice", error: closeErr.message });
-                                        finish();
-                                      });
-                                    }
-                                  );
-                                }
-                              );
+                              conn.query(closeSql, [originalId], (closeErr) => {
+                                if (closeErr) return rollback(500, { message: "Failed to close invoice", error: closeErr.message });
+                                finish();
+                              });
                             }
                           );
-                        }
-                      );
+                          }
+                        );
                       }
                       return;
                     }
@@ -1802,6 +1787,7 @@ exports.applyPurchaseReturn = (req, res) => {
               returnGrand = Number(returnGrand.toFixed(2));
 
               // 5) Insert PURCHASE_RETURN invoice into purchase_invoices table
+              // Store with NEGATIVE amount so it subtracts from Dashboard totals
               const returnInvoiceNo = `PRN-${Date.now().toString().slice(-8)}`;
               conn.query(
                 `INSERT INTO purchase_invoices
@@ -1810,7 +1796,7 @@ exports.applyPurchaseReturn = (req, res) => {
                 [
                   original.supplier_id,
                   returnInvoiceNo,
-                  returnGrand,
+                  -returnGrand,
                   new Date(),
                   reason ? `Purchase Return: ${reason}` : `Purchase Return for ${original.invoice_no}`,
                   original.payment_mode || "CASH",
@@ -1860,66 +1846,50 @@ exports.applyPurchaseReturn = (req, res) => {
                       insertAudit();
 
                       function updateOriginalInvoice() {
-                        // 8) Recalc original invoice totals from purchase_invoice_items
+                        // 8) Do NOT update original invoice total_amount
+                        // The original invoice stays unchanged, and the PURCHASE_RETURN invoice (with negative amount)
+                        // handles the reduction. This prevents double counting.
+
+                        // 9) supplier balance: PURCHASE_RETURN means we owe supplier less => balance += returnGrand
                         conn.query(
-                          "SELECT COALESCE(SUM(total),0) AS total_amount FROM purchase_invoice_items WHERE invoice_id = ?",
-                          [originalId],
-                          (sumErr, sumRows) => {
-                            if (sumErr) return rollback(500, { message: "Failed to recalc original total", error: sumErr.message });
+                          "UPDATE parties SET balance = balance + ? WHERE id = ? AND type='SUPPLIER'",
+                          [returnGrand, original.supplier_id],
+                          (balErr) => {
+                            if (balErr) return rollback(500, { message: "Failed to update supplier balance", error: balErr.message });
 
-                            const newOriginalTotal = Number(sumRows?.[0]?.total_amount || 0);
-
+                            // 10) close if fully returned
                             conn.query(
-                              "UPDATE purchase_invoices SET total_amount = ? WHERE id = ?",
-                              [newOriginalTotal, originalId],
-                              (updTotErr) => {
-                                if (updTotErr) return rollback(500, { message: "Failed to update original total", error: updTotErr.message });
+                              "SELECT COALESCE(SUM(quantity),0) AS qty_left FROM purchase_invoice_items WHERE invoice_id = ?",
+                              [originalId],
+                              (leftErr, leftRows) => {
+                                if (leftErr) return rollback(500, { message: "Failed to check qty left", error: leftErr.message });
 
-                                // 9) supplier balance: PURCHASE_RETURN means we owe supplier less => balance += returnGrand
-                                // Update parties table balance with supplier type filter
-                                conn.query(
-                                  "UPDATE parties SET balance = balance + ? WHERE id = ? AND type='SUPPLIER'",
-                                  [returnGrand, original.supplier_id],
-                                  (balErr) => {
-                                    if (balErr) return rollback(500, { message: "Failed to update supplier balance", error: balErr.message });
+                                const qtyLeft = Number(leftRows?.[0]?.qty_left || 0);
+                                const closeSql = qtyLeft <= 0 ? "UPDATE purchase_invoices SET is_closed = 1 WHERE id = ?" : null;
 
-                                  // 9) close if fully returned
-                                  conn.query(
-                                    "SELECT COALESCE(SUM(quantity),0) AS qty_left FROM purchase_invoice_items WHERE invoice_id = ?",
-                                    [originalId],
-                                    (leftErr, leftRows) => {
-                                      if (leftErr) return rollback(500, { message: "Failed to check qty left", error: leftErr.message });
+                                const finish = () => {
+                                  conn.commit((cErr) => {
+                                    if (cErr) return rollback(500, { message: "Commit failed", error: cErr.message });
+                                    conn.release();
+                                    return res.status(201).json({
+                                      message: "Purchase return processed",
+                                      returnInvoiceId: String(returnInvoiceId),
+                                      invoiceNumber: returnInvoiceNo,
+                                      totalAmount: returnGrand,
+                                    });
+                                  });
+                                };
 
-                                      const qtyLeft = Number(leftRows?.[0]?.qty_left || 0);
-                                      const closeSql = qtyLeft <= 0 ? "UPDATE purchase_invoices SET is_closed = 1 WHERE id = ?" : null;
+                                if (!closeSql) return finish();
 
-                                      const finish = () => {
-                                        conn.commit((cErr) => {
-                                          if (cErr) return rollback(500, { message: "Commit failed", error: cErr.message });
-                                          conn.release();
-                                          return res.status(201).json({
-                                            message: "Purchase return processed",
-                                            returnInvoiceId: String(returnInvoiceId),
-                                            invoiceNumber: returnInvoiceNo,
-                                            totalAmount: returnGrand,
-                                          });
-                                        });
-                                      };
-
-                                      if (!closeSql) return finish();
-
-                                      conn.query(closeSql, [originalId], (closeErr) => {
-                                        if (closeErr) return rollback(500, { message: "Failed to close invoice", error: closeErr.message });
-                                        finish();
-                                      });
-                                    }
-                                  );
-                                }
-                              );
-                            }
-                          );
-                        }
-                      );
+                                conn.query(closeSql, [originalId], (closeErr) => {
+                                  if (closeErr) return rollback(500, { message: "Failed to close invoice", error: closeErr.message });
+                                  finish();
+                                });
+                              }
+                            );
+                          }
+                        );
                       }
                       return;
                     }
