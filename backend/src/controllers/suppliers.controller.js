@@ -7,7 +7,7 @@ const toInt = (v, fallback) => {
 
 // GET /api/suppliers?search=&page=&pageSize=
 exports.listSuppliers = (req, res) => {
-  const sql = `SELECT id, name, phone, gstin, address, balance FROM parties WHERE type='SUPPLIER' ORDER BY id DESC`;
+  const sql = `SELECT id, name, phone, gstin, address, balance FROM suppliers ORDER BY id DESC`;
   
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json({ message: "DB error", error: err.message });
@@ -21,7 +21,7 @@ exports.getSupplierById = (req, res) => {
   if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
 
   db.query(
-    `SELECT id, name, phone, gstin, address, balance, created_at, updated_at FROM parties WHERE id=? AND type='SUPPLIER'`,
+    `SELECT id, name, phone, gstin, address, balance, created_at, updated_at FROM suppliers WHERE id=?`,
     [id],
     (err, rows) => {
       if (err) return res.status(500).json({ message: "DB error", error: err.message });
@@ -40,8 +40,8 @@ exports.createSupplier = (req, res) => {
   }
 
   const sql = `
-    INSERT INTO parties (name, phone, gstin, address, balance, type)
-    VALUES (?, ?, ?, ?, ?, 'SUPPLIER')
+    INSERT INTO suppliers (name, phone, gstin, address, balance)
+    VALUES (?, ?, ?, ?, ?)
   `;
 
   db.query(
@@ -89,7 +89,7 @@ exports.updateSupplier = (req, res) => {
 
   if (sets.length === 0) return res.status(400).json({ message: "No fields to update" });
 
-  const sql = `UPDATE parties SET ${sets.join(", ")} WHERE id=? AND type='SUPPLIER'`;
+  const sql = `UPDATE suppliers SET ${sets.join(", ")} WHERE id=?`;
 
   db.query(sql, [...values, id], (err, result) => {
     if (err) {
@@ -126,7 +126,7 @@ exports.deleteSupplier = (req, res) => {
     }
 
     // Proceed with deletion if no invoices
-    db.query(`DELETE FROM parties WHERE id=? AND type='SUPPLIER'`, [id], (err, result) => {
+    db.query(`DELETE FROM suppliers WHERE id=?`, [id], (err, result) => {
       if (err) return res.status(500).json({ message: "DB error", error: err.message });
       if (!result.affectedRows) return res.status(404).json({ message: "Supplier not found" });
 

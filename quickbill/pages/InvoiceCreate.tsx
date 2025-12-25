@@ -383,11 +383,13 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
               onChange={(e) => setSelectedPartyId(e.target.value)}
             >
               <option value="">{isPurchase ? "Select Supplier" : "Select Customer"}</option>
-              {parties.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
+              {parties
+                .filter((p) => isPurchase ? p.type === "SUPPLIER" : p.type === "CUSTOMER" || p.type === undefined)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
             </select>
           </div>
 

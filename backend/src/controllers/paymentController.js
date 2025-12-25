@@ -4,9 +4,10 @@ const pool = require('../config/db');
 // GET /api/payments
 exports.getPayments = (req, res) => {
   const sql = `
-    SELECT p.*, pt.name as party_name 
+    SELECT p.*, COALESCE(pt.name, ps.name) as party_name 
     FROM payments p 
     LEFT JOIN parties pt ON p.party_id = pt.id 
+    LEFT JOIN suppliers ps ON p.party_id = ps.id 
     ORDER BY p.id DESC
   `;
   pool.query(sql, (err, rows) => {
@@ -40,74 +41,53 @@ exports.createPayment = (req, res) => {
 
   const paymentDate = date ? new Date(date) : new Date();
 
-  // Insert payment then update party balance
+  // Insert payment
   const insertSql =
     'INSERT INTO payments (party_id, type, amount, payment_date, mode, notes) VALUES (?, ?, ?, ?, ?, ?)';
 
-  pool.getConnection((connErr, conn) => {
-    if (connErr) {
-      console.error('Error getting connection:', connErr);
-      return res.status(500).json({ message: 'Failed to create payment' });
-    }
-
-    conn.beginTransaction((txErr) => {
-      if (txErr) {
-        conn.release();
-        console.error('Transaction error:', txErr);
-        return res.status(500).json({ message: 'Failed to create payment' });
+  pool.query(
+    insertSql,
+    [partyId, type, amount, paymentDate, mode || null, notes || null],
+    (insertErr, insertResult) => {
+      if (insertErr) {
+        console.error('Error inserting payment:', insertErr);
+        return res.status(500).json({ message: 'Failed to create payment', error: insertErr.message });
       }
 
-      conn.query(
-        insertSql,
-        [partyId, type, amount, paymentDate, mode || null, notes || null],
-        (insertErr, result) => {
-          if (insertErr) {
-            console.error('Error inserting payment:', insertErr);
-            return conn.rollback(() => {
-              conn.release();
-              res.status(500).json({ message: 'Failed to create payment' });
-            });
-          }
+      const balanceDelta = type === 'IN' ? -amount : amount;
+      
+      // Try to update suppliers table first
+      const supplierUpdateSql = 'UPDATE suppliers SET balance = balance + ? WHERE id = ?';
 
-          const balanceDelta = type === 'IN' ? -amount : amount;
-          const balSql =
-            'UPDATE parties SET balance = balance + ? WHERE id = ?';
-
-          conn.query(balSql, [balanceDelta, partyId], (balErr) => {
-            if (balErr) {
-              console.error('Error updating balance:', balErr);
-              return conn.rollback(() => {
-                conn.release();
-                res
-                  .status(500)
-                  .json({ message: 'Failed to update party balance' });
-              });
-            }
-
-            conn.commit((commitErr) => {
-              if (commitErr) {
-                console.error('Commit error:', commitErr);
-                return conn.rollback(() => {
-                  conn.release();
-                  res.status(500).json({ message: 'Failed to create payment' });
-                });
-              }
-
-              conn.release();
-
-              res.status(201).json({
-                id: result.insertId.toString(),
-                partyId: partyId.toString(),
-                type,
-                amount,
-                date: paymentDate,
-                mode,
-                notes,
-              });
+      pool.query(supplierUpdateSql, [balanceDelta, partyId], (supplierErr, supplierResult) => {
+        // If no rows were updated in suppliers (or error), try parties table
+        if (!supplierResult || supplierResult.affectedRows === 0) {
+          const partyUpdateSql = 'UPDATE parties SET balance = balance + ? WHERE id = ?';
+          pool.query(partyUpdateSql, [balanceDelta, partyId], (partyErr, partyResult) => {
+            // Send response regardless of balance update success/failure
+            res.status(201).json({
+              id: insertResult.insertId.toString(),
+              partyId: partyId.toString(),
+              type,
+              amount,
+              date: paymentDate,
+              mode,
+              notes,
             });
           });
+        } else {
+          // Supplier was updated successfully
+          res.status(201).json({
+            id: insertResult.insertId.toString(),
+            partyId: partyId.toString(),
+            type,
+            amount,
+            date: paymentDate,
+            mode,
+            notes,
+          });
         }
-      );
-    });
-  });
+      });
+    }
+  );
 };
