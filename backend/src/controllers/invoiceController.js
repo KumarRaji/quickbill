@@ -77,7 +77,10 @@ exports.getInvoices = (req, res) => {
       i.id,
       i.supplier_id as party_id,
       i.invoice_no,
-      'PURCHASE' as type,
+      CASE 
+        WHEN i.original_purchase_invoice_id IS NOT NULL THEN 'PURCHASE_RETURN'
+        ELSE 'PURCHASE'
+      END as type,
       i.total_amount,
       i.invoice_date,
       i.notes,
@@ -89,7 +92,7 @@ exports.getInvoices = (req, res) => {
       orig.invoice_no as original_invoice_no,
       'PURCHASE' as source_table
     FROM purchase_invoices i
-    LEFT JOIN parties s ON i.supplier_id = s.id AND s.type='SUPPLIER'
+    LEFT JOIN suppliers s ON i.supplier_id = s.id
     LEFT JOIN purchase_invoices orig ON i.original_purchase_invoice_id = orig.id
   `;
 

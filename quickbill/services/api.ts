@@ -201,6 +201,25 @@ export const InvoiceService = {
   },
 
   create: async (invoice: Omit<Invoice, "id">): Promise<Invoice> => {
+    // Route purchase invoices to purchase-bills endpoint
+    if (invoice.type === "PURCHASE" || invoice.type === "PURCHASE_RETURN") {
+      // Transform payload for purchase-bills endpoint (expects supplierId, not partyId)
+      const purchasePayload = {
+        ...invoice,
+        supplierId: invoice.partyId,
+      };
+      // Remove partyId since purchase-bills doesn't use it
+      delete (purchasePayload as any).partyId;
+      
+      const res = await fetch(`${API_BASE}/purchase-bills`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(purchasePayload),
+      });
+      return handleResponse<Invoice>(res);
+    }
+    
+    // For sale invoices, use the regular invoices endpoint
     const res = await fetch(`${API_BASE}/invoices`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

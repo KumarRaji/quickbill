@@ -170,12 +170,65 @@ exports.createPurchaseBill = (req, res) => {
                     });
                   }
                   conn.release();
-                  res.status(201).json({
-                    id: String(purchaseInvoiceId),
-                    supplierId: String(supplierIdNum),
-                    billNo: generatedBillNo,
-                    totalAmount: total,
-                  });
+                  
+                  // ✅ Fetch full invoice data with items and supplier info
+                  pool.query(
+                    `SELECT 
+                      i.id,
+                      i.invoice_no,
+                      i.total_amount,
+                      i.invoice_date,
+                      i.notes,
+                      i.payment_mode,
+                      i.supplier_id,
+                      s.name as supplier_name
+                    FROM purchase_invoices i
+                    LEFT JOIN suppliers s ON i.supplier_id = s.id
+                    WHERE i.id = ?`,
+                    [purchaseInvoiceId],
+                    (invErr, invRows) => {
+                      if (invErr || !invRows || invRows.length === 0) {
+                        return res.status(500).json({ message: "Failed to fetch created invoice" });
+                      }
+
+                      const inv = invRows[0];
+
+                      pool.query(
+                        `SELECT invoice_id, item_id, name, quantity, mrp, price, tax_rate, total
+                        FROM purchase_invoice_items
+                        WHERE invoice_id = ?`,
+                        [purchaseInvoiceId],
+                        (itemsErr, itemsRows) => {
+                          if (itemsErr) itemsRows = [];
+
+                          const invoice = {
+                            id: String(inv.id),
+                            invoiceNumber: inv.invoice_no,
+                            type: "PURCHASE",
+                            partyId: String(inv.supplier_id),
+                            partyName: inv.supplier_name || "Unknown Supplier",
+                            date: inv.invoice_date,
+                            totalAmount: Number(inv.total_amount),
+                            totalTax: 0,
+                            status: "UNPAID",
+                            paymentMode: inv.payment_mode || "CASH",
+                            notes: inv.notes || "",
+                            items: (itemsRows || []).map((it) => ({
+                              itemId: String(it.item_id),
+                              itemName: it.name,
+                              quantity: Number(it.quantity),
+                              mrp: Number(it.mrp),
+                              price: Number(it.price),
+                              taxRate: Number(it.tax_rate),
+                              amount: Number(it.total),
+                            })),
+                          };
+
+                          res.status(201).json(invoice);
+                        }
+                      );
+                    }
+                  );
                 });
               }
 
