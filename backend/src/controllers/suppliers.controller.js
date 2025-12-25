@@ -5,9 +5,9 @@ const toInt = (v, fallback) => {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 };
 
-// GET /api/suppliers?search=&page=&pageSize=
+// GET /api/suppliers - Get all suppliers from suppliers table
 exports.listSuppliers = (req, res) => {
-  const sql = `SELECT id, name, phone, gstin, address, balance FROM suppliers ORDER BY id DESC`;
+  const sql = `SELECT id, name, phone, gstin, address, balance, created_at, updated_at FROM suppliers ORDER BY id DESC`;
   
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json({ message: "DB error", error: err.message });
@@ -15,7 +15,7 @@ exports.listSuppliers = (req, res) => {
   });
 };
 
-// GET /api/suppliers/:id
+// GET /api/suppliers/:id - Get supplier by ID from suppliers table
 exports.getSupplierById = (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
@@ -31,7 +31,7 @@ exports.getSupplierById = (req, res) => {
   );
 };
 
-// POST /api/suppliers
+// POST /api/suppliers - Create supplier in suppliers table
 exports.createSupplier = (req, res) => {
   const { name, phone, gstin, address, balance } = req.body;
 
@@ -70,7 +70,7 @@ exports.createSupplier = (req, res) => {
   );
 };
 
-// PATCH /api/suppliers/:id
+// PATCH /api/suppliers/:id - Update supplier in suppliers table
 exports.updateSupplier = (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
@@ -105,7 +105,7 @@ exports.updateSupplier = (req, res) => {
   });
 };
 
-// DELETE /api/suppliers/:id
+// DELETE /api/suppliers/:id - Delete supplier from suppliers table
 exports.deleteSupplier = (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
