@@ -162,7 +162,7 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                 setHighlightedIndex(-1);
               }}
               onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              onBlur={() => setShowSuggestions(false)}
               onKeyDown={(e) => {
                 if (!showSuggestions || filteredInvoices.length === 0) return;
                 
@@ -187,11 +187,11 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
               placeholder="Search..."
             />
             {showSuggestions && searchQuery.trim() && filteredInvoices.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto" onMouseDown={(e) => e.preventDefault()}>
                 {filteredInvoices.map((inv, index) => (
                   <div
                     key={inv.id}
-                    onClick={() => {
+                    onMouseDown={() => {
                       setSelectedInvoiceId(String(inv.id));
                       setSearchQuery("");
                       setShowSuggestions(false);
