@@ -7,7 +7,7 @@ const toInt = (v, fallback) => {
 
 // GET /api/suppliers?search=&page=&pageSize=
 exports.listSuppliers = (req, res) => {
-  const sql = `SELECT id, name, phone, gstin, address, balance FROM suppliers ORDER BY id DESC`;
+  const sql = `SELECT id, name, phone, gstin, address, balance FROM parties WHERE type='SUPPLIER' ORDER BY id DESC`;
   
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json({ message: "DB error", error: err.message });
@@ -21,7 +21,7 @@ exports.getSupplierById = (req, res) => {
   if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
 
   db.query(
-    `SELECT id, name, phone, gstin, address, balance, created_at, updated_at FROM suppliers WHERE id=?`,
+    `SELECT id, name, phone, gstin, address, balance, created_at, updated_at FROM parties WHERE id=? AND type='SUPPLIER'`,
     [id],
     (err, rows) => {
       if (err) return res.status(500).json({ message: "DB error", error: err.message });
@@ -40,8 +40,8 @@ exports.createSupplier = (req, res) => {
   }
 
   const sql = `
-    INSERT INTO suppliers (name, phone, gstin, address, balance)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO parties (name, phone, gstin, address, balance, type)
+    VALUES (?, ?, ?, ?, ?, 'SUPPLIER')
   `;
 
   db.query(
@@ -89,7 +89,7 @@ exports.updateSupplier = (req, res) => {
 
   if (sets.length === 0) return res.status(400).json({ message: "No fields to update" });
 
-  const sql = `UPDATE suppliers SET ${sets.join(", ")} WHERE id=?`;
+  const sql = `UPDATE parties SET ${sets.join(", ")} WHERE id=? AND type='SUPPLIER'`;
 
   db.query(sql, [...values, id], (err, result) => {
     if (err) {
@@ -110,10 +110,27 @@ exports.deleteSupplier = (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) return res.status(400).json({ message: "Invalid id" });
 
-  db.query(`DELETE FROM suppliers WHERE id=?`, [id], (err, result) => {
-    if (err) return res.status(500).json({ message: "DB error", error: err.message });
-    if (!result.affectedRows) return res.status(404).json({ message: "Supplier not found" });
+  // Check if supplier has any purchase invoices
+  const checkSql = `SELECT COUNT(*) as count FROM purchase_invoices WHERE supplier_id = ?`;
+  
+  db.query(checkSql, [id], (checkErr, checkRows) => {
+    if (checkErr) {
+      return res.status(500).json({ message: "DB error", error: checkErr.message });
+    }
 
-    res.json({ message: "Supplier deleted" });
+    const invoiceCount = checkRows?.[0]?.count || 0;
+    if (invoiceCount > 0) {
+      return res.status(409).json({ 
+        message: `Cannot delete supplier with ${invoiceCount} associated purchase invoice(s). Please delete or reassign the invoices first.` 
+      });
+    }
+
+    // Proceed with deletion if no invoices
+    db.query(`DELETE FROM parties WHERE id=? AND type='SUPPLIER'`, [id], (err, result) => {
+      if (err) return res.status(500).json({ message: "DB error", error: err.message });
+      if (!result.affectedRows) return res.status(404).json({ message: "Supplier not found" });
+
+      res.json({ message: "Supplier deleted" });
+    });
   });
 };

@@ -61,17 +61,46 @@ function getBalanceDelta(type, total) {
 // GET /api/invoices
 // ==============================
 exports.getInvoices = (req, res) => {
-  const sql = `
+  // ✅ FETCH FROM BOTH SALE AND PURCHASE INVOICES
+  const saleSql = `
     SELECT i.*, 
       COALESCE(p.name, 'Cash Customer') as party_name,
-      orig.invoice_no as original_invoice_no
+      orig.invoice_no as original_invoice_no,
+      'SALE' as source_table
     FROM sale_invoices i 
     LEFT JOIN parties p ON i.party_id = p.id
     LEFT JOIN sale_invoices orig ON i.original_invoice_id = orig.id
-    ORDER BY i.id DESC
   `;
 
-  pool.query(sql, (err, invoices) => {
+  const purchaseSql = `
+    SELECT 
+      i.id,
+      i.supplier_id as party_id,
+      i.invoice_no,
+      'PURCHASE' as type,
+      i.total_amount,
+      i.invoice_date,
+      i.notes,
+      i.created_at,
+      i.payment_mode,
+      i.original_purchase_invoice_id as original_invoice_id,
+      i.is_closed,
+      s.name as party_name,
+      orig.invoice_no as original_invoice_no,
+      'PURCHASE' as source_table
+    FROM purchase_invoices i
+    LEFT JOIN parties s ON i.supplier_id = s.id AND s.type='SUPPLIER'
+    LEFT JOIN purchase_invoices orig ON i.original_purchase_invoice_id = orig.id
+  `;
+
+  const combinedSql = `
+    ${saleSql}
+    UNION ALL
+    ${purchaseSql}
+    ORDER BY id DESC
+  `;
+
+  pool.query(combinedSql, (err, invoices) => {
     if (err) {
       console.error("Error fetching invoices:", err);
       return res
@@ -83,34 +112,107 @@ exports.getInvoices = (req, res) => {
       return res.json([]);
     }
 
-    const invoiceIds = invoices.map((inv) => inv.id);
-    const itemsSql =
-      "SELECT * FROM sale_invoice_items WHERE invoice_id IN (?) ORDER BY id ASC";
+    // Separate sale and purchase invoices for fetching items
+    const saleInvoiceIds = invoices.filter(i => i.source_table === 'SALE').map(inv => inv.id);
+    const purchaseInvoiceIds = invoices.filter(i => i.source_table === 'PURCHASE').map(inv => inv.id);
 
-    pool.query(itemsSql, [invoiceIds], (itemsErr, items) => {
-      if (itemsErr) {
-        console.error("Error fetching invoice items:", itemsErr);
-        return res.status(500).json({
-          message: "Failed to fetch invoice items",
-          error: itemsErr.message,
-        });
+    const grouped = {};
+
+    // Fetch items for sale invoices
+    const fetchSaleItems = (callback) => {
+      if (saleInvoiceIds.length === 0) {
+        callback(null);
+        return;
       }
 
-      const grouped = {};
-      (items || []).forEach((it) => {
-        if (!grouped[it.invoice_id]) grouped[it.invoice_id] = [];
-        grouped[it.invoice_id].push({
-          id: String(it.id),
-          itemId: String(it.item_id),
-          itemName: it.name,
-          quantity: Number(it.quantity),
-          mrp: Number(it.mrp || 0),
-          price: Number(it.price),
-          taxRate: Number(it.tax_rate || 0),
-          amount: Number(it.total),
-        });
-      });
+      const saleItemsSql = "SELECT * FROM sale_invoice_items WHERE invoice_id IN (?) ORDER BY id ASC";
+      pool.query(saleItemsSql, [saleInvoiceIds], (itemsErr, items) => {
+        if (itemsErr) {
+          console.error("Error fetching sale invoice items:", itemsErr);
+          return callback(itemsErr);
+        }
 
+        (items || []).forEach((it) => {
+          if (!grouped[it.invoice_id]) grouped[it.invoice_id] = [];
+          grouped[it.invoice_id].push({
+            id: String(it.id),
+            itemId: String(it.item_id),
+            itemName: it.name,
+            quantity: Number(it.quantity),
+            mrp: Number(it.mrp || 0),
+            price: Number(it.price),
+            taxRate: Number(it.tax_rate || 0),
+            amount: Number(it.total),
+          });
+        });
+
+        callback(null);
+      });
+    };
+
+    // Fetch items for purchase invoices
+    const fetchPurchaseItems = (callback) => {
+      if (purchaseInvoiceIds.length === 0) {
+        callback(null);
+        return;
+      }
+
+      const purchaseItemsSql = "SELECT * FROM purchase_invoice_items WHERE invoice_id IN (?) ORDER BY id ASC";
+      pool.query(purchaseItemsSql, [purchaseInvoiceIds], (itemsErr, items) => {
+        if (itemsErr) {
+          console.error("Error fetching purchase invoice items:", itemsErr);
+          return callback(itemsErr);
+        }
+
+        (items || []).forEach((it) => {
+          if (!grouped[it.invoice_id]) grouped[it.invoice_id] = [];
+          grouped[it.invoice_id].push({
+            id: String(it.id),
+            itemId: String(it.item_id),
+            itemName: it.name,
+            quantity: Number(it.quantity),
+            mrp: Number(it.mrp || 0),
+            price: Number(it.price),
+            taxRate: Number(it.tax_rate || 0),
+            amount: Number(it.total),
+          });
+        });
+
+        callback(null);
+      });
+    };
+
+    // Fetch both sets of items in parallel
+    let completed = 0;
+    let hasError = false;
+
+    fetchSaleItems((err) => {
+      if (err) {
+        hasError = true;
+        console.error("Error fetching sale items:", err);
+        return res.status(500).json({
+          message: "Failed to fetch invoice items",
+          error: err.message,
+        });
+      }
+      completed++;
+      if (completed === 2) buildResponse();
+    });
+
+    fetchPurchaseItems((err) => {
+      if (err && !hasError) {
+        hasError = true;
+        console.error("Error fetching purchase items:", err);
+        return res.status(500).json({
+          message: "Failed to fetch invoice items",
+          error: err.message,
+        });
+      }
+      completed++;
+      if (completed === 2) buildResponse();
+    });
+
+    function buildResponse() {
       const response = invoices.map((inv) => {
         const invoiceItems = grouped[inv.id] || [];
         const totalTax = invoiceItems.reduce((sum, item) => {
@@ -136,61 +238,110 @@ exports.getInvoices = (req, res) => {
       });
 
       res.json(response);
-    });
+    }
   });
 };
 
 // ==============================
 // GET /api/invoices/:id
 // ==============================
+// ==============================
+// GET /api/invoices/:id
+// ==============================
 exports.getInvoiceById = (req, res) => {
   const { id } = req.params;
-  const invoiceSql = "SELECT * FROM sale_invoices WHERE id = ? LIMIT 1";
 
-  pool.query(invoiceSql, [id], (err, rows) => {
+  // ✅ Try to fetch from sale_invoices first
+  pool.query("SELECT * FROM sale_invoices WHERE id = ? LIMIT 1", [id], (err, saleRows) => {
     if (err) {
       console.error("Error fetching invoice:", err);
       return res
         .status(500)
         .json({ message: "Failed to fetch invoice", error: err.message });
     }
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: "Invoice not found" });
+
+    // If found in sale_invoices, fetch its items
+    if (saleRows && saleRows.length > 0) {
+      const inv = saleRows[0];
+      pool.query("SELECT * FROM sale_invoice_items WHERE invoice_id = ?", [id], (itemsErr, items) => {
+        if (itemsErr) {
+          console.error("Error fetching invoice items:", itemsErr);
+          return res.status(500).json({
+            message: "Failed to fetch invoice items",
+            error: itemsErr.message,
+          });
+        }
+
+        const response = {
+          id: String(inv.id),
+          partyId: String(inv.party_id),
+          invoiceNumber: inv.invoice_no,
+          type: inv.type,
+          totalAmount: Number(inv.total_amount),
+          date: inv.invoice_date,
+          notes: inv.notes,
+          paymentMode: inv.payment_mode,
+          items: (items || []).map((it) => ({
+            id: String(it.id),
+            itemId: String(it.item_id),
+            itemName: it.name || "Unknown",
+            quantity: Number(it.quantity),
+            price: Number(it.price),
+            taxRate: Number(it.tax_rate || 0),
+            amount: Number(it.total),
+          })),
+        };
+
+        res.json(response);
+      });
+      return;
     }
 
-    const inv = rows[0];
-    const itemsSql = "SELECT * FROM sale_invoice_items WHERE invoice_id = ?";
-
-    pool.query(itemsSql, [id], (itemsErr, items) => {
-      if (itemsErr) {
-        console.error("Error fetching invoice items:", itemsErr);
-        return res.status(500).json({
-          message: "Failed to fetch invoice items",
-          error: itemsErr.message,
-        });
+    // Otherwise, try to fetch from purchase_invoices
+    pool.query("SELECT * FROM purchase_invoices WHERE id = ? LIMIT 1", [id], (err, purchaseRows) => {
+      if (err) {
+        console.error("Error fetching purchase invoice:", err);
+        return res
+          .status(500)
+          .json({ message: "Failed to fetch invoice", error: err.message });
       }
 
-      const response = {
-        id: String(inv.id),
-        partyId: String(inv.party_id),
-        invoiceNumber: inv.invoice_no,
-        type: inv.type,
-        totalAmount: Number(inv.total_amount),
-        date: inv.invoice_date,
-        notes: inv.notes,
-        paymentMode: inv.payment_mode,
-        items: (items || []).map((it) => ({
-          id: String(it.id),
-          itemId: String(it.item_id),
-          itemName: it.name || "Unknown",
-          quantity: Number(it.quantity),
-          price: Number(it.price),
-          taxRate: Number(it.tax_rate || 0),
-          amount: Number(it.total),
-        })),
-      };
+      if (!purchaseRows || purchaseRows.length === 0) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
 
-      res.json(response);
+      const inv = purchaseRows[0];
+      pool.query("SELECT * FROM purchase_invoice_items WHERE invoice_id = ?", [id], (itemsErr, items) => {
+        if (itemsErr) {
+          console.error("Error fetching purchase invoice items:", itemsErr);
+          return res.status(500).json({
+            message: "Failed to fetch invoice items",
+            error: itemsErr.message,
+          });
+        }
+
+        const response = {
+          id: String(inv.id),
+          partyId: String(inv.supplier_id),
+          invoiceNumber: inv.invoice_no,
+          type: "PURCHASE",
+          totalAmount: Number(inv.total_amount),
+          date: inv.invoice_date,
+          notes: inv.notes,
+          paymentMode: inv.payment_mode,
+          items: (items || []).map((it) => ({
+            id: String(it.id),
+            itemId: String(it.item_id),
+            itemName: it.name || "Unknown",
+            quantity: Number(it.quantity),
+            price: Number(it.price),
+            taxRate: Number(it.tax_rate || 0),
+            amount: Number(it.total),
+          })),
+        };
+
+        res.json(response);
+      });
     });
   });
 };
@@ -199,7 +350,7 @@ exports.getInvoiceById = (req, res) => {
 // POST /api/invoices
 // ==============================
 exports.createInvoice = (req, res) => {
-  let { partyId, type, date, items, totalAmount, invoiceNo, notes, paymentMode } =
+  let { partyId, type, date, items, totalAmount, invoiceNo, notes, paymentMode, originalRefNumber } =
     req.body;
 
   // ✅ normalize + validate type (CREATE has no oldInv)
@@ -255,6 +406,7 @@ exports.createInvoice = (req, res) => {
   }
 
   const total = Number(totalAmount);
+  const isPurchaseType = type === "PURCHASE" || type === "PURCHASE_RETURN";
 
   pool.getConnection((connErr, conn) => {
     if (connErr) {
@@ -273,40 +425,18 @@ exports.createInvoice = (req, res) => {
           .json({ message: "Failed to create invoice", error: txErr.message });
       }
 
-      // ✅ For purchase types, sync supplier → parties inside transaction
-      const syncSupplier = (callback) => {
-        if (
-          (type === "PURCHASE" || type === "PURCHASE_RETURN") &&
-          partyIdNum !== CASH_PARTY_ID
-        ) {
+      // ✅ For purchase types, validate supplier exists in parties table
+      const validateSupplier = (callback) => {
+        if (isPurchaseType && partyIdNum !== CASH_PARTY_ID) {
           conn.query(
-            "SELECT * FROM suppliers WHERE id = ?",
+            "SELECT * FROM parties WHERE id = ? AND type = 'SUPPLIER'",
             [partyIdNum],
             (err, rows) => {
               if (err) return callback(err);
               if (!rows || rows.length === 0) {
                 return callback(new Error(`Supplier with ID ${partyIdNum} not found`));
               }
-
-              const supplier = rows[0];
-              conn.query(
-                `INSERT INTO parties (id, name, phone, gstin, address, balance)
-                 VALUES (?, ?, ?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE
-                   name = VALUES(name),
-                   phone = VALUES(phone),
-                   gstin = VALUES(gstin),
-                   address = VALUES(address)`,
-                [
-                  supplier.id,
-                  supplier.name,
-                  supplier.phone || null,
-                  supplier.gstin || null,
-                  supplier.address || null,
-                  supplier.balance || 0,
-                ],
-                (syncErr) => callback(syncErr)
-              );
+              callback(null);
             }
           );
         } else {
@@ -314,13 +444,13 @@ exports.createInvoice = (req, res) => {
         }
       };
 
-      syncSupplier((syncErr) => {
-        if (syncErr) {
+      validateSupplier((valErr) => {
+        if (valErr) {
           return conn.rollback(() => {
             conn.release();
             res.status(500).json({
-              message: "Failed to sync supplier data",
-              error: syncErr.message,
+              message: "Failed to validate supplier",
+              error: valErr.message,
             });
           });
         }
@@ -331,47 +461,124 @@ exports.createInvoice = (req, res) => {
         const generatedInvoiceNo =
           invoiceNo || `${prefix}-${Date.now().toString().slice(-6)}`;
 
-        const invSql = `
-          INSERT INTO sale_invoices
-          (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `;
+        // ✅ ROUTE TO CORRECT TABLE BASED ON TYPE
+        let invSql, tableName, itemsTableName;
+        if (isPurchaseType) {
+          invSql = `
+            INSERT INTO purchase_invoices
+            (supplier_id, invoice_no, total_amount, invoice_date, notes, payment_mode, original_purchase_invoice_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `;
+          tableName = "purchase_invoices";
+          itemsTableName = "purchase_invoice_items";
+        } else {
+          invSql = `
+            INSERT INTO sale_invoices
+            (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, original_invoice_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `;
+          tableName = "sale_invoices";
+          itemsTableName = "sale_invoice_items";
+        }
 
-        conn.query(
-          invSql,
-          [
-            partyIdNum,
-            generatedInvoiceNo,
-            type,
-            total,
-            date ? new Date(date) : new Date(),
-            notes || null,
-            paymentMode || "CASH",
-          ],
-          (invErr, invResult) => {
-            if (invErr) {
-              return conn.rollback(() => {
-                conn.release();
-                res.status(500).json({
-                  message: "Failed to create invoice",
-                  error: invErr.message,
-                });
+        // Prepare values based on table type
+        let invValues;
+        if (isPurchaseType) {
+          // For purchase, need to fetch original invoice ID if provided
+          let originalRefId = null;
+          if (type === "PURCHASE_RETURN" && originalRefNumber) {
+            // Will be set after checking DB
+            invValues = [partyIdNum, generatedInvoiceNo, total, date ? new Date(date) : new Date(), notes || null, paymentMode || "CASH", null];
+          } else {
+            invValues = [partyIdNum, generatedInvoiceNo, total, date ? new Date(date) : new Date(), notes || null, paymentMode || "CASH", null];
+          }
+        } else {
+          // For sale
+          invValues = [partyIdNum, generatedInvoiceNo, type, total, date ? new Date(date) : new Date(), notes || null, paymentMode || "CASH", null];
+        }
+
+        conn.query(invSql, invValues, (invErr, invResult) => {
+          if (invErr) {
+            return conn.rollback(() => {
+              conn.release();
+              res.status(500).json({
+                message: "Failed to create invoice",
+                error: invErr.message,
               });
-            }
+            });
+          }
 
-            const invoiceId = invResult.insertId;
+          const invoiceId = invResult.insertId;
 
-            const insertItemSql = `
-              INSERT INTO sale_invoice_items
-              (invoice_id, item_id, name, quantity, mrp, price, tax_rate, total)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-            const updateStockSql = `UPDATE items SET stock = stock + ? WHERE id = ?`;
+          const insertItemSql = `
+            INSERT INTO ${itemsTableName}
+            (invoice_id, item_id, name, quantity, mrp, price, tax_rate, total)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `;
+          const updateStockSql = `UPDATE items SET stock = stock + ? WHERE id = ?`;
 
-            let idx = 0;
+          let idx = 0;
+          const next = () => {
+            if (idx >= items.length) {
+              // ✅ INSERT INTO AUDIT TABLES FOR RETURNS
+              if (type === "RETURN" && originalRefNumber) {
+                const auditInserts = items.map((it) => {
+                  return [originalRefNumber, invoiceId, Number(it.itemId), Number(it.quantity), null, null];
+                });
 
-            const next = () => {
-              if (idx >= items.length) {
+                const auditSql = `
+                  INSERT INTO sale_return_audit
+                  (original_invoice_id, return_invoice_id, item_id, quantity, reason, processed_by)
+                  VALUES (?, ?, ?, ?, ?, ?)
+                `;
+
+                let auditIdx = 0;
+                const nextAudit = () => {
+                  if (auditIdx >= auditInserts.length) {
+                    // Continue with balance update
+                    updateBalance();
+                    return;
+                  }
+                  conn.query(auditSql, auditInserts[auditIdx], (auditErr) => {
+                    if (auditErr) {
+                      console.warn("Warning: Failed to insert audit entry:", auditErr.message);
+                    }
+                    auditIdx++;
+                    nextAudit();
+                  });
+                };
+                nextAudit();
+              } else if (type === "PURCHASE_RETURN" && originalRefNumber) {
+                const auditInserts = items.map((it) => {
+                  return [originalRefNumber, invoiceId, Number(it.itemId), Number(it.quantity), null, null];
+                });
+
+                const auditSql = `
+                  INSERT INTO purchase_return_audit
+                  (original_invoice_id, return_invoice_id, item_id, quantity, reason, processed_by)
+                  VALUES (?, ?, ?, ?, ?, ?)
+                `;
+
+                let auditIdx = 0;
+                const nextAudit = () => {
+                  if (auditIdx >= auditInserts.length) {
+                    updateBalance();
+                    return;
+                  }
+                  conn.query(auditSql, auditInserts[auditIdx], (auditErr) => {
+                    if (auditErr) {
+                      console.warn("Warning: Failed to insert audit entry:", auditErr.message);
+                    }
+                    auditIdx++;
+                    nextAudit();
+                  });
+                };
+                nextAudit();
+              } else {
+                updateBalance();
+              }
+
+              function updateBalance() {
                 const balanceDelta = getBalanceDelta(type, total);
 
                 conn.query(
@@ -426,70 +633,70 @@ exports.createInvoice = (req, res) => {
                     });
                   }
                 );
-                return;
               }
+              return;
+            }
 
-              const it = items[idx];
-              const qty = Number(it.quantity);
-              const price = Number(it.price);
-              const taxRate = it.taxRate != null ? Number(it.taxRate) : 0;
+            const it = items[idx];
+            const qty = Number(it.quantity);
+            const price = Number(it.price);
+            const taxRate = it.taxRate != null ? Number(it.taxRate) : 0;
 
-              const base = qty * price;
-              const taxAmount = (base * taxRate) / 100;
-              let lineTotal =
-                it.total != null ? Number(it.total) : base + taxAmount;
-              if (isNaN(lineTotal)) lineTotal = base + taxAmount;
+            const base = qty * price;
+            const taxAmount = (base * taxRate) / 100;
+            let lineTotal =
+              it.total != null ? Number(it.total) : base + taxAmount;
+            if (isNaN(lineTotal)) lineTotal = base + taxAmount;
 
-              const stockDelta = getStockDelta(type, qty);
+            const stockDelta = getStockDelta(type, qty);
 
-              conn.query(
-                insertItemSql,
-                [
-                  invoiceId,
-                  Number(it.itemId),
-                  String(it.itemName || it.name || "Unknown"),
-                  qty,
-                  Number(it.mrp || 0),
-                  price,
-                  taxRate,
-                  lineTotal,
-                ],
-                (itemErr) => {
-                  if (itemErr) {
-                    return conn.rollback(() => {
-                      conn.release();
-                      res.status(500).json({
-                        message: "Failed to create invoice items",
-                        error: itemErr.message,
-                      });
+            conn.query(
+              insertItemSql,
+              [
+                invoiceId,
+                Number(it.itemId),
+                String(it.itemName || it.name || "Unknown"),
+                qty,
+                Number(it.mrp || 0),
+                price,
+                taxRate,
+                lineTotal,
+              ],
+              (itemErr) => {
+                if (itemErr) {
+                  return conn.rollback(() => {
+                    conn.release();
+                    res.status(500).json({
+                      message: "Failed to create invoice items",
+                      error: itemErr.message,
                     });
-                  }
-
-                  conn.query(
-                    updateStockSql,
-                    [stockDelta, Number(it.itemId)],
-                    (stockErr) => {
-                      if (stockErr) {
-                        return conn.rollback(() => {
-                          conn.release();
-                          res.status(500).json({
-                            message: "Failed to update stock",
-                            error: stockErr.message,
-                          });
-                        });
-                      }
-
-                      idx++;
-                      next();
-                    }
-                  );
+                  });
                 }
-              );
-            };
 
-            next();
-          }
-        );
+                conn.query(
+                  updateStockSql,
+                  [stockDelta, Number(it.itemId)],
+                  (stockErr) => {
+                    if (stockErr) {
+                      return conn.rollback(() => {
+                        conn.release();
+                        res.status(500).json({
+                          message: "Failed to update stock",
+                          error: stockErr.message,
+                        });
+                      });
+                    }
+
+                    idx++;
+                    next();
+                  }
+                );
+              }
+            );
+          };
+
+          next();
+        });
       });
     });
   });
@@ -902,161 +1109,318 @@ exports.deleteInvoice = (req, res) => {
           .json({ message: "Failed to delete invoice", error: txErr.message });
       }
 
+      // Try to fetch from sale_invoices first
       conn.query(
         "SELECT * FROM sale_invoices WHERE id = ? LIMIT 1",
         [id],
-        (invErr, invRows) => {
-          if (invErr) {
+        (saleErr, saleRows) => {
+          if (saleErr) {
             return conn.rollback(() => {
               conn.release();
-              console.error("Error fetching invoice:", invErr);
+              console.error("Error fetching invoice:", saleErr);
               res.status(500).json({
                 message: "Failed to delete invoice",
-                error: invErr.message,
+                error: saleErr.message,
               });
             });
           }
 
-          if (!invRows || invRows.length === 0) {
-            return conn.rollback(() => {
-              conn.release();
-              res.status(404).json({ message: "Invoice not found" });
-            });
+          // If found in sale_invoices, delete it
+          if (saleRows && saleRows.length > 0) {
+            const inv = saleRows[0];
+            deleteSaleInvoice(inv);
+            return;
           }
 
-          const inv = invRows[0];
-
+          // Otherwise try purchase_invoices
           conn.query(
-            "SELECT * FROM sale_invoice_items WHERE invoice_id = ?",
+            "SELECT * FROM purchase_invoices WHERE id = ? LIMIT 1",
             [id],
-            (itemsErr, itemRows) => {
-              if (itemsErr) {
+            (purchaseErr, purchaseRows) => {
+              if (purchaseErr) {
                 return conn.rollback(() => {
                   conn.release();
-                  console.error("Error fetching invoice items:", itemsErr);
+                  console.error("Error fetching purchase invoice:", purchaseErr);
                   res.status(500).json({
                     message: "Failed to delete invoice",
-                    error: itemsErr.message,
+                    error: purchaseErr.message,
                   });
                 });
               }
 
-              const items = Array.isArray(itemRows) ? itemRows : [];
+              if (!purchaseRows || purchaseRows.length === 0) {
+                return conn.rollback(() => {
+                  conn.release();
+                  res.status(404).json({ message: "Invoice not found" });
+                });
+              }
 
-              const reverseOne = (idx) => {
-                if (idx >= items.length) {
-                  const total = Number(inv.total_amount || 0);
-                  const partyId = Number(inv.party_id);
+              const inv = purchaseRows[0];
+              deletePurchaseInvoice(inv);
+            }
+          );
 
-                  const balDelta = -getBalanceDelta(inv.type, total);
+          function deleteSaleInvoice(inv) {
+            conn.query(
+              "SELECT * FROM sale_invoice_items WHERE invoice_id = ?",
+              [id],
+              (itemsErr, itemRows) => {
+                if (itemsErr) {
+                  return conn.rollback(() => {
+                    conn.release();
+                    console.error("Error fetching invoice items:", itemsErr);
+                    res.status(500).json({
+                      message: "Failed to delete invoice",
+                      error: itemsErr.message,
+                    });
+                  });
+                }
 
-                  conn.query(
-                    "UPDATE parties SET balance = balance + ? WHERE id = ?",
-                    [balDelta, partyId],
-                    (balErr) => {
-                      if (balErr) {
-                        return conn.rollback(() => {
-                          conn.release();
-                          console.error("Error reversing party balance:", balErr);
-                          res.status(500).json({
-                            message: "Failed to delete invoice",
-                            error: balErr.message,
-                          });
-                        });
-                      }
+                const items = Array.isArray(itemRows) ? itemRows : [];
+                let idx = 0;
 
-                      conn.query(
-                        "DELETE FROM sale_invoice_items WHERE invoice_id = ?",
-                        [id],
-                        (delItemsErr) => {
-                          if (delItemsErr) {
-                            return conn.rollback(() => {
-                              conn.release();
-                              console.error(
-                                "Error deleting invoice items:",
-                                delItemsErr
-                              );
-                              res.status(500).json({
-                                message: "Failed to delete invoice",
-                                error: delItemsErr.message,
-                              });
+                const reverseOne = () => {
+                  if (idx >= items.length) {
+                    const total = Number(inv.total_amount || 0);
+                    const partyId = Number(inv.party_id);
+                    const balDelta = -getBalanceDelta(inv.type, total);
+
+                    conn.query(
+                      "UPDATE parties SET balance = balance + ? WHERE id = ?",
+                      [balDelta, partyId],
+                      (balErr) => {
+                        if (balErr) {
+                          return conn.rollback(() => {
+                            conn.release();
+                            console.error("Error reversing party balance:", balErr);
+                            res.status(500).json({
+                              message: "Failed to delete invoice",
+                              error: balErr.message,
                             });
-                          }
+                          });
+                        }
 
-                          conn.query(
-                            "DELETE FROM sale_invoices WHERE id = ?",
-                            [id],
-                            (delInvErr, delInvResult) => {
-                              if (delInvErr) {
-                                return conn.rollback(() => {
-                                  conn.release();
-                                  console.error("Error deleting invoice:", delInvErr);
-                                  res.status(500).json({
-                                    message: "Failed to delete invoice",
-                                    error: delInvErr.message,
-                                  });
+                        conn.query(
+                          "DELETE FROM sale_invoice_items WHERE invoice_id = ?",
+                          [id],
+                          (delItemsErr) => {
+                            if (delItemsErr) {
+                              return conn.rollback(() => {
+                                conn.release();
+                                console.error("Error deleting invoice items:", delItemsErr);
+                                res.status(500).json({
+                                  message: "Failed to delete invoice",
+                                  error: delItemsErr.message,
                                 });
-                              }
+                              });
+                            }
 
-                              if (!delInvResult || delInvResult.affectedRows === 0) {
-                                return conn.rollback(() => {
-                                  conn.release();
-                                  res.status(404).json({ message: "Invoice not found" });
-                                });
-                              }
-
-                              conn.commit((commitErr) => {
-                                if (commitErr) {
+                            conn.query(
+                              "DELETE FROM sale_invoices WHERE id = ?",
+                              [id],
+                              (delInvErr, delInvResult) => {
+                                if (delInvErr) {
                                   return conn.rollback(() => {
                                     conn.release();
-                                    console.error("Commit error:", commitErr);
+                                    console.error("Error deleting invoice:", delInvErr);
                                     res.status(500).json({
                                       message: "Failed to delete invoice",
-                                      error: commitErr.message,
+                                      error: delInvErr.message,
                                     });
                                   });
                                 }
 
-                                conn.release();
-                                return res.status(204).send();
-                              });
-                            }
-                          );
-                        }
-                      );
+                                if (!delInvResult || delInvResult.affectedRows === 0) {
+                                  return conn.rollback(() => {
+                                    conn.release();
+                                    res.status(404).json({ message: "Invoice not found" });
+                                  });
+                                }
+
+                                conn.commit((commitErr) => {
+                                  if (commitErr) {
+                                    return conn.rollback(() => {
+                                      conn.release();
+                                      console.error("Commit error:", commitErr);
+                                      res.status(500).json({
+                                        message: "Failed to delete invoice",
+                                        error: commitErr.message,
+                                      });
+                                    });
+                                  }
+
+                                  conn.release();
+                                  return res.status(204).send();
+                                });
+                              }
+                            );
+                          }
+                        );
+                      }
+                    );
+                    return;
+                  }
+
+                  const row = items[idx];
+                  const qty = Number(row.quantity || 0);
+                  const itemId = Number(row.item_id);
+                  const reverseStock = -getStockDelta(inv.type, qty);
+
+                  conn.query(
+                    "UPDATE items SET stock = stock + ? WHERE id = ?",
+                    [reverseStock, itemId],
+                    (stockErr) => {
+                      if (stockErr) {
+                        return conn.rollback(() => {
+                          conn.release();
+                          console.error("Error reversing stock:", stockErr);
+                          res.status(500).json({
+                            message: "Failed to delete invoice",
+                            error: stockErr.message,
+                          });
+                        });
+                      }
+                      idx++;
+                      reverseOne();
                     }
                   );
+                };
 
-                  return;
+                reverseOne();
+              }
+            );
+          }
+
+          function deletePurchaseInvoice(inv) {
+            conn.query(
+              "SELECT * FROM purchase_invoice_items WHERE invoice_id = ?",
+              [id],
+              (itemsErr, itemRows) => {
+                if (itemsErr) {
+                  return conn.rollback(() => {
+                    conn.release();
+                    console.error("Error fetching purchase invoice items:", itemsErr);
+                    res.status(500).json({
+                      message: "Failed to delete invoice",
+                      error: itemsErr.message,
+                    });
+                  });
                 }
 
-                const row = items[idx];
-                const qty = Number(row.quantity || 0);
-                const itemId = Number(row.item_id);
-                const reverseStock = -getStockDelta(inv.type, qty);
+                const items = Array.isArray(itemRows) ? itemRows : [];
+                let idx = 0;
 
-                conn.query(
-                  "UPDATE items SET stock = stock + ? WHERE id = ?",
-                  [reverseStock, itemId],
-                  (stockErr) => {
-                    if (stockErr) {
-                      return conn.rollback(() => {
-                        conn.release();
-                        console.error("Error reversing stock:", stockErr);
-                        res.status(500).json({
-                          message: "Failed to delete invoice",
-                          error: stockErr.message,
-                        });
-                      });
-                    }
-                    reverseOne(idx + 1);
+                const reverseOne = () => {
+                  if (idx >= items.length) {
+                    const total = Number(inv.total_amount || 0);
+                    const supplierId = Number(inv.supplier_id);
+                    const balDelta = -getBalanceDelta("PURCHASE", total);
+
+                    conn.query(
+                      "UPDATE parties SET balance = balance + ? WHERE id = ? AND type='SUPPLIER'",
+                      [balDelta, supplierId],
+                      (balErr) => {
+                        if (balErr) {
+                          return conn.rollback(() => {
+                            conn.release();
+                            console.error("Error reversing supplier balance:", balErr);
+                            res.status(500).json({
+                              message: "Failed to delete invoice",
+                              error: balErr.message,
+                            });
+                          });
+                        }
+
+                        conn.query(
+                          "DELETE FROM purchase_invoice_items WHERE invoice_id = ?",
+                          [id],
+                          (delItemsErr) => {
+                            if (delItemsErr) {
+                              return conn.rollback(() => {
+                                conn.release();
+                                console.error("Error deleting purchase invoice items:", delItemsErr);
+                                res.status(500).json({
+                                  message: "Failed to delete invoice",
+                                  error: delItemsErr.message,
+                                });
+                              });
+                            }
+
+                            conn.query(
+                              "DELETE FROM purchase_invoices WHERE id = ?",
+                              [id],
+                              (delInvErr, delInvResult) => {
+                                if (delInvErr) {
+                                  return conn.rollback(() => {
+                                    conn.release();
+                                    console.error("Error deleting purchase invoice:", delInvErr);
+                                    res.status(500).json({
+                                      message: "Failed to delete invoice",
+                                      error: delInvErr.message,
+                                    });
+                                  });
+                                }
+
+                                if (!delInvResult || delInvResult.affectedRows === 0) {
+                                  return conn.rollback(() => {
+                                    conn.release();
+                                    res.status(404).json({ message: "Invoice not found" });
+                                  });
+                                }
+
+                                conn.commit((commitErr) => {
+                                  if (commitErr) {
+                                    return conn.rollback(() => {
+                                      conn.release();
+                                      console.error("Commit error:", commitErr);
+                                      res.status(500).json({
+                                        message: "Failed to delete invoice",
+                                        error: commitErr.message,
+                                      });
+                                    });
+                                  }
+
+                                  conn.release();
+                                  return res.status(204).send();
+                                });
+                              }
+                            );
+                          }
+                        );
+                      }
+                    );
+                    return;
                   }
-                );
-              };
 
-              reverseOne(0);
-            }
-          );
+                  const row = items[idx];
+                  const qty = Number(row.quantity || 0);
+                  const itemId = Number(row.item_id);
+                  const reverseStock = -getStockDelta("PURCHASE", qty);
+
+                  conn.query(
+                    "UPDATE items SET stock = stock + ? WHERE id = ?",
+                    [reverseStock, itemId],
+                    (stockErr) => {
+                      if (stockErr) {
+                        return conn.rollback(() => {
+                          conn.release();
+                          console.error("Error reversing stock:", stockErr);
+                          res.status(500).json({
+                            message: "Failed to delete invoice",
+                            error: stockErr.message,
+                          });
+                        });
+                      }
+                      idx++;
+                      reverseOne();
+                    }
+                  );
+                };
+
+                reverseOne();
+              }
+            );
+          }
         }
       );
     });
@@ -1070,7 +1434,7 @@ exports.deleteInvoice = (req, res) => {
 // ==============================
 exports.applySaleReturn = (req, res) => {
   const originalId = Number(req.params.id);
-  const { items, reason } = req.body;
+  const { items, reason, processedBy } = req.body;
 
   if (!originalId) return res.status(400).json({ message: "Invalid invoice id" });
   if (!Array.isArray(items) || items.length === 0) {
@@ -1193,30 +1557,62 @@ exports.applySaleReturn = (req, res) => {
 
                   const step = () => {
                     if (idx >= computedItems.length) {
-                      // 7) Update original invoice totals
-                      conn.query(
-                        "SELECT COALESCE(SUM(total),0) AS total_amount FROM sale_invoice_items WHERE invoice_id = ?",
-                        [originalId],
-                        (sumErr, sumRows) => {
-                          if (sumErr) return rollback(500, { message: "Failed to recalc original total", error: sumErr.message });
+                      // 7) Insert audit entries into sale_return_audit
+                      let auditIdx = 0;
+                      const auditInsertSql = `
+                        INSERT INTO sale_return_audit
+                        (original_invoice_id, return_invoice_id, item_id, quantity, reason, processed_by)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                      `;
 
-                          const newOriginalTotal = Number(sumRows?.[0]?.total_amount || 0);
+                      const insertAudit = () => {
+                        if (auditIdx >= computedItems.length) {
+                          // Continue with original invoice updates
+                          updateOriginalInvoice();
+                          return;
+                        }
 
-                          conn.query(
-                            "UPDATE sale_invoices SET total_amount = ? WHERE id = ?",
-                            [newOriginalTotal, originalId],
-                            (updTotErr) => {
-                              if (updTotErr) return rollback(500, { message: "Failed to update original total", error: updTotErr.message });
+                        const auditItem = computedItems[auditIdx];
+                        conn.query(
+                          auditInsertSql,
+                          [originalId, returnInvoiceId, auditItem.item_id, auditItem.quantity, reason || null, processedBy || null],
+                          (auditErr) => {
+                            if (auditErr) {
+                              console.warn("Warning: Failed to insert audit entry:", auditErr.message);
+                            }
+                            auditIdx++;
+                            insertAudit();
+                          }
+                        );
+                      };
 
-                              // 8) party balance: SALE_RETURN means customer owes less => balance -= returnGrand
-                              conn.query(
-                                "UPDATE parties SET balance = balance - ? WHERE id = ?",
-                                [returnGrand, original.party_id],
-                                (balErr) => {
-                                  if (balErr) return rollback(500, { message: "Failed to update party balance", error: balErr.message });
+                      insertAudit();
 
-                                  // 9) close if fully returned (all qty left = 0)
-                                  conn.query(
+                      function updateOriginalInvoice() {
+                        // 8) Update original invoice totals
+                        conn.query(
+                          "SELECT COALESCE(SUM(total),0) AS total_amount FROM sale_invoice_items WHERE invoice_id = ?",
+                          [originalId],
+                          (sumErr, sumRows) => {
+                            if (sumErr) return rollback(500, { message: "Failed to recalc original total", error: sumErr.message });
+
+                            const newOriginalTotal = Number(sumRows?.[0]?.total_amount || 0);
+
+                            conn.query(
+                              "UPDATE sale_invoices SET total_amount = ? WHERE id = ?",
+                              [newOriginalTotal, originalId],
+                              (updTotErr) => {
+                                if (updTotErr) return rollback(500, { message: "Failed to update original total", error: updTotErr.message });
+
+                                // 9) party balance: SALE_RETURN means customer owes less => balance -= returnGrand
+                                conn.query(
+                                  "UPDATE parties SET balance = balance - ? WHERE id = ?",
+                                  [returnGrand, original.party_id],
+                                  (balErr) => {
+                                    if (balErr) return rollback(500, { message: "Failed to update party balance", error: balErr.message });
+
+                                    // 10) close if fully returned (all qty left = 0)
+                                    conn.query(
                                     "SELECT COALESCE(SUM(quantity),0) AS qty_left FROM sale_invoice_items WHERE invoice_id = ?",
                                     [originalId],
                                     (leftErr, leftRows) => {
@@ -1252,6 +1648,7 @@ exports.applySaleReturn = (req, res) => {
                           );
                         }
                       );
+                      }
                       return;
                     }
 
@@ -1308,7 +1705,7 @@ exports.applySaleReturn = (req, res) => {
 // ==============================
 exports.applyPurchaseReturn = (req, res) => {
   const originalId = Number(req.params.id);
-  const { items, reason } = req.body;
+  const { items, reason, processedBy } = req.body;
 
   if (!originalId) return res.status(400).json({ message: "Invalid invoice id" });
   if (!Array.isArray(items) || items.length === 0) {
@@ -1327,25 +1724,22 @@ exports.applyPurchaseReturn = (req, res) => {
     conn.beginTransaction((txErr) => {
       if (txErr) return rollback(500, { message: "Failed to process return", error: txErr.message });
 
-      // 1) Load original invoice (must be PURCHASE and not closed)
+      // 1) Load original invoice (must be PURCHASE and not closed) - from purchase_invoices table
       conn.query(
-        "SELECT * FROM sale_invoices WHERE id = ? LIMIT 1",
+        "SELECT * FROM purchase_invoices WHERE id = ? LIMIT 1",
         [originalId],
         (invErr, invRows) => {
           if (invErr) return rollback(500, { message: "Failed to load invoice", error: invErr.message });
           if (!invRows || invRows.length === 0) return rollback(404, { message: "Invoice not found" });
 
           const original = invRows[0];
-          if (original.type !== "PURCHASE") {
-            return rollback(400, { message: "Purchase return allowed only for PURCHASE invoices" });
-          }
           if (Number(original.is_closed) === 1) {
             return rollback(400, { message: "Invoice is closed. Cannot return." });
           }
 
-          // 2) Load original items
+          // 2) Load original items from purchase_invoice_items table
           conn.query(
-            "SELECT * FROM sale_invoice_items WHERE invoice_id = ?",
+            "SELECT * FROM purchase_invoice_items WHERE invoice_id = ?",
             [originalId],
             (itemsErr, origItems) => {
               if (itemsErr) return rollback(500, { message: "Failed to load invoice items", error: itemsErr.message });
@@ -1404,14 +1798,14 @@ exports.applyPurchaseReturn = (req, res) => {
 
               returnGrand = Number(returnGrand.toFixed(2));
 
-              // 5) Insert PURCHASE_RETURN invoice
+              // 5) Insert PURCHASE_RETURN invoice into purchase_invoices table
               const returnInvoiceNo = `PRN-${Date.now().toString().slice(-8)}`;
               conn.query(
-                `INSERT INTO sale_invoices
-                 (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, original_invoice_id)
-                 VALUES (?, ?, 'PURCHASE_RETURN', ?, ?, ?, ?, ?)`,
+                `INSERT INTO purchase_invoices
+                 (supplier_id, invoice_no, total_amount, invoice_date, notes, payment_mode, original_purchase_invoice_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [
-                  original.party_id,
+                  original.supplier_id,
                   returnInvoiceNo,
                   returnGrand,
                   new Date(),
@@ -1427,41 +1821,74 @@ exports.applyPurchaseReturn = (req, res) => {
                   // 6) Insert return items + update original qty + stock decreases (sent back to supplier)
                   let idx = 0;
                   const insertSql =
-                    "INSERT INTO sale_invoice_items (invoice_id, item_id, name, quantity, mrp, price, tax_rate, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                    "INSERT INTO purchase_invoice_items (invoice_id, item_id, name, quantity, mrp, price, tax_rate, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
                   const step = () => {
                     if (idx >= computedItems.length) {
-                      // 7) Recalc original invoice totals
-                      conn.query(
-                        "SELECT COALESCE(SUM(total),0) AS total_amount FROM sale_invoice_items WHERE invoice_id = ?",
-                        [originalId],
-                        (sumErr, sumRows) => {
-                          if (sumErr) return rollback(500, { message: "Failed to recalc original total", error: sumErr.message });
+                      // 7) Insert audit entries into purchase_return_audit
+                      let auditIdx = 0;
+                      const auditInsertSql = `
+                        INSERT INTO purchase_return_audit
+                        (original_invoice_id, return_invoice_id, item_id, quantity, reason, processed_by)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                      `;
 
-                          const newOriginalTotal = Number(sumRows?.[0]?.total_amount || 0);
+                      const insertAudit = () => {
+                        if (auditIdx >= computedItems.length) {
+                          // Continue with original invoice updates
+                          updateOriginalInvoice();
+                          return;
+                        }
 
-                          conn.query(
-                            "UPDATE sale_invoices SET total_amount = ? WHERE id = ?",
-                            [newOriginalTotal, originalId],
-                            (updTotErr) => {
-                              if (updTotErr) return rollback(500, { message: "Failed to update original total", error: updTotErr.message });
+                        const auditItem = computedItems[auditIdx];
+                        conn.query(
+                          auditInsertSql,
+                          [originalId, returnInvoiceId, auditItem.item_id, auditItem.quantity, reason || null, processedBy || null],
+                          (auditErr) => {
+                            if (auditErr) {
+                              console.warn("Warning: Failed to insert audit entry:", auditErr.message);
+                            }
+                            auditIdx++;
+                            insertAudit();
+                          }
+                        );
+                      };
 
-                              // 8) party balance: PURCHASE_RETURN means we owe supplier less => balance += returnGrand
-                              conn.query(
-                                "UPDATE parties SET balance = balance + ? WHERE id = ?",
-                                [returnGrand, original.party_id],
-                                (balErr) => {
-                                  if (balErr) return rollback(500, { message: "Failed to update party balance", error: balErr.message });
+                      insertAudit();
+
+                      function updateOriginalInvoice() {
+                        // 8) Recalc original invoice totals from purchase_invoice_items
+                        conn.query(
+                          "SELECT COALESCE(SUM(total),0) AS total_amount FROM purchase_invoice_items WHERE invoice_id = ?",
+                          [originalId],
+                          (sumErr, sumRows) => {
+                            if (sumErr) return rollback(500, { message: "Failed to recalc original total", error: sumErr.message });
+
+                            const newOriginalTotal = Number(sumRows?.[0]?.total_amount || 0);
+
+                            conn.query(
+                              "UPDATE purchase_invoices SET total_amount = ? WHERE id = ?",
+                              [newOriginalTotal, originalId],
+                              (updTotErr) => {
+                                if (updTotErr) return rollback(500, { message: "Failed to update original total", error: updTotErr.message });
+
+                                // 9) supplier balance: PURCHASE_RETURN means we owe supplier less => balance += returnGrand
+                                // Update parties table balance with supplier type filter
+                                conn.query(
+                                  "UPDATE parties SET balance = balance + ? WHERE id = ? AND type='SUPPLIER'",
+                                  [returnGrand, original.supplier_id],
+                                  (balErr) => {
+                                    if (balErr) return rollback(500, { message: "Failed to update supplier balance", error: balErr.message });
 
                                   // 9) close if fully returned
                                   conn.query(
-                                    "SELECT COALESCE(SUM(quantity),0) AS qty_left FROM sale_invoice_items WHERE invoice_id = ?",
+                                    "SELECT COALESCE(SUM(quantity),0) AS qty_left FROM purchase_invoice_items WHERE invoice_id = ?",
                                     [originalId],
                                     (leftErr, leftRows) => {
                                       if (leftErr) return rollback(500, { message: "Failed to check qty left", error: leftErr.message });
 
                                       const qtyLeft = Number(leftRows?.[0]?.qty_left || 0);
-                                      const closeSql = qtyLeft <= 0 ? "UPDATE sale_invoices SET is_closed = 1 WHERE id = ?" : null;
+                                      const closeSql = qtyLeft <= 0 ? "UPDATE purchase_invoices SET is_closed = 1 WHERE id = ?" : null;
 
                                       const finish = () => {
                                         conn.commit((cErr) => {
@@ -1490,6 +1917,7 @@ exports.applyPurchaseReturn = (req, res) => {
                           );
                         }
                       );
+                      }
                       return;
                     }
 
@@ -1508,12 +1936,12 @@ exports.applyPurchaseReturn = (req, res) => {
                         const newTotal = Number((newSub + newTax).toFixed(2));
 
                         conn.query(
-                          "UPDATE sale_invoice_items SET quantity = ?, total = ? WHERE id = ?",
+                          "UPDATE purchase_invoice_items SET quantity = ?, total = ? WHERE id = ?",
                           [newQty, newTotal, it.original_row_id],
                           (updLineErr) => {
                             if (updLineErr) return rollback(500, { message: "Failed to update original item qty", error: updLineErr.message });
 
-                            // stock decreases
+                            // stock decreases (sent back to supplier)
                             conn.query(
                               "UPDATE items SET stock = stock - ? WHERE id = ?",
                               [it.quantity, it.item_id],

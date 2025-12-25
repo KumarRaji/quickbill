@@ -22,7 +22,7 @@ VALUES ('Super Admin', 'superadmin',
         'SUPER_ADMIN')
 ON DUPLICATE KEY UPDATE username = username;
 
--- 2) PARTIES TABLE (Customers)
+-- 2) PARTIES TABLE (Customers and Suppliers)
 CREATE TABLE IF NOT EXISTS parties (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(150) NOT NULL,
@@ -30,25 +30,13 @@ CREATE TABLE IF NOT EXISTS parties (
   gstin VARCHAR(20),
   balance DECIMAL(18,2) NOT NULL DEFAULT 0,
   address VARCHAR(255),
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id)
-) ENGINE=InnoDB;
-
--- 3) SUPPLIERS TABLE
-CREATE TABLE IF NOT EXISTS suppliers (
-  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  name VARCHAR(150) NOT NULL,
-  phone VARCHAR(20),
-  gstin VARCHAR(20),
-  address VARCHAR(255),
-  balance DECIMAL(18,2) NOT NULL DEFAULT 0,
+  type ENUM('CUSTOMER','SUPPLIER') NOT NULL DEFAULT 'CUSTOMER',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB;
 
-
--- 4) ITEMS TABLE
+-- 3) ITEMS TABLE
 CREATE TABLE IF NOT EXISTS items (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(150) NOT NULL,
@@ -72,7 +60,7 @@ CREATE TABLE IF NOT EXISTS items (
   KEY idx_supplier (supplier_id),
   KEY idx_stock (stock),
   CONSTRAINT fk_items_supplier
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    FOREIGN KEY (supplier_id) REFERENCES parties(id)
     ON UPDATE CASCADE
     ON DELETE SET NULL
 ) ENGINE=InnoDB;
@@ -94,7 +82,7 @@ CREATE TABLE IF NOT EXISTS stock (
   PRIMARY KEY (id),
   KEY idx_stock_supplier (supplier_id),
   CONSTRAINT fk_stock_supplier
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    FOREIGN KEY (supplier_id) REFERENCES parties(id)
     ON UPDATE CASCADE
     ON DELETE SET NULL
 ) ENGINE=InnoDB;
@@ -144,7 +132,7 @@ CREATE TABLE IF NOT EXISTS purchase_invoices (
   KEY idx_purchase_invoices_supplier (supplier_id),
   KEY idx_purchase_original (original_purchase_invoice_id),
   CONSTRAINT fk_purchase_invoices_supplier
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    FOREIGN KEY (supplier_id) REFERENCES parties(id)
     ON UPDATE CASCADE
     ON DELETE RESTRICT,
   CONSTRAINT fk_purchase_invoices_original
@@ -262,6 +250,30 @@ CREATE TABLE IF NOT EXISTS sale_invoice_items (
     ON UPDATE CASCADE
     ON DELETE CASCADE,
   CONSTRAINT fk_sale_invoice_items_item
+    FOREIGN KEY (item_id) REFERENCES items(id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- 14) purchase_invoice_items TABLE
+CREATE TABLE IF NOT EXISTS purchase_invoice_items (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  invoice_id INT UNSIGNED NOT NULL,
+  item_id INT UNSIGNED NOT NULL,
+  name VARCHAR(150),
+  quantity DECIMAL(12,2) NOT NULL,
+  mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
+  price DECIMAL(12,2) NOT NULL,
+  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+  total DECIMAL(12,2) NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_purchase_invoice_items_invoice (invoice_id),
+  KEY idx_purchase_invoice_items_item (item_id),
+  CONSTRAINT fk_purchase_invoice_items_invoice
+    FOREIGN KEY (invoice_id) REFERENCES purchase_invoices(id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE,
+  CONSTRAINT fk_purchase_invoice_items_item
     FOREIGN KEY (item_id) REFERENCES items(id)
     ON UPDATE CASCADE
     ON DELETE RESTRICT

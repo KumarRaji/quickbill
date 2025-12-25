@@ -65,7 +65,13 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
         onRefresh();
       } catch (error: any) {
         console.error(error);
-        alert(error.message || 'Failed to delete supplier');
+        const errorMessage = error.message || 'Failed to delete supplier';
+        // Check if it's a constraint error
+        if (errorMessage.includes('associated purchase invoice') || errorMessage.includes('Cannot delete')) {
+          alert(`Cannot Delete Supplier\n\n${errorMessage}\n\nPlease delete or reassign the related purchase invoices before deleting this supplier.`);
+        } else {
+          alert(errorMessage);
+        }
       }
     }
   };
