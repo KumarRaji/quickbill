@@ -157,74 +157,77 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Stock Management</h1>
-        <div className="flex gap-2">
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6 pb-6">
+      <div className="max-w-7xl mx-auto h-full flex flex-col">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Stock Management</h1>
+        <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={() => setIsBulkModalOpen(true)}
-            className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            className="flex-1 sm:flex-initial bg-slate-800 hover:bg-slate-900 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs sm:text-sm"
           >
-            <Upload size={18} />
-            <span>Bulk Upload</span>
+            <Upload size={16} />
+            <span className="hidden sm:inline">Bulk Upload</span>
+            <span className="sm:hidden">Upload</span>
           </button>
           <button
             onClick={() => {
               resetForm();
               setIsModalOpen(true);
             }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+            className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-xs sm:text-sm"
           >
-            <Plus size={18} />
-            <span>Add Stock</span>
+            <Plus size={16} />
+            <span className="hidden sm:inline">Add Stock</span>
+            <span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 mb-6">
+        <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
           <div>
-            <p className="text-sm text-slate-500 font-medium">Total Products</p>
-            <h3 className="text-2xl font-bold text-slate-800">{stats.totalItems}</h3>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">Total Products</p>
+            <h3 className="text-lg sm:text-2xl font-bold text-slate-800">{stats.totalItems}</h3>
           </div>
-          <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
-            <Package size={24} />
+          <div className="p-2 sm:p-3 bg-blue-100 text-blue-600 rounded-lg">
+            <Package size={20} />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+        <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
           <div>
-            <p className="text-sm text-slate-500 font-medium">Total Stock Value</p>
-            <h3 className="text-2xl font-bold text-slate-800">
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">Total Stock Value</p>
+            <h3 className="text-lg sm:text-2xl font-bold text-slate-800">
               ₹{stats.totalValue.toLocaleString()}
             </h3>
           </div>
-          <div className="p-3 bg-green-100 text-green-600 rounded-lg">
-            <ArrowRight size={24} />
+          <div className="p-2 sm:p-3 bg-green-100 text-green-600 rounded-lg">
+            <ArrowRight size={20} />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+        <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
           <div>
-            <p className="text-sm text-slate-500 font-medium">Low Stock Items</p>
-            <h3 className="text-2xl font-bold text-orange-600">{stats.lowStock}</h3>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium">Low Stock Items</p>
+            <h3 className="text-lg sm:text-2xl font-bold text-orange-600">{stats.lowStock}</h3>
           </div>
-          <div className="p-3 bg-orange-100 text-orange-600 rounded-lg">
-            <ArrowRight size={24} />
+          <div className="p-2 sm:p-3 bg-orange-100 text-orange-600 rounded-lg">
+            <ArrowRight size={20} />
           </div>
         </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50">
+        <div className="p-3 sm:p-4 border-b border-slate-200 bg-slate-50">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="relative w-full sm:max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
-                placeholder="Search stock by item name or code..."
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Search stock..."
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -240,7 +243,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                   setPageSize(Number(e.target.value));
                   setPage(1);
                 }}
-                className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {[10, 20, 50, 100].map((n) => (
                   <option key={n} value={n}>
@@ -252,141 +255,254 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
           </div>
         </div>
 
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 sticky top-0">
-              <tr>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase">ITEM Info</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Supplier</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">Purchase Price</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">MRP</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-right">Quantity</th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginatedStock.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-slate-900">{item.name}</div>
-                    <div className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                      {item.code && <span>Code: {item.code}</span>}
-                      {item.code && item.barcode && <span className="mx-1">•</span>}
-                      {item.barcode && (
-                        <span className="flex items-center gap-1">
-                          <Barcode size={12} />
-                          {item.barcode}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{item.supplier_name || '-'}</td>
-                  <td className="px-6 py-4 text-right text-slate-600">₹{Number(item.purchase_price).toFixed(2)}</td>
-                  <td className="px-6 py-4 text-right text-slate-600">{item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold ${item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                        }`}
-                    >
-                      {item.quantity} {item.unit}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedStock(item);
-                          setMoveData({
-                            selling_price: 0,
-                            mrp: item.mrp || 0,
-                            tax_rate: 0,
-                          });
-                          setIsMoveModalOpen(true);
-                        }}
-                        className="text-green-600 hover:text-green-700"
-                        title="Move to Items"
-                      >
-                        <ArrowRight size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="text-blue-600 hover:text-blue-700"
-                        title="Edit"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="text-red-600 hover:text-red-700"
-                        title="Delete"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredStock.length === 0 && (
+        {/* Desktop View */}
+        <div className="hidden sm:flex flex-col flex-1 min-h-0">
+          <div className="overflow-auto flex-1 min-h-0">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 sticky top-0">
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                    <Package size={48} className="mx-auto mb-2 opacity-20" />
-                    No stock items found
-                  </td>
+                  <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase">ITEM Info</th>
+                  <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase">Supplier</th>
+                  <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-right">Purchase Price</th>
+                  <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-right">MRP</th>
+                  <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-right">Quantity</th>
+                  <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-center">Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedStock.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="px-4 lg:px-6 py-3 sm:py-4">
+                      <div className="font-medium text-slate-900 text-sm">{item.name}</div>
+                      <div className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                        {item.code && <span>Code: {item.code}</span>}
+                        {item.code && item.barcode && <span className="mx-1">•</span>}
+                        {item.barcode && (
+                          <span className="flex items-center gap-1">
+                            <Barcode size={12} />
+                            {item.barcode}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-sm text-slate-600">{item.supplier_name || '-'}</td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-sm text-slate-600">₹{Number(item.purchase_price).toFixed(2)}</td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-sm text-slate-600">{item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}</td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-center">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-bold ${item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                          }`}
+                      >
+                        {item.quantity} {item.unit}
+                      </span>
+                    </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedStock(item);
+                            setMoveData({
+                              selling_price: 0,
+                              mrp: item.mrp || 0,
+                              tax_rate: 0,
+                            });
+                            setIsMoveModalOpen(true);
+                          }}
+                          className="text-green-600 hover:text-green-700"
+                          title="Move to Items"
+                        >
+                          <ArrowRight size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="text-blue-600 hover:text-blue-700"
+                          title="Edit"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="text-red-600 hover:text-red-700"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredStock.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 lg:px-6 py-12 text-center text-slate-400">
+                      <Package size={48} className="mx-auto mb-2 opacity-20" />
+                      No stock items found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Desktop Pagination */}
+          {filteredStock.length > 0 && (
+            <div className="px-3 sm:px-4 py-3 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-xs text-slate-500">
+                Showing{' '}
+                <span className="font-medium">
+                  {startIndex + 1}–
+                  {Math.min(startIndex + paginatedStock.length, filteredStock.length)}
+                </span>{' '}
+                of <span className="font-medium">{filteredStock.length}</span>
+              </p>
+
+              <div className="flex w-full sm:w-auto items-center gap-2 text-sm">
+                <button
+                  onClick={handlePrevious}
+                  disabled={currentPage === 1}
+                  className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm"
+                >
+                  <span className="hidden sm:inline">Prev</span>
+                  <span className="sm:hidden">Prev</span>
+                </button>
+
+                <span className="px-2 sm:px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
+                  {currentPage}
+                </span>
+
+                <button
+                  onClick={handleNext}
+                  disabled={currentPage === totalPages}
+                  className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Pagination */}
-        {filteredStock.length > 0 && (
-          <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-            <p className="text-xs text-slate-500">
-              Showing{' '}
-              <span className="font-medium">
-                {startIndex + 1}–
-                {Math.min(startIndex + paginatedStock.length, filteredStock.length)}
-              </span>{' '}
-              of <span className="font-medium">{filteredStock.length}</span> items
-            </p>
-
-            <div className="inline-flex items-center gap-2 text-sm">
-              <button
-                onClick={handlePrevious}
-                disabled={currentPage === 1}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-
-              <span className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
-                {currentPage}
-              </span>
-
-              <button
-                onClick={handleNext}
-                disabled={currentPage === totalPages}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
-            </div>
+        {/* Mobile View */}
+        <div className="sm:hidden flex flex-col flex-1 min-h-0">
+          <div className="overflow-auto flex-1 min-h-0 p-3 space-y-3">
+            {paginatedStock.map((item) => (
+              <div key={item.id} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2">
+                <div className="flex justify-between items-start gap-2 pb-2 border-b border-slate-200">
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900 text-sm">{item.name}</div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      {item.code && <span>Code: {item.code}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs py-2">
+                  <div>
+                    <span className="text-slate-500">Supplier</span>
+                    <div className="font-medium text-slate-900">{item.supplier_name || '-'}</div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Purchase Price</span>
+                    <div className="font-medium text-slate-900">₹{Number(item.purchase_price).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">MRP</span>
+                    <div className="font-medium text-slate-900">{item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}</div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Quantity</span>
+                    <div className={`font-medium text-sm ${item.quantity <= 5 ? 'text-red-700' : 'text-green-700'}`}>
+                      {item.quantity} {item.unit}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2 border-t border-slate-200">
+                  <button
+                    onClick={() => {
+                      setSelectedStock(item);
+                      setMoveData({
+                        selling_price: 0,
+                        mrp: item.mrp || 0,
+                        tax_rate: 0,
+                      });
+                      setIsMoveModalOpen(true);
+                    }}
+                    className="flex-1 text-green-600 hover:text-green-700 px-2 py-1 text-xs border border-green-300 rounded hover:bg-green-50"
+                    title="Move to Items"
+                  >
+                    Move
+                  </button>
+                  <button
+                    onClick={() => handleEdit(item)}
+                    className="flex-1 text-blue-600 hover:text-blue-700 px-2 py-1 text-xs border border-blue-300 rounded hover:bg-blue-50"
+                    title="Edit"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="flex-1 text-red-600 hover:text-red-700 px-2 py-1 text-xs border border-red-300 rounded hover:bg-red-50"
+                    title="Delete"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+            {filteredStock.length === 0 && (
+              <div className="text-center py-12">
+                <Package size={48} className="mx-auto mb-2 opacity-20" />
+                <p className="text-sm text-slate-400">No stock items found</p>
+              </div>
+            )}
           </div>
-        )}
+          {/* Mobile Pagination */}
+          {filteredStock.length > 0 && (
+            <div className="px-3 py-3 border-t border-slate-200 bg-slate-50 flex flex-col gap-3">
+              <p className="text-xs text-slate-500">
+                Showing{' '}
+                <span className="font-medium">
+                  {startIndex + 1}–
+                  {Math.min(startIndex + paginatedStock.length, filteredStock.length)}
+                </span>{' '}
+                of <span className="font-medium">{filteredStock.length}</span>
+              </p>
+
+              <div className="flex w-full items-center gap-2 text-sm">
+                <button
+                  onClick={handlePrevious}
+                  disabled={currentPage === 1}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+                >
+                  Prev
+                </button>
+
+                <span className="px-2 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
+                  {currentPage}
+                </span>
+
+                <button
+                  onClick={handleNext}
+                  disabled={currentPage === totalPages}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800">{selectedStock ? 'Edit Stock' : 'Add Stock'}</h2>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md sm:max-w-2xl overflow-hidden">
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-base sm:text-lg font-bold text-slate-800">{selectedStock ? 'Edit Stock' : 'Add Stock'}</h2>
               <button onClick={() => { setIsModalOpen(false); resetForm(); }} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Item Name *</label>
                   <input
@@ -542,14 +658,14 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
       {/* Move to Items Modal */}
       {isMoveModalOpen && selectedStock && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800">Move to Items Master</h2>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm sm:max-w-md overflow-hidden">
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-base sm:text-lg font-bold text-slate-800">Move to Items Master</h2>
               <button onClick={() => { setIsMoveModalOpen(false); setSelectedStock(null); }} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleMoveToItems} className="p-6 space-y-4">
+            <form onSubmit={handleMoveToItems} className="p-4 sm:p-6 space-y-4">
               {moveData.mrp > 0 && moveData.selling_price > moveData.mrp && (
                 <div className="bg-red-50 border border-red-200 p-3 rounded-lg mb-4">
                   <p className="text-sm font-medium text-red-700">Selling price cannot be greater than MRP</p>
@@ -603,14 +719,14 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
       {/* Bulk Upload Modal */}
       {isBulkModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800">Bulk Upload Stock</h2>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm sm:max-w-lg overflow-hidden">
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-base sm:text-lg font-bold text-slate-800">Bulk Upload Stock</h2>
               <button onClick={() => { setIsBulkModalOpen(false); setBulkFile(null); }} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div className="text-sm text-slate-600">
                 Upload <b>.csv</b> or <b>.xlsx</b> with columns:
                 <div className="mt-2 text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono">
@@ -674,6 +790,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

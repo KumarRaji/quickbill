@@ -273,87 +273,92 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Items</h1>
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
+      <div className="max-w-7xl mx-auto h-full flex flex-col">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Items</h1>
 
-        {/* ✅ Buttons */}
-        <div className="flex gap-2">
+          {/* ✅ Buttons */}
+          <div className="flex flex-col sm:flex-row gap-2">
           {selectedItems.length > 0 && (
             <button
               onClick={printSelectedBarcodes}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+              className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-xs sm:text-sm"
             >
-              <Printer size={18} />
-              <span>Print Barcodes ({selectedItems.length})</span>
+              <Printer size={16} />
+              <span className="hidden sm:inline">Print Barcodes ({selectedItems.length})</span>
+              <span className="sm:hidden">Print ({selectedItems.length})</span>
             </button>
           )}
           
           <button
             onClick={() => setBulkOpen(true)}
-            className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            className="bg-slate-800 hover:bg-slate-900 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-xs sm:text-sm"
           >
-            <Upload size={18} />
-            <span>Bulk Upload</span>
+            <Upload size={16} />
+            <span className="hidden sm:inline">Bulk Upload</span>
+            <span className="sm:hidden">Upload</span>
           </button>
 
           <button
             onClick={handleAddNew}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-xs sm:text-sm"
           >
-            <Plus size={18} />
-            <span>Add Item</span>
+            <Plus size={16} />
+            <span className="hidden sm:inline">Add Item</span>
+            <span className="sm:hidden">New</span>
           </button>
         </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-slate-200 bg-slate-50">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            {/* Search */}
-            <div className="relative w-full sm:max-w-md">
-              <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-                size={18}
-              />
-              <input
-                type="text"
-                placeholder="Search by Name, Code or Barcode..."
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-
-            {/* Rows dropdown */}
-            <div className="flex items-center gap-2 justify-end">
-              <span className="text-xs font-medium text-slate-600">Rows:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {[10, 20, 50, 100].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
         </div>
 
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 sticky top-0 z-10">
-              <tr>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 w-12">
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
+          <div className="p-3 sm:p-4 border-b border-slate-200 bg-slate-50">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              {/* Search */}
+              <div className="relative w-full sm:max-w-md">
+                <Search
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
+                  size={16}
+                />
+                <input
+                  type="text"
+                  placeholder="Search by Name, Code or Barcode..."
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+
+              {/* Rows dropdown */}
+              <div className="flex items-center gap-2 justify-end">
+                <span className="text-xs font-medium text-slate-600">Rows:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="px-2 sm:px-3 py-2 border border-slate-300 rounded-lg bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {[10, 20, 50, 100].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Table View */}
+          <div className="hidden sm:block overflow-auto flex-1">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 w-12">
                   <input
                     type="checkbox"
                     checked={selectedItems.length === filteredItems.length && filteredItems.length > 0}
@@ -361,34 +366,34 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     className="w-4 h-4 cursor-pointer"
                   />
                 </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  Item Name
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
-                  MRP
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
-                  Selling Price
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
-                  Purchase Price
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
-                  Tax Rate (%)
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-center">
-                  Stock
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
-                  Actions
-                </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                    Item Name
+                  </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
+                    MRP
+                  </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
+                    Selling Price
+                  </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
+                    Purchase Price
+                  </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
+                    Tax Rate (%)
+                  </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-center">
+                    Stock
+                  </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
+                    Actions
+                  </th>
               </tr>
             </thead>
 
-            <tbody className="bg-white divide-y divide-slate-100">
-              {paginatedItems.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 text-center">
+              <tbody className="bg-white divide-y divide-slate-100">
+                {paginatedItems.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 lg:px-6 py-4 text-center">
                     <input
                       type="checkbox"
                       checked={selectedItems.includes(item.id)}
@@ -396,48 +401,48 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                       className="w-4 h-4 cursor-pointer"
                     />
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-slate-900">{item.name}</div>
-                    <div className="flex space-x-3 text-xs text-slate-400 mt-1">
+                    <td className="px-4 lg:px-6 py-3 sm:py-4">
+                      <div className="font-medium text-slate-900 text-sm">{item.name}</div>
+                      <div className="flex space-x-2 text-xs text-slate-400 mt-1">
                       {item.code && <span>Code: {item.code}</span>}
                       {item.barcode && (
                         <span className="flex items-center">
                           <ScanBarcode size={10} className="mr-1" /> {item.barcode}
                         </span>
                       )}
-                    </div>
-                  </td>
+                      </div>
+                    </td>
 
-                  <td className="px-6 py-4 text-right whitespace-nowrap text-slate-500">
-                    {item.mrp && item.mrp > 0 ? `₹${item.mrp}` : '-'}
-                  </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-right whitespace-nowrap text-xs sm:text-sm text-slate-500">
+                      {item.mrp && item.mrp > 0 ? `₹${item.mrp}` : '-'}
+                    </td>
 
-                  <td className="px-6 py-4 text-right whitespace-nowrap text-slate-700">
-                    ₹{item.sellingPrice}
-                  </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-right whitespace-nowrap text-xs sm:text-sm text-slate-700">
+                      ₹{item.sellingPrice}
+                    </td>
 
-                  <td className="px-6 py-4 text-right whitespace-nowrap text-slate-500">
-                    ₹{item.purchasePrice}
-                  </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-right whitespace-nowrap text-xs sm:text-sm text-slate-500">
+                      ₹{item.purchasePrice}
+                    </td>
 
-                  <td className="px-6 py-4 text-right whitespace-nowrap text-slate-500">
-                    {item.taxRate}%
-                  </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-right whitespace-nowrap text-xs sm:text-sm text-slate-500">
+                      {item.taxRate}%
+                    </td>
 
-                  <td className="px-6 py-4 text-center">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        item.stock <= 5
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-green-100 text-green-700'
-                      }`}
-                    >
-                      {item.stock} {item.unit}
-                    </span>
-                  </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-center">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          item.stock <= 5
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}
+                      >
+                        {item.stock} {item.unit}
+                      </span>
+                    </td>
 
-                  <td className="px-6 py-4 text-right whitespace-nowrap">
-                    <div className="flex justify-end space-x-2">
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-right whitespace-nowrap">
+                      <div className="flex justify-end space-x-1 sm:space-x-2">
                       <button
                         onClick={() => handleEdit(item)}
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
@@ -462,58 +467,129 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 lg:px-6 py-12 text-center text-xs sm:text-sm text-slate-400">
                     No items found.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
 
-          {/* Pagination */}
-          {filteredItems.length > 0 && (
-            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-              <p className="text-xs text-slate-500">
-                Showing{' '}
-                <span className="font-medium">
-                  {startIndex + 1}–
-                  {Math.min(startIndex + paginatedItems.length, filteredItems.length)}
-                </span>{' '}
-                of <span className="font-medium">{filteredItems.length}</span> items
-              </p>
-
-              <div className="inline-flex items-center gap-2 text-sm">
-                <button
-                  onClick={handlePrevious}
-                  disabled={currentPage === 1}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        {/* Mobile Card View */}
+        <div className="sm:hidden overflow-auto flex-1 p-3 space-y-3">
+          {paginatedItems.map((item) => (
+            <div key={item.id} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2">
+              <div className="flex justify-between items-start gap-2 pb-2 border-b border-slate-200">
+                <div className="flex-1">
+                  <div className="font-medium text-slate-900 text-sm">{item.name}</div>
+                  <div className="flex space-x-2 text-xs text-slate-400 mt-1">
+                    {item.code && <span>Code: {item.code}</span>}
+                    {item.barcode && <span>#{item.barcode}</span>}
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={selectedItems.includes(item.id)}
+                  onChange={() => toggleItemSelection(item.id)}
+                  className="w-4 h-4 cursor-pointer mt-1"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs py-2">
+                <div>
+                  <span className="text-slate-500">MRP</span>
+                  <div className="font-medium text-slate-900">{item.mrp && item.mrp > 0 ? `₹${item.mrp}` : '-'}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500">Selling</span>
+                  <div className="font-medium text-slate-900">₹{item.sellingPrice}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500">Purchase</span>
+                  <div className="font-medium text-slate-900">₹{item.purchasePrice}</div>
+                </div>
+                <div>
+                  <span className="text-slate-500">Tax</span>
+                  <div className="font-medium text-slate-900">{item.taxRate}%</div>
+                </div>
+              </div>
+              <div className="py-2 border-t border-slate-200">
+                <span className="text-xs text-slate-500">Stock: </span>
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    item.stock <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                  }`}
                 >
-                  Previous
-                </button>
-
-                <span className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
-                  {currentPage}
+                  {item.stock} {item.unit}
                 </span>
-
+              </div>
+              <div className="flex gap-2 pt-2 border-t border-slate-200">
                 <button
-                  onClick={handleNext}
-                  disabled={currentPage === totalPages}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => handleEdit(item)}
+                  className="flex-1 px-2 py-1.5 text-blue-600 hover:bg-blue-50 rounded text-xs font-medium"
                 >
-                  Next
+                  Edit
                 </button>
+                {canDelete && (
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="flex-1 px-2 py-1.5 text-red-600 hover:bg-red-50 rounded text-xs font-medium"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
+          ))}
+          {filteredItems.length === 0 && (
+            <div className="text-center py-12 text-slate-400 text-sm">No items found.</div>
           )}
+        </div>
+
+        {/* Pagination */}
+        {filteredItems.length > 0 && (
+          <div className="px-3 sm:px-4 py-3 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+            <p className="text-xs text-slate-500 order-2 sm:order-1">
+              Showing{' '}
+              <span className="font-medium">
+                {startIndex + 1}–
+                {Math.min(startIndex + paginatedItems.length, filteredItems.length)}
+              </span>{' '}
+              of <span className="font-medium">{filteredItems.length}</span> items
+            </p>
+
+            <div className="inline-flex items-center gap-2 text-xs sm:text-sm order-1 sm:order-2 w-full sm:w-auto">
+              <button
+                onClick={handlePrevious}
+                disabled={currentPage === 1}
+                className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm"
+              >
+                Prev
+              </button>
+
+              <span className="px-2 sm:px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
+                {currentPage}
+              </span>
+
+              <button
+                onClick={handleNext}
+                disabled={currentPage === totalPages}
+                className="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
         </div>
       </div>
 
       {/* Item Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-lg sm:rounded-xl shadow-2xl w-full max-w-md sm:max-w-2xl overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-base sm:text-lg font-bold text-slate-800">
                 {editingId ? 'Edit Item' : 'Add New Item'}
               </h2>
               <button
@@ -524,41 +600,41 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-3 sm:space-y-4 max-h-[80vh] overflow-y-auto">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                   Item Name *
                 </label>
                 <input
                   required
                   type="text"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                     Item Code
                   </label>
                   <input
                     type="text"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                     value={formData.code || ''}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                     Barcode
                   </label>
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                       value={formData.barcode || ''}
                       onChange={(e) => {
                         setFormData({ ...formData, barcode: e.target.value });
@@ -577,15 +653,15 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                     MRP
                   </label>
                   <input
                     type="number"
                     step="1"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                     value={formData.mrp ?? ''}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
@@ -596,14 +672,14 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                     Selling Price *
                   </label>
                   <input
                     required
                     type="number"
                     step="1"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                     value={formData.sellingPrice ?? ''}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
@@ -617,14 +693,14 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                     Purchase Price *
                   </label>
                   <input
                     required
                     type="number"
                     step="1"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                     value={formData.purchasePrice ?? ''}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
@@ -636,17 +712,15 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     }}
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Stock (Optional)
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+                    Stock (Opt.)
                   </label>
                   <input
                     type="number"
                     step="1"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                     value={formData.stock ?? ''}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
@@ -657,12 +731,12 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                     Unit *
                   </label>
                   <select
                     required
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                     value={formData.unit || 'pcs'}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                   >
@@ -674,14 +748,14 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                <div className="hidden sm:block">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                     Tax Rate (%)
                   </label>
                   <input
                     type="number"
                     step="1"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                     value={formData.taxRate ?? ''}
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
@@ -692,8 +766,23 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 </div>
               </div>
 
+              <div className="sm:hidden">
+                <label className="block text-xs font-medium text-slate-700 mb-1">Tax Rate (%)</label>
+                <input
+                  type="number"
+                  step="1"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  value={formData.taxRate ?? ''}
+                  onFocus={(e) => e.target.select()}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    setFormData({ ...formData, taxRate: !isNaN(value) ? value : undefined });
+                  }}
+                />
+              </div>
+
               {showBarcodePreview && formData.barcode && formData.barcode.length >= 8 && (
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                <div className="p-3 sm:p-4 bg-slate-50 border border-slate-200 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-xs text-slate-600">Barcode Preview:</p>
                     <button
@@ -711,18 +800,18 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 </div>
               )}
 
-              <div className="pt-4 flex justify-end space-x-3">
+              <div className="pt-3 sm:pt-4 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
                 >
                   {loading ? 'Saving...' : 'Save Item'}
                 </button>
@@ -734,10 +823,10 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
       {/* ✅ Bulk Upload Modal */}
       {bulkOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800">Bulk Upload Items</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-lg sm:rounded-xl shadow-2xl w-full max-w-sm sm:max-w-lg overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-base sm:text-lg font-bold text-slate-800">Bulk Upload Items</h2>
               <button
                 onClick={() => {
                   if (!bulkLoading) {
@@ -751,17 +840,17 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div className="text-sm text-slate-600">
+            <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+              <div className="text-xs sm:text-sm text-slate-600">
                 Upload <b>.csv</b> or <b>.xlsx</b> with columns:
-                <div className="mt-2 text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono">
+                <div className="mt-2 text-xs bg-slate-50 border border-slate-200 rounded-lg p-2 sm:p-3 font-mono overflow-x-auto">
                   name, code, barcode, sellingPrice, purchasePrice, mrp, stock, unit, taxRate
                 </div>
               </div>
 
               <button
                 onClick={downloadSampleCSV}
-                className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm w-fit"
+                className="px-3 sm:px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-xs sm:text-sm w-fit"
               >
                 Download Sample CSV
               </button>
@@ -770,7 +859,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 onChange={(e) => setBulkFile(e.target.files?.[0] || null)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                 disabled={bulkLoading}
               />
 
@@ -780,7 +869,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 </p>
               )}
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
                 <button
                   onClick={() => {
                     if (!bulkLoading) {
@@ -788,7 +877,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                       setBulkFile(null);
                     }
                   }}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-3 sm:px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm"
                   disabled={bulkLoading}
                 >
                   Cancel
@@ -797,7 +886,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 <button
                   disabled={bulkLoading || !bulkFile}
                   onClick={handleBulkUpload}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
                 >
                   {bulkLoading ? 'Uploading...' : 'Upload'}
                 </button>

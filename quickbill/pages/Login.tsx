@@ -30,49 +30,49 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-        <div className="bg-blue-600 p-8 text-center">
-          <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center text-blue-600 font-bold text-3xl mx-auto mb-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-3 sm:p-6">
+      <div className="bg-white rounded-lg sm:rounded-xl shadow-md sm:shadow-lg w-full max-w-sm overflow-hidden flex flex-col">
+        <div className="bg-blue-600 p-3 sm:p-6 text-center">
+          <div className="w-10 sm:w-14 h-10 sm:h-14 bg-white rounded-lg flex items-center justify-center text-blue-600 font-bold text-xl sm:text-2xl mx-auto mb-2 sm:mb-3">
             Q
           </div>
-          <h1 className="text-2xl font-bold text-white">Welcome to QuickBill</h1>
-          <p className="text-blue-100 mt-2">Sign in to manage your business</p>
+          <h1 className="text-base sm:text-xl font-bold text-white">Welcome to QuickBill</h1>
+          <p className="text-blue-100 text-xs mt-0.5 sm:mt-1">Sign in to manage your business</p>
         </div>
         
-        <div className="p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="p-3 sm:p-6">
+          <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm text-center">
+              <div className="bg-red-50 text-red-600 p-2 sm:p-2.5 rounded text-xs text-center">
                 {error}
               </div>
             )}
             
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Username</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Username</label>
               <div className="relative">
-                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input
                   type="text"
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  className="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-xs sm:text-sm"
                   placeholder="Enter your username"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  className="w-full pl-8 sm:pl-9 pr-3 py-1.5 sm:py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all text-xs sm:text-sm"
                   placeholder="Enter your password"
                 />
               </div>
@@ -81,19 +81,19 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 sm:py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-70 disabled:cursor-not-allowed text-xs sm:text-sm"
             >
               <span>{loading ? 'Signing in...' : 'Sign In'}</span>
-              {!loading && <ArrowRight size={20} />}
+              {!loading && <ArrowRight size={16} />}
             </button>
           </form>
 
-          <div className="mt-4 pt-3 border-t border-slate-100 text-center">
-             <p className="text-xs text-slate-400 mb-2">Demo Credentials (user / pass):</p>
-             <div className="flex justify-center flex-wrap gap-2 text-xs text-slate-500">
-               <span className="bg-purple-50 text-purple-700 border-purple-200 px-2 py-1 rounded border">superadmin/ password</span>
-               <span className="bg-slate-50 px-2 py-1 rounded border">admin/ password</span>
-               <span className="bg-slate-50 px-2 py-1 rounded border">staff/ password</span>
+          <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 text-center">
+             <p className="text-[9px] sm:text-xs text-slate-400 mb-1.5 sm:mb-2">Demo Credentials (user / pass):</p>
+             <div className="flex justify-center flex-wrap gap-1 sm:gap-1.5 text-[9px] sm:text-xs">
+               <span className="bg-purple-50 text-purple-700 border border-purple-200 px-1.5 sm:px-2 py-0.5 rounded">superadmin / password</span>
+               <span className="bg-slate-50 text-slate-600 border border-slate-200 px-1.5 sm:px-2 py-0.5 rounded">admin / password</span>
+               <span className="bg-slate-50 text-slate-600 border border-slate-200 px-1.5 sm:px-2 py-0.5 rounded">staff / password</span>
              </div>
           </div>
         </div>

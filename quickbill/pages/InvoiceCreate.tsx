@@ -340,45 +340,48 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto h-full flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="h-full flex flex-col bg-white overflow-hidden max-w-full sm:max-w-5xl sm:mx-auto sm:rounded-xl sm:shadow-sm sm:border sm:border-slate-200">
       {/* Header */}
-      <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          <button onClick={onCancel} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-            <ArrowLeft size={20} className="text-slate-600" />
+      <div className="p-3 sm:p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-wrap gap-2 sm:gap-0">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+          <button onClick={onCancel} className="p-2 hover:bg-slate-200 rounded-full transition-colors flex-shrink-0" type="button">
+            <ArrowLeft size={18} className="text-slate-600 sm:w-5 sm:h-5 w-4 h-4" />
           </button>
-          <h1 className="text-xl font-bold text-slate-800">{getTitle()}</h1>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate">{getTitle()}</h1>
+            <div className="text-xs text-slate-500 mt-0.5 hidden sm:block">Sale Invoice Create</div>
+          </div>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
           <select
-            className="px-3 py-1 bg-white border border-slate-300 rounded-md text-sm font-medium focus:ring-2 focus:ring-blue-500"
+            className="px-2 sm:px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
             value={transactionType}
             onChange={(e) => setTransactionType(e.target.value as TransactionType)}
           >
             <optgroup label="Sales">
-              <option value="SALE">Sale Invoice</option>
-              <option value="RETURN">Sale Return</option>
+              <option value="SALE">Sale</option>
+              <option value="RETURN">Return</option>
             </optgroup>
             <optgroup label="Purchases">
-              <option value="PURCHASE">Purchase Bill</option>
-              <option value="PURCHASE_RETURN">Purchase Return</option>
+              <option value="PURCHASE">Purchase</option>
+              <option value="PURCHASE_RETURN">Pur. Return</option>
             </optgroup>
           </select>
-          <div className="text-slate-500 font-medium">#{invoiceNumber}</div>
+          <div className="text-slate-600 font-medium text-xs sm:text-base">#{invoiceNumber}</div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6 space-y-8">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4 sm:space-y-8">
         {/* Top Section */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-slate-700 mb-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          <div>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">
               {isPurchase ? "Supplier *" : "Customer *"}
             </label>
             <select
               required={transactionType === "SALE"}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
               value={selectedPartyId}
               onChange={(e) => setSelectedPartyId(e.target.value)}
             >
@@ -393,32 +396,32 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
             </select>
           </div>
 
-          <div className="md:col-span-1">
-            <label className="block text-sm font-bold text-slate-700 mb-1">
+          <div>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">
               {isReturn ? "Return / CN No." : "Invoice No."}
             </label>
             <input
               type="text"
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-500"
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-sm"
               value={invoiceNumber}
               readOnly
             />
           </div>
 
-          <div className="md:col-span-1">
-            <label className="block text-sm font-bold text-slate-700 mb-1">Date</label>
+          <div>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Date</label>
             <input
               type="date"
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
             />
           </div>
 
-          <div className="md:col-span-1">
-            <label className="block text-sm font-bold text-slate-700 mb-1">Payment Mode</label>
+          <div>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Payment Mode</label>
             <select
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
               value={paymentMode}
               onChange={(e) => setPaymentMode(e.target.value as any)}
             >
@@ -430,11 +433,11 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
           </div>
 
           {isReturn && (
-            <div className="md:col-span-1">
-              <label className="block text-sm font-bold text-slate-700 mb-1">Original Invoice No.</label>
+            <div className="col-span-1 sm:col-span-2 lg:col-span-4">
+              <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Original Invoice No.</label>
               <input
                 type="text"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                 value={originalRefNumber}
                 onChange={(e) => setOriginalRefNumber(e.target.value)}
                 placeholder="e.g. TXN-123"
@@ -444,11 +447,11 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
         </div>
 
         {/* Barcode Scanner */}
-        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex items-center space-x-3">
+        <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200 space-y-3 sm:flex sm:items-center sm:space-y-0 sm:space-x-3">
           {!hideAddItemButton && (
             <button
               onClick={() => setShowItemModal(true)}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center space-x-2 transition-colors font-medium"
+              className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center sm:justify-start space-x-2 transition-colors font-medium text-sm"
               type="button"
             >
               <Plus size={18} />
@@ -456,11 +459,11 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
             </button>
           )}
 
-          <div className={`p-2 bg-${getColor()}-100 rounded-full text-${getColor()}-600`}>
+          <div className={`p-2 bg-${getColor()}-100 rounded-full text-${getColor()}-600 hidden sm:block flex-shrink-0`}>
             <ScanBarcode size={24} />
           </div>
 
-          <div className="flex-1 relative">
+          <div className="flex-1 relative min-w-0">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
               Scan Barcode / Item Name
             </label>
@@ -468,7 +471,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
               ref={barcodeInputRef}
               type="text"
               placeholder="Scan barcode, type item name/code..."
-              className="w-full bg-white border border-slate-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full bg-white border border-slate-300 rounded-md px-3 sm:px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
               value={barcodeInput}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleBarcodeScan}
@@ -481,7 +484,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
                   filteredItems.map((item, index) => (
                     <div
                       key={item.id}
-                      className={`px-4 py-2 cursor-pointer border-b border-slate-100 last:border-b-0 ${
+                      className={`px-3 sm:px-4 py-2 cursor-pointer border-b border-slate-100 last:border-b-0 text-sm ${
                         index === selectedSuggestionIndex ? "bg-blue-100 text-blue-900" : "hover:bg-blue-50"
                       }`}
                       onMouseDown={(e) => {
@@ -506,29 +509,117 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
           </div>
         </div>
 
-        {/* Items Table */}
+        {/* Items Table - Responsive */}
         <div>
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-4/12">Item</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">
-                  {isReturn ? "Return Qty" : "Qty"}
-                </th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">MRP</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Rate</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Save</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Amount</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12"></th>
-              </tr>
-            </thead>
+          <div className="hidden sm:block">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-4/12">Item</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">
+                    {isReturn ? "Return Qty" : "Qty"}
+                  </th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">MRP</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Rate</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Save</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Amount</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12"></th>
+                </tr>
+              </thead>
 
-            <tbody>
-              {rows.map((row, index) => (
-                <tr key={index} className="border-b border-slate-100">
-                  <td className="py-3 pr-4">
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={index} className="border-b border-slate-100">
+                    <td className="py-3 pr-4">
+                      <select
+                        className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none text-sm"
+                        value={row.itemId}
+                        onChange={(e) => updateRow(index, "itemId", e.target.value)}
+                      >
+                        <option value="">Select Item</option>
+                        {items.map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.name} (Stock: {i.stock})
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    <td className="py-3 px-2">
+                      <input
+                        type="number"
+                        min="1"
+                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        value={row.quantity ?? ""}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const value = handleNumber(e.target.value);
+                          updateRow(index, "quantity", value ?? 0);
+                        }}
+                      />
+                    </td>
+
+                    <td className="py-3 px-2">
+                      <input
+                        type="number"
+                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        value={row.mrp ?? ""}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const value = handleNumber(e.target.value);
+                          updateRow(index, "mrp", value ?? 0);
+                        }}
+                        placeholder="MRP"
+                      />
+                    </td>
+
+                    <td className="py-3 px-2">
+                      <input
+                        type="number"
+                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        value={row.price ?? ""}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const value = handleNumber(e.target.value);
+                          updateRow(index, "price", value ?? 0);
+                        }}
+                      />
+                    </td>
+
+                    <td className="py-3 px-2 text-right text-slate-600">
+                      {(() => {
+                        const saving = Math.max(
+                          0,
+                          (Number(row.mrp || 0) - Number(row.price || 0)) * Number(row.quantity || 0)
+                        );
+                        return `₹${saving.toFixed(2)}`;
+                      })()}
+                    </td>
+
+                    <td className="py-3 px-2 text-right font-medium text-slate-700">
+                      ₹{Number(row.amount || 0).toFixed(2)}
+                    </td>
+
+                    <td className="py-3 pl-2 text-right">
+                      <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600" type="button">
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="sm:hidden space-y-3">
+            {rows.map((row, index) => (
+              <div key={index} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <label className="text-xs text-slate-500 font-semibold">Item</label>
                     <select
-                      className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none text-sm"
+                      className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-blue-500 outline-none text-xs"
                       value={row.itemId}
                       onChange={(e) => updateRow(index, "itemId", e.target.value)}
                     >
@@ -539,13 +630,19 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
                         </option>
                       ))}
                     </select>
-                  </td>
+                  </div>
+                  <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600 flex-shrink-0 mt-5" type="button">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
 
-                  <td className="py-3 px-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-slate-500 font-semibold">{isReturn ? "Return Qty" : "Qty"}</label>
                     <input
                       type="number"
                       min="1"
-                      className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                      className="w-full p-2 border border-slate-300 rounded text-right text-xs"
                       value={row.quantity ?? ""}
                       onFocus={(e) => e.target.select()}
                       onChange={(e) => {
@@ -553,63 +650,58 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
                         updateRow(index, "quantity", value ?? 0);
                       }}
                     />
-                  </td>
-
-                  <td className="py-3 px-2">
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 font-semibold">MRP</label>
                     <input
                       type="number"
-                      className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                      className="w-full p-2 border border-slate-300 rounded text-right text-xs"
                       value={row.mrp ?? ""}
                       onFocus={(e) => e.target.select()}
                       onChange={(e) => {
                         const value = handleNumber(e.target.value);
                         updateRow(index, "mrp", value ?? 0);
                       }}
-                      placeholder="MRP"
                     />
-                  </td>
+                  </div>
+                </div>
 
-                  <td className="py-3 px-2">
-                    <input
-                      type="number"
-                      className="w-full p-2 border border-slate-300 rounded text-right text-sm"
-                      value={row.price ?? ""}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => {
-                        const value = handleNumber(e.target.value);
-                        updateRow(index, "price", value ?? 0);
-                      }}
-                    />
-                  </td>
+                <div>
+                  <label className="text-xs text-slate-500 font-semibold">Rate</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-slate-300 rounded text-right text-xs"
+                    value={row.price ?? ""}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = handleNumber(e.target.value);
+                      updateRow(index, "price", value ?? 0);
+                    }}
+                  />
+                </div>
 
-                  <td className="py-3 px-2 text-right text-slate-600">
-                    {(() => {
-                      const saving = Math.max(
-                        0,
-                        (Number(row.mrp || 0) - Number(row.price || 0)) * Number(row.quantity || 0)
-                      );
-                      return `₹${saving.toFixed(2)}`;
-                    })()}
-                  </td>
+                <div className="bg-slate-100 p-2 rounded text-right">
+                  <span className="text-xs text-slate-500">Amount: </span>
+                  <span className="font-semibold text-slate-800 text-sm">₹{Number(row.amount || 0).toFixed(2)}</span>
+                </div>
 
-                  <td className="py-3 px-2 text-right font-medium text-slate-700">
-                    ₹{Number(row.amount || 0).toFixed(2)}
-                  </td>
-
-                  <td className="py-3 pl-2 text-right">
-                    <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600">
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                <div className="text-xs text-slate-600">
+                  Saving: <span className="font-medium">₹{(() => {
+                    const saving = Math.max(
+                      0,
+                      (Number(row.mrp || 0) - Number(row.price || 0)) * Number(row.quantity || 0)
+                    );
+                    return saving.toFixed(2);
+                  })()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
 
           <button
             onClick={addRow}
-            className={`mt-4 flex items-center space-x-2 text-${getColor()}-600 font-medium hover:text-${getColor()}-800`}
             type="button"
+            className="mt-3 sm:mt-4 w-full sm:w-auto flex items-center justify-center sm:justify-start space-x-2 text-blue-600 font-medium hover:text-blue-800 text-sm"
           >
             <Plus size={18} />
             <span>Add Row</span>
@@ -617,40 +709,42 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
         </div>
 
         {/* Totals */}
-        <div className="flex justify-end pt-6 border-t border-slate-100">
-          <div className="w-64 space-y-3">
-            <div className="flex justify-between text-slate-600">
+        <div className="flex justify-end pt-4 sm:pt-6 border-t border-slate-100">
+          <div className="w-full sm:w-64 space-y-2 sm:space-y-3">
+            <div className="flex justify-between text-slate-600 text-sm">
               <span>Subtotal</span>
               <span>₹{totals.subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-slate-600">
+            <div className="flex justify-between text-slate-600 text-sm">
               <span>Tax (Approx)</span>
               <span>₹{totals.tax.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-xl font-bold text-slate-800 border-t border-slate-300 pt-3">
+            <div className="flex justify-between text-lg sm:text-xl font-bold text-slate-800 border-t border-slate-300 pt-2 sm:pt-3">
               <span>Total</span>
               <span>₹{totals.total.toFixed(2)}</span>
             </div>
-            <div className="text-center mt-2">
-              <div className="inline-block bg-green-100 text-green-800 font-semibold px-3 py-1 rounded">
-                You Have Saved : ₹{totals.savings.toFixed(2)}
+            {totals.savings > 0 && (
+              <div className="text-center mt-2">
+                <div className="inline-block bg-green-100 text-green-800 font-semibold px-3 py-1 rounded text-sm">
+                  You Have Saved : ₹{totals.savings.toFixed(2)}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
-        <div className="text-sm text-slate-500">
+      {/* Footer actions */}
+      <div className="p-3 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+        <div className="text-xs sm:text-sm text-slate-500 truncate">
           {rows.length} items • Type: <span className="font-semibold">{transactionType}</span>
         </div>
 
-        <div className="flex space-x-4">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
           <button
             onClick={onCancel}
-            className="px-6 py-2 border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-100"
             type="button"
+            className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-100 text-sm"
           >
             Cancel
           </button>
@@ -658,8 +752,8 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
           <button
             onClick={() => handleSave(false)}
             disabled={loading || !rows.some((r) => r.itemId)}
-            className={`px-6 py-2 bg-${getColor()}-600 text-white rounded-lg font-medium hover:bg-${getColor()}-700 shadow-md flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed`}
             type="button"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             <Save size={18} />
             <span>Save</span>
@@ -668,8 +762,8 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
           <button
             onClick={() => handleSave(true)}
             disabled={loading || !rows.some((r) => r.itemId)}
-            className="px-6 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 shadow-md flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             type="button"
+            className="px-4 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
             <Printer size={18} />
             <span>Save & Print</span>

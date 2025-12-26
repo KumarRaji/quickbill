@@ -166,37 +166,39 @@ const SaleReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSucces
   }
 
   return (
-    <div className="max-w-7xl mx-auto h-full flex flex-col space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-800">Sale Return</h1>
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6 pb-6">
+      <div className="max-w-7xl mx-auto h-full flex flex-col space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Sale Return</h1>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
-            type="button"
-          >
-            Cancel
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onCancel}
+              className="px-3 sm:px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm"
+              type="button"
+            >
+              Cancel
+            </button>
 
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="bg-slate-700 hover:bg-slate-800 text-white px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            type="button"
-          >
-            {submitting ? <RefreshCw className="animate-spin" size={18} /> : <FileText size={18} />}
-            Create Credit Note
-          </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className="bg-slate-700 hover:bg-slate-800 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm"
+              type="button"
+            >
+              {submitting ? <RefreshCw className="animate-spin" size={18} /> : <FileText size={18} />}
+              <span className="hidden sm:inline">Create Credit Note</span>
+              <span className="sm:hidden">Credit Note</span>
+            </button>
+          </div>
         </div>
-      </div>
 
       {/* Select Invoice */}
       <div
-        className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 relative"
+        className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-4 relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <label className="text-sm font-medium text-slate-700">Enter the TXN *</label>
+        <label className="text-xs sm:text-sm font-medium text-slate-700">Enter the TXN *</label>
         <input
           type="text"
           value={searchQuery}
@@ -217,29 +219,29 @@ const SaleReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSucces
           }}
           onFocus={() => setShowDropdown(true)}
           placeholder="Search by invoice number or party name..."
-          className="mt-2 w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="mt-2 w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
         />
 
         {showDropdown && filteredInvoices.length > 0 && (
-          <div className="absolute z-10 mt-1 w-[calc(100%-2rem)] max-h-60 overflow-y-auto bg-white border border-slate-300 rounded-lg shadow-lg">
+          <div className="absolute z-10 mt-1 w-[calc(100%-1.5rem)] max-h-60 overflow-y-auto bg-white border border-slate-300 rounded-lg shadow-lg">
             {filteredInvoices.map((inv) => (
               <button
                 key={inv.id}
                 type="button"
                 onClick={() => handleSelectInvoice(inv)}
-                className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b border-slate-100 last:border-b-0 focus:outline-none focus:bg-blue-50"
+                className="w-full text-left px-3 sm:px-4 py-2 hover:bg-blue-50 border-b border-slate-100 last:border-b-0 focus:outline-none focus:bg-blue-50"
               >
-                <div className="font-medium text-slate-800">
+                <div className="font-medium text-slate-800 text-xs sm:text-sm">
                   {inv.invoiceNumber} — {inv.partyName}
                 </div>
-                <div className="text-sm text-slate-500">₹{inv.totalAmount}</div>
+                <div className="text-xs text-slate-500">₹{inv.totalAmount}</div>
               </button>
             ))}
           </div>
         )}
 
         {showDropdown && searchQuery && filteredInvoices.length === 0 && (
-          <div className="absolute z-10 mt-1 w-[calc(100%-2rem)] bg-white border border-slate-300 rounded-lg shadow-lg p-4 text-center text-slate-500">
+          <div className="absolute z-10 mt-1 w-[calc(100%-1.5rem)] bg-white border border-slate-300 rounded-lg shadow-lg p-4 text-center text-slate-500 text-xs sm:text-sm">
             No invoices found
           </div>
         )}
@@ -247,109 +249,181 @@ const SaleReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSucces
 
       {/* Invoice Items */}
       {selectedInvoice && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 font-bold text-slate-700">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+          <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-slate-200 bg-slate-50 font-bold text-slate-700 text-xs sm:text-sm">
             Sold Items (select quantities to return)
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
-                <tr>
-                  <th className="px-6 py-3">Invoice No</th>
-                  <th className="px-6 py-3">Item</th>
-                  <th className="px-6 py-3 text-center">Sold Qty</th>
-                  <th className="px-6 py-3 text-right">Price</th>
-                  <th className="px-6 py-3 text-center">Tax %</th>
-                  <th className="px-6 py-3 text-center">Return Qty</th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {returnRows.map((r) => (
-                  <tr key={r.itemId} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 font-medium text-slate-600">
-                      {selectedInvoice?.invoiceNumber || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 font-medium text-slate-800">{r.itemName}</td>
-                    <td className="px-6 py-4 text-center text-slate-700">{r.soldQty}</td>
-                    <td className="px-6 py-4 text-right text-slate-700">₹{r.price}</td>
-                    <td className="px-6 py-4 text-center text-slate-600">{r.taxRate}%</td>
-
-                    <td className="px-6 py-4 text-center">
-                      <input
-                        type="number"
-                        min={0}
-                        max={r.soldQty}
-                        inputMode="numeric"
-                        value={qtyInputs[r.itemId] ?? "0"}
-                        onFocus={(e) => e.currentTarget.select()}
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          setQtyInputs((prev) => ({ ...prev, [r.itemId]: raw }));
-
-                          const parsed = parseQty(raw);
-                          if (parsed === undefined) {
-                            setQty(r.itemId, 0);
-                            return;
-                          }
-                          setQty(r.itemId, clamp(parsed, 0, r.soldQty));
-                        }}
-                        onBlur={() => {
-                          const raw = (qtyInputs[r.itemId] ?? "").trim();
-                          const parsed = parseQty(raw);
-                          const finalQty = clamp(parsed ?? 0, 0, r.soldQty);
-
-                          setQty(r.itemId, finalQty);
-                          setQtyInputs((prev) => ({ ...prev, [r.itemId]: String(finalQty) }));
-                        }}
-                        className="w-28 px-3 py-2 border border-slate-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <div className="text-[11px] text-slate-400 mt-1">max {r.soldQty}</div>
-                    </td>
-                  </tr>
-                ))}
-
-                {returnRows.length === 0 && (
+          {/* Desktop Table View */}
+          <div className="hidden sm:flex sm:flex-col sm:flex-1 sm:min-h-0">
+            <div className="overflow-auto flex-1 min-h-0">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold sticky top-0">
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-slate-400">
-                      No items found in invoice.
-                    </td>
+                    <th className="px-4 lg:px-6 py-3 sm:py-4">Invoice No</th>
+                    <th className="px-4 lg:px-6 py-3 sm:py-4">Item</th>
+                    <th className="px-4 lg:px-6 py-3 sm:py-4 text-center">Sold Qty</th>
+                    <th className="px-4 lg:px-6 py-3 sm:py-4 text-right">Price</th>
+                    <th className="px-4 lg:px-6 py-3 sm:py-4 text-center">Tax %</th>
+                    <th className="px-4 lg:px-6 py-3 sm:py-4 text-center">Return Qty</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody className="divide-y divide-slate-100">
+                  {returnRows.map((r) => (
+                    <tr key={r.itemId} className="hover:bg-slate-50">
+                      <td className="px-4 lg:px-6 py-3 sm:py-4 font-medium text-slate-600 text-sm">
+                        {selectedInvoice?.invoiceNumber || "N/A"}
+                      </td>
+                      <td className="px-4 lg:px-6 py-3 sm:py-4 font-medium text-slate-800 text-sm">{r.itemName}</td>
+                      <td className="px-4 lg:px-6 py-3 sm:py-4 text-center text-slate-700 text-sm">{r.soldQty}</td>
+                      <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-700 text-sm">₹{r.price}</td>
+                      <td className="px-4 lg:px-6 py-3 sm:py-4 text-center text-slate-600 text-sm">{r.taxRate}%</td>
+
+                      <td className="px-4 lg:px-6 py-3 sm:py-4 text-center">
+                        <input
+                          type="number"
+                          min={0}
+                          max={r.soldQty}
+                          inputMode="numeric"
+                          value={qtyInputs[r.itemId] ?? "0"}
+                          onFocus={(e) => e.currentTarget.select()}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            setQtyInputs((prev) => ({ ...prev, [r.itemId]: raw }));
+
+                            const parsed = parseQty(raw);
+                            if (parsed === undefined) {
+                              setQty(r.itemId, 0);
+                              return;
+                            }
+                            setQty(r.itemId, clamp(parsed, 0, r.soldQty));
+                          }}
+                          onBlur={() => {
+                            const raw = (qtyInputs[r.itemId] ?? "").trim();
+                            const parsed = parseQty(raw);
+                            const finalQty = clamp(parsed ?? 0, 0, r.soldQty);
+
+                            setQty(r.itemId, finalQty);
+                            setQtyInputs((prev) => ({ ...prev, [r.itemId]: String(finalQty) }));
+                          }}
+                          className="w-24 px-2 sm:px-3 py-2 border border-slate-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+                        />
+                        <div className="text-[10px] sm:text-[11px] text-slate-400 mt-1">max {r.soldQty}</div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {returnRows.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 lg:px-6 py-10 text-center text-slate-400 text-sm">
+                        No items found in invoice.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="px-6 py-4 border-t border-slate-200 bg-slate-50">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white border border-slate-200 rounded-xl p-4">
-                <div className="text-xs text-slate-500">Return Subtotal</div>
-                <div className="text-lg font-bold text-slate-800">₹{totals.subtotal.toFixed(2)}</div>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-xl p-4">
-                <div className="text-xs text-slate-500">Return Tax</div>
-                <div className="text-lg font-bold text-slate-800">₹{totals.tax.toFixed(2)}</div>
-              </div>
-              <div className="bg-white border border-slate-200 rounded-xl p-4">
-                <div className="text-xs text-slate-500">Credit Note Total</div>
-                <div className="text-lg font-bold text-red-600">₹{totals.grand.toFixed(2)}</div>
-              </div>
-            </div>
+          {/* Mobile Card View */}
+          <div className="sm:hidden p-3 space-y-3 flex-1 overflow-auto min-h-0">
+            {returnRows.map((r) => (
+              <div key={r.itemId} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2">
+                <div className="flex justify-between items-start gap-2 pb-2 border-b border-slate-200">
+                  <div className="flex-1">
+                    <div className="font-medium text-slate-900 text-sm">{r.itemName}</div>
+                    <div className="text-xs text-slate-500 mt-1">Invoice: {selectedInvoice?.invoiceNumber || "N/A"}</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs py-2">
+                  <div>
+                    <span className="text-slate-500">Sold Qty</span>
+                    <div className="font-medium text-slate-900">{r.soldQty}</div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Price</span>
+                    <div className="font-medium text-slate-900">₹{r.price}</div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Tax %</span>
+                    <div className="font-medium text-slate-900">{r.taxRate}%</div>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Return Qty</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={r.soldQty}
+                      inputMode="numeric"
+                      value={qtyInputs[r.itemId] ?? "0"}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setQtyInputs((prev) => ({ ...prev, [r.itemId]: raw }));
 
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Reason (optional)</label>
-              <textarea
-                rows={2}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                placeholder="e.g., Damaged / Wrong size / Customer changed mind..."
-              />
-            </div>
+                        const parsed = parseQty(raw);
+                        if (parsed === undefined) {
+                          setQty(r.itemId, 0);
+                          return;
+                        }
+                        setQty(r.itemId, clamp(parsed, 0, r.soldQty));
+                      }}
+                      onBlur={() => {
+                        const raw = (qtyInputs[r.itemId] ?? "").trim();
+                        const parsed = parseQty(raw);
+                        const finalQty = clamp(parsed ?? 0, 0, r.soldQty);
+
+                        setQty(r.itemId, finalQty);
+                        setQtyInputs((prev) => ({ ...prev, [r.itemId]: String(finalQty) }));
+                      }}
+                      className="w-full px-2 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+                    />
+                    <div className="text-[10px] text-slate-400 mt-1">max {r.soldQty}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {returnRows.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-slate-400">No items found in invoice.</p>
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      {/* Totals and Reason */}
+      {selectedInvoice && (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-6 space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4">
+              <div className="text-xs text-slate-500 font-medium">Return Subtotal</div>
+              <div className="text-lg sm:text-2xl font-bold text-slate-800">₹{totals.subtotal.toFixed(2)}</div>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4">
+              <div className="text-xs text-slate-500 font-medium">Return Tax</div>
+              <div className="text-lg sm:text-2xl font-bold text-slate-800">₹{totals.tax.toFixed(2)}</div>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 sm:p-4">
+              <div className="text-xs text-orange-600 font-medium">Credit Note Total</div>
+              <div className="text-lg sm:text-2xl font-bold text-orange-600">₹{totals.grand.toFixed(2)}</div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Reason (optional)</label>
+            <textarea
+              rows={2}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-xs sm:text-sm"
+              placeholder="e.g., Damaged / Wrong size / Customer changed mind..."
+            />
+          </div>
+        </div>
+      )}
+      </div>
     </div>
   );
 };

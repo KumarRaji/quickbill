@@ -107,32 +107,34 @@ export default function PurchaseBills({
   const handleNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
   return (
-    <div className="flex flex-col bg-white rounded-xl shadow-sm border border-slate-200">
-      {/* Header */}
-      <div className="p-6 border-b border-slate-200">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-slate-800">Purchase Bills</h1>
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Purchase Bills</h1>
 
-          <button
-            onClick={onCreateNew}
-            className="flex items-center space-x-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-            type="button"
-          >
-            <Plus size={20} />
-            <span>New Purchase</span>
-          </button>
-        </div>
+            <button
+              onClick={onCreateNew}
+              className="flex items-center justify-center sm:justify-start space-x-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm w-full sm:w-auto"
+              type="button"
+            >
+              <Plus size={20} />
+              <span className="hidden sm:inline">New Purchase</span>
+              <span className="sm:hidden">New</span>
+            </button>
+          </div>
 
         {/* Filters Row */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+        <div className="bg-white border border-slate-200 rounded-lg p-3 sm:p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 items-end">
             {/* Search */}
-            <div className="relative md:col-span-5">
+            <div className="relative lg:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
                 type="text"
                 placeholder="Search by bill number or supplier..."
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white text-sm"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -142,7 +144,7 @@ export default function PurchaseBills({
             </div>
 
             {/* From Date */}
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">From</label>
               <input
                 type="date"
@@ -151,12 +153,12 @@ export default function PurchaseBills({
                   setFromDate(e.target.value);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none"
+                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none text-sm"
               />
             </div>
 
             {/* To Date */}
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">To</label>
               <input
                 type="date"
@@ -165,12 +167,12 @@ export default function PurchaseBills({
                   setToDate(e.target.value);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none"
+                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none text-sm"
               />
             </div>
 
             {/* Status */}
-            <div className="md:col-span-2">
+            <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Status</label>
               <select
                 value={statusFilter}
@@ -178,7 +180,7 @@ export default function PurchaseBills({
                   setStatusFilter(e.target.value as any);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none"
+                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none text-sm"
               >
                 <option value="ALL">All</option>
                 <option value="UNPAID">Unpaid</option>
@@ -187,7 +189,7 @@ export default function PurchaseBills({
             </div>
 
             {/* Rows */}
-            <div className="md:col-span-1">
+            <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Rows</label>
               <select
                 value={pageSize}
@@ -195,7 +197,7 @@ export default function PurchaseBills({
                   setPageSize(Number(e.target.value));
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none"
+                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none text-sm"
               >
                 {[10, 20, 50, 100].map((n) => (
                   <option key={n} value={n}>
@@ -226,122 +228,215 @@ export default function PurchaseBills({
       </div>
 
       {/* Bills List */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="mt-6">
         {loading ? (
           <div className="text-center py-12 text-slate-500">Loading...</div>
         ) : paginatedBills.length === 0 ? (
           <div className="text-center py-12 text-slate-500">No purchase bills found</div>
         ) : (
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Bill No.</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Supplier</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Items</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Tax Rate (%)</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Amount</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Status</th>
-                  <th className="px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Action</th>
-                </tr>
-              </thead>
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Bill No.</th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Date</th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Supplier</th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Items</th>
+                    <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Tax Rate (%)</th>
+                    <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Amount</th>
+                    <th className="px-4 lg:px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Status</th>
+                    <th className="px-4 lg:px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Action</th>
+                  </tr>
+                </thead>
 
-              <tbody className="divide-y divide-slate-200">
-                {paginatedBills.map((bill) => {
-                  const amount = Number(bill.totalAmount ?? 0);
-                  const dateStr = bill.date ? new Date(bill.date).toLocaleDateString() : "-";
-                  const supplier = bill.partyName || "-";
-                  const status = bill.status || "UNPAID";
+                <tbody className="divide-y divide-slate-200">
+                  {paginatedBills.map((bill) => {
+                    const amount = Number(bill.totalAmount ?? 0);
+                    const dateStr = bill.date ? new Date(bill.date).toLocaleDateString() : "-";
+                    const supplier = bill.partyName || "-";
+                    const status = bill.status || "UNPAID";
 
-                  const items = Array.isArray(bill.items) ? bill.items : [];
-                  const isDeleting = deletingId === bill.id;
+                    const items = Array.isArray(bill.items) ? bill.items : [];
+                    const isDeleting = deletingId === bill.id;
 
-                  return (
-                    <tr key={bill.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{bill.invoiceNumber || "-"}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{dateStr}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{supplier}</td>
+                    return (
+                      <tr key={bill.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 lg:px-6 py-4 text-sm font-medium text-slate-900">{bill.invoiceNumber || "-"}</td>
+                        <td className="px-4 lg:px-6 py-4 text-sm text-slate-600">{dateStr}</td>
+                        <td className="px-4 lg:px-6 py-4 text-sm text-slate-600">{supplier}</td>
 
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                        <div className="max-w-xs">
-                          {items.slice(0, 2).map((item, idx) => (
-                            <div key={idx} className="text-xs">
-                              {item.itemName} (x{item.quantity})
-                            </div>
-                          ))}
-                          {items.length > 2 && <div className="text-xs text-slate-400">+{items.length - 2} more</div>}
+                        <td className="px-4 lg:px-6 py-4 text-sm text-slate-600">
+                          <div className="max-w-xs">
+                            {items.slice(0, 2).map((item, idx) => (
+                              <div key={idx} className="text-xs">
+                                {item.itemName} (x{item.quantity})
+                              </div>
+                            ))}
+                            {items.length > 2 && <div className="text-xs text-slate-400">+{items.length - 2} more</div>}
+                          </div>
+                        </td>
+
+                        <td className="px-4 lg:px-6 py-4 text-sm text-slate-600 text-right">
+                          {items.length > 0 ? `${items[0].taxRate || 0}%` : "-"}
+                        </td>
+
+                        <td className="px-4 lg:px-6 py-4 text-sm text-slate-900 text-right font-medium">
+                          ₹{amount.toFixed(2)}
+                        </td>
+
+                        <td className="px-4 lg:px-6 py-4 text-center">
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              status === "PAID" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {status}
+                          </span>
+                        </td>
+
+                        <td className="px-4 lg:px-6 py-4 text-center">
+                          <div className="flex justify-center space-x-2">
+                            <button
+                              onClick={() => onViewInvoice(bill)}
+                              disabled={isDeleting}
+                              className={`p-2 rounded-lg transition-colors ${
+                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
+                              }`}
+                              title="View"
+                              type="button"
+                            >
+                              <Eye size={18} />
+                            </button>
+
+                            <button
+                              onClick={() => onEditInvoice(bill)}
+                              disabled={isDeleting}
+                              className={`p-2 rounded-lg transition-colors ${
+                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-green-600 hover:bg-green-50"
+                              }`}
+                              title="Edit"
+                              type="button"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+
+                            <button
+                              onClick={() => handleDelete(bill)}
+                              disabled={isDeleting}
+                              className={`p-2 rounded-lg transition-colors ${
+                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-red-600 hover:bg-red-50"
+                              }`}
+                              title={isDeleting ? "Deleting..." : "Delete"}
+                              type="button"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+
+                          {isDeleting && <div className="mt-1 text-[11px] text-slate-400">Deleting...</div>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="sm:hidden space-y-3 p-3">
+              {paginatedBills.map((bill) => {
+                const amount = Number(bill.totalAmount ?? 0);
+                const dateStr = bill.date ? new Date(bill.date).toLocaleDateString() : "-";
+                const supplier = bill.partyName || "-";
+                const status = bill.status || "UNPAID";
+                const items = Array.isArray(bill.items) ? bill.items : [];
+                const isDeleting = deletingId === bill.id;
+
+                return (
+                  <div key={bill.id} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2 cursor-pointer hover:bg-slate-50">
+                    <div className="flex justify-between items-start gap-2 pb-2 border-b border-slate-200">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-slate-900 text-sm">{bill.invoiceNumber || "-"}</div>
+                        <div className="text-xs text-slate-500">{dateStr}</div>
+                      </div>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${
+                          status === "PAID" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {status}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <div className="text-slate-500 font-semibold mb-1">Supplier</div>
+                        <div className="text-slate-900">{supplier}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500 font-semibold mb-1">Amount</div>
+                        <div className="font-medium text-slate-900">₹{amount.toFixed(2)}</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-100 p-2 rounded text-xs space-y-1">
+                      <div className="font-semibold text-slate-600">Items ({items.length})</div>
+                      {items.slice(0, 2).map((item, idx) => (
+                        <div key={idx} className="text-slate-700">
+                          {item.itemName} (x{item.quantity}) - Tax: {item.taxRate || 0}%
                         </div>
-                      </td>
+                      ))}
+                      {items.length > 2 && <div className="text-slate-500">+{items.length - 2} more items</div>}
+                    </div>
 
-                      <td className="px-6 py-4 text-sm text-slate-600 text-right">
-                        {items.length > 0 ? `${items[0].taxRate || 0}%` : "-"}
-                      </td>
+                    <div className="flex gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        onClick={() => onViewInvoice(bill)}
+                        disabled={isDeleting}
+                        className={`flex-1 flex items-center justify-center gap-1 p-2 rounded text-xs font-medium transition-colors ${
+                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
+                        }`}
+                        type="button"
+                      >
+                        <Eye size={16} />
+                        <span className="hidden xs:inline">View</span>
+                      </button>
 
-                      <td className="px-6 py-4 text-sm text-slate-900 text-right font-medium">
-                        ₹{amount.toFixed(2)}
-                      </td>
+                      <button
+                        onClick={() => onEditInvoice(bill)}
+                        disabled={isDeleting}
+                        className={`flex-1 flex items-center justify-center gap-1 p-2 rounded text-xs font-medium transition-colors ${
+                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-green-600 hover:bg-green-50"
+                        }`}
+                        type="button"
+                      >
+                        <Edit2 size={16} />
+                        <span className="hidden xs:inline">Edit</span>
+                      </button>
 
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            status === "PAID" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {status}
-                        </span>
-                      </td>
-
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex justify-center space-x-2">
-                          <button
-                            onClick={() => onViewInvoice(bill)}
-                            disabled={isDeleting}
-                            className={`p-2 rounded-lg transition-colors ${
-                              isDeleting ? "text-slate-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
-                            }`}
-                            title="View"
-                            type="button"
-                          >
-                            <Eye size={18} />
-                          </button>
-
-                          <button
-                            onClick={() => onEditInvoice(bill)}
-                            disabled={isDeleting}
-                            className={`p-2 rounded-lg transition-colors ${
-                              isDeleting ? "text-slate-400 cursor-not-allowed" : "text-green-600 hover:bg-green-50"
-                            }`}
-                            title="Edit"
-                            type="button"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-
-                          <button
-                            onClick={() => handleDelete(bill)}
-                            disabled={isDeleting}
-                            className={`p-2 rounded-lg transition-colors ${
-                              isDeleting ? "text-slate-400 cursor-not-allowed" : "text-red-600 hover:bg-red-50"
-                            }`}
-                            title={isDeleting ? "Deleting..." : "Delete"}
-                            type="button"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-
-                        {isDeleting && <div className="mt-1 text-[11px] text-slate-400">Deleting...</div>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      <button
+                        onClick={() => handleDelete(bill)}
+                        disabled={isDeleting}
+                        className={`flex-1 flex items-center justify-center gap-1 p-2 rounded text-xs font-medium transition-colors ${
+                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-red-600 hover:bg-red-50"
+                        }`}
+                        type="button"
+                      >
+                        <Trash2 size={16} />
+                        <span className="hidden xs:inline">Delete</span>
+                      </button>
+                    </div>
+                    {isDeleting && <div className="text-[11px] text-slate-400 text-center">Deleting...</div>}
+                  </div>
+                );
+              })}
+            </div>
 
             {/* ✅ Pagination Bar */}
-            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-              <p className="text-xs text-slate-500">
+            <div className="px-3 sm:px-4 py-3 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+              <p className="text-xs text-slate-500 order-2 sm:order-1">
                 Showing{" "}
                 <span className="font-medium">
                   {startIndex + 1}–{Math.min(startIndex + paginatedBills.length, filteredBills.length)}
@@ -349,24 +444,24 @@ export default function PurchaseBills({
                 of <span className="font-medium">{filteredBills.length}</span> bills
               </p>
 
-              <div className="inline-flex items-center gap-2 text-sm">
+              <div className="inline-flex items-center gap-2 text-xs sm:text-sm order-1 sm:order-2 w-full sm:w-auto">
                 <button
                   onClick={handlePrevious}
                   disabled={currentPage === 1}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-initial bg-orange-600 hover:bg-orange-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm"
                   type="button"
                 >
-                  Previous
+                  Prev
                 </button>
 
-                <span className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
+                <span className="px-2 sm:px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
                   {currentPage}
                 </span>
 
                 <button
                   onClick={handleNext}
                   disabled={currentPage === totalPages}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-initial bg-orange-600 hover:bg-orange-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm"
                   type="button"
                 >
                   Next
@@ -375,6 +470,7 @@ export default function PurchaseBills({
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

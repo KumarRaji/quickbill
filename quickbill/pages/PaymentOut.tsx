@@ -88,9 +88,10 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
   const handleNext = () => setPage((prev) => Math.min(totalPages, prev + 1));
 
   return (
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6 pb-6">
     <div className="max-w-7xl mx-auto h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
           Payment Out (Supplier Payments)
         </h1>
 
@@ -105,7 +106,7 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
             });
             setIsModalOpen(true);
           }}
-          className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors shadow-sm"
+          className="bg-orange-600 hover:bg-orange-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm"
         >
           <Plus size={18} />
           <span>Record Payment</span>
@@ -114,7 +115,7 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
         {/* ✅ Search + page size */}
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="p-3 sm:p-4 border-b border-slate-200 bg-slate-50 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative max-w-md w-full">
             <Search
               className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
@@ -123,7 +124,7 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
             <input
               type="text"
               placeholder="Search by supplier name..."
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -140,7 +141,7 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
                 setPageSize(Number(e.target.value));
                 setPage(1); // ✅ reset on page size change
               }}
-              className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
               {[10, 20, 50, 100].map((n) => (
                 <option key={n} value={n}>
@@ -151,23 +152,23 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
           </div>
         </div>
 
-        <div className="overflow-auto flex-1">
+        <div className="overflow-auto flex-1 hidden sm:block">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 sticky top-0 z-10">
               <tr>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                   Date
                 </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                   Paid To
                 </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                   Mode
                 </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                   Notes
                 </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
+                <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
                   Amount Paid
                 </th>
               </tr>
@@ -180,28 +181,28 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
                 
                 return (
                   <tr key={payment.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-slate-600">
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-slate-600">
                       <div className="flex items-center space-x-2">
                         <Calendar size={14} />
                         <span>{new Date(payment.date).toLocaleDateString()}</span>
                       </div>
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap font-medium text-slate-900 text-sm">
                       {displayName}
                     </td>
 
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md font-medium">
-                      {payment.mode}
-                    </span>
-                  </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md font-medium">
+                        {payment.mode}
+                      </span>
+                    </td>
 
-                    <td className="px-6 py-4 text-slate-600">
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-sm text-slate-600">
                       {payment.notes || '-'}
                     </td>
 
-                    <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-orange-600">
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-right font-bold text-orange-600 text-sm">
                       - ₹{payment.amount.toLocaleString()}
                     </td>
                   </tr>
@@ -210,7 +211,7 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
 
               {filteredPayments.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={5} className="px-4 lg:px-6 py-12 text-center text-slate-400">
                     <TrendingUp size={48} className="mx-auto mb-2 opacity-20" />
                     No payments made yet.
                   </td>
@@ -218,43 +219,90 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
               )}
             </tbody>
           </table>
+        </div>
 
-          {/* ✅ Pagination bar (Previous | 1 | Next style) */}
-          {filteredPayments.length > 0 && (
-            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-              <p className="text-xs text-slate-500">
-                Showing{' '}
-                <span className="font-medium">
-                  {startIndex + 1}–
-                  {Math.min(startIndex + paginatedPayments.length, filteredPayments.length)}
-                </span>{' '}
-                of <span className="font-medium">{filteredPayments.length}</span> payments
-              </p>
-
-              <div className="inline-flex items-center gap-2 text-sm">
-                <button
-                  onClick={handlePrevious}
-                  disabled={currentPage === 1}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-
-                <span className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
-                  {currentPage}
-                </span>
-
-                <button
-                  onClick={handleNext}
-                  disabled={currentPage === totalPages}
-                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
+        {/* Mobile view - Card layout */}
+        <div className="sm:hidden p-3 space-y-3 flex-1 overflow-auto">
+          {paginatedPayments.map((payment) => {
+            const supplier = suppliers.find((s) => String(s.id) === String(payment.partyId));
+            const displayName = supplier?.name || payment.partyName;
+            
+            return (
+              <div key={payment.id} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Date</div>
+                    <div className="flex items-center space-x-2 text-sm text-slate-600">
+                      <Calendar size={14} />
+                      <span>{new Date(payment.date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md font-medium">
+                    {payment.mode}
+                  </span>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Paid To</div>
+                  <div className="text-sm font-medium text-slate-900">{displayName}</div>
+                </div>
+                {payment.notes && (
+                  <div>
+                    <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Notes</div>
+                    <div className="text-sm text-slate-600">{payment.notes}</div>
+                  </div>
+                )}
+                <div>
+                  <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Amount Paid</div>
+                  <div className="text-sm font-bold text-orange-600">- ₹{payment.amount.toLocaleString()}</div>
+                </div>
               </div>
+            );
+          })}
+          {filteredPayments.length === 0 && (
+            <div className="text-center py-8 text-slate-400">
+              <TrendingUp size={48} className="mx-auto mb-2 opacity-20" />
+              <p>No payments made yet.</p>
             </div>
           )}
         </div>
+
+        {/* ✅ Pagination bar (Previous | 1 | Next style) */}
+        {filteredPayments.length > 0 && (
+          <div className="px-3 sm:px-4 py-3 border-t border-slate-200 bg-slate-50 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-slate-500">
+              Showing{' '}
+              <span className="font-medium">
+                {startIndex + 1}–
+                {Math.min(startIndex + paginatedPayments.length, filteredPayments.length)}
+              </span>{' '}
+              of <span className="font-medium">{filteredPayments.length}</span> payments
+            </p>
+
+            <div className="inline-flex items-center gap-2 text-xs sm:text-sm">
+              <button
+                onClick={handlePrevious}
+                disabled={currentPage === 1}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span className="hidden sm:inline">Previous</span>
+                <span className="sm:hidden">Prev</span>
+              </button>
+
+              <span className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
+                {currentPage}
+              </span>
+
+              <button
+                onClick={handleNext}
+                disabled={currentPage === totalPages}
+                className="bg-orange-600 hover:bg-orange-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <span className="sm:hidden">Next</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal */}
@@ -383,6 +431,7 @@ const PaymentOut: React.FC<PaymentOutProps> = ({ parties, suppliers, onRefresh }
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };

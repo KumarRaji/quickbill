@@ -41,14 +41,14 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, subText }) => (
-  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between">
-    <div>
-      <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
-      <h3 className="text-2xl font-bold text-slate-800">{value}</h3>
-      {subText && <p className="text-xs text-slate-400 mt-2">{subText}</p>}
+  <div className="bg-white p-3 sm:p-6 rounded-lg sm:rounded-xl shadow-sm border border-slate-100 flex items-start justify-between">
+    <div className="min-w-0 flex-1">
+      <p className="text-xs sm:text-sm font-medium text-slate-500 mb-1 truncate">{title}</p>
+      <h3 className="text-lg sm:text-2xl font-bold text-slate-800 break-words">{value}</h3>
+      {subText && <p className="text-xs text-slate-400 mt-1 sm:mt-2 hidden sm:block">{subText}</p>}
     </div>
-    <div className={`p-3 rounded-lg ${color}`}>
-      <Icon size={24} className="text-white" />
+    <div className={`p-2 sm:p-3 rounded-lg ${color} flex-shrink-0`}>
+      <Icon size={20} className="sm:w-6 sm:h-6 text-white" />
     </div>
   </div>
 );
@@ -184,50 +184,51 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
   }, [filteredInvoices]);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header with Title and Date/Time */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard Overview</h1>
-        <div className="text-sm text-slate-500">
-          <span className="text-xs text-slate-500 flex items-center gap-1">
-            <CalendarIcon size={16} className="inline-block align-middle" />
-            {formattedDateTime}
-          </span>
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        {/* Header with Title and Date/Time */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Dashboard Overview</h1>
+          <div className="text-xs sm:text-sm text-slate-500">
+            <span className="text-xs text-slate-500 flex items-center gap-1">
+              <CalendarIcon size={16} className="inline-block align-middle" />
+              {formattedDateTime}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {/* Time Filter Tabs */}
-      <div className="flex justify-end">
-        <div className="flex space-x-1 bg-white p-1 rounded-xl border border-slate-200 shadow-sm w-fit">
-          <button
-            onClick={() => setTimeFilter('today')}
-            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
-          >
-            Today
-          </button>
-          <button
-            onClick={() => setTimeFilter('week')}
-            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'week' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
-          >
-            This Week
-          </button>
-          <button
-            onClick={() => setTimeFilter('month')}
-            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'month' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
-          >
-            This Month
-          </button>
-          <button
-            onClick={() => setTimeFilter('year')}
-            className={`px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${timeFilter === 'year' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
-          >
-            This Year
-          </button>
+        {/* Time Filter Tabs */}
+        <div className="flex justify-start sm:justify-end overflow-x-auto">
+          <div className="flex space-x-1 bg-white p-1 rounded-lg sm:rounded-xl border border-slate-200 shadow-sm w-fit">
+            <button
+              onClick={() => setTimeFilter('today')}
+              className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${timeFilter === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => setTimeFilter('week')}
+              className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${timeFilter === 'week' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              Week
+            </button>
+            <button
+              onClick={() => setTimeFilter('month')}
+              className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${timeFilter === 'month' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              Month
+            </button>
+            <button
+              onClick={() => setTimeFilter('year')}
+              className={`px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${timeFilter === 'year' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}`}
+            >
+              Year
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {/* Stat cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
         <StatCard
           title="Net Sales"
           value={`₹${stats.totalSales.toLocaleString()}`}
@@ -263,17 +264,17 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
           color="bg-orange-500"
           subText="Items below 10 units"
         />
-      </div>
+        </div>
 
-      {/* Charts + Recent transactions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Net Sales Trend */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">
+        {/* Charts + Recent transactions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Net Sales Trend */}
+          <div className="bg-white p-3 sm:p-6 rounded-lg sm:rounded-xl shadow-sm border border-slate-100">
+            <h3 className="text-sm sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6">
             Net Sales Trend ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)})
           </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <div className="h-48 sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis
@@ -306,34 +307,34 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
                 />
               </LineChart>
             </ResponsiveContainer>
+            </div>
           </div>
-        </div>
 
-        {/* Recent Transactions */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">
+          {/* Recent Transactions */}
+          <div className="bg-white p-3 sm:p-6 rounded-lg sm:rounded-xl shadow-sm border border-slate-100">
+            <h3 className="text-sm sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6">
             Recent Transactions ({timeFilter.charAt(0).toUpperCase() + timeFilter.slice(1)})
           </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-slate-500 uppercase bg-slate-50">
-                <tr>
-                  <th className="px-4 py-3">Party</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
-                  <th className="px-4 py-3 text-center">Type</th>
-                </tr>
-              </thead>
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-xs sm:text-sm text-left">
+                <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                  <tr>
+                    <th className="px-3 sm:px-4 py-2 sm:py-3">Party</th>
+                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-right">Amount</th>
+                    <th className="px-3 sm:px-4 py-2 sm:py-3 text-center">Type</th>
+                  </tr>
+                </thead>
               <tbody>
                 {filteredInvoices.slice(0, 5).map((inv) => (
                   <tr
                     key={inv.id}
                     className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
                   >
-                    <td className="px-4 py-3 font-medium text-slate-800">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-slate-800">
                       {getPartyName(inv.partyName)}
                     </td>
                     <td
-                      className={`px-4 py-3 text-right font-medium ${
+                      className={`px-3 sm:px-4 py-2 sm:py-3 text-right font-medium ${
                         inv.type.includes('RETURN')
                           ? 'text-red-600'
                           : 'text-slate-800'
@@ -342,7 +343,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
                       {inv.type.includes('RETURN') ? '-' : ''}₹
                       {inv.totalAmount.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold ${
                           inv.type === 'SALE'
@@ -363,7 +364,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
                   <tr>
                     <td
                       colSpan={3}
-                      className="px-4 py-8 text-center text-slate-400"
+                      className="px-3 sm:px-4 py-8 text-center text-slate-400"
                     >
                       No transactions yet
                     </td>
@@ -371,27 +372,63 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
                 )}
               </tbody>
             </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="sm:hidden space-y-2">
+              {filteredInvoices.slice(0, 5).map((inv) => (
+                <div key={inv.id} className="border border-slate-300 rounded-lg p-2 bg-slate-50 space-y-1">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-slate-800 text-xs truncate">{getPartyName(inv.partyName)}</div>
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-semibold flex-shrink-0 ${
+                        inv.type === 'SALE'
+                          ? 'bg-green-100 text-green-700'
+                          : inv.type === 'RETURN'
+                          ? 'bg-red-100 text-red-700'
+                          : inv.type === 'PURCHASE'
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      {inv.type.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className={`text-xs font-medium ${
+                    inv.type.includes('RETURN')
+                      ? 'text-red-600'
+                      : 'text-slate-800'
+                  }`}>
+                    {inv.type.includes('RETURN') ? '-' : ''}₹{inv.totalAmount.toLocaleString()}
+                  </div>
+                </div>
+              ))}
+              {filteredInvoices.length === 0 && (
+                <div className="text-center py-4 text-slate-400 text-xs">No transactions yet</div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Low Stock Items Table */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-        <h3 className="text-lg font-bold text-slate-800 mb-6">Low Stock Items</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-50">
-              <tr>
-                <th className="px-4 py-3">Item Name</th>
-                <th className="px-4 py-3 text-right">Stock</th>
-                <th className="px-4 py-3">Unit</th>
-              </tr>
-            </thead>
+        {/* Low Stock Items Table */}
+        <div className="bg-white p-3 sm:p-6 rounded-lg sm:rounded-xl shadow-sm border border-slate-100">
+          <h3 className="text-sm sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6">Low Stock Items</h3>
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-xs sm:text-sm text-left">
+              <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                <tr>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3">Item Name</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right">Stock</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3">Unit</th>
+                </tr>
+              </thead>
             <tbody>
               {paginatedLowStock.map((item) => (
                 <tr key={item.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{item.name}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-slate-800">{item.name}</td>
+                  <td className="px-3 sm:px-4 py-2 sm:py-3 text-right">
                     <span className={`font-semibold ${
                       item.stock === 0 ? 'text-red-600' : 
                       item.stock < 5 ? 'text-orange-600' : 'text-yellow-600'
@@ -399,51 +436,72 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
                       {item.stock}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{item.unit}</td>
+                  <td className="px-3 sm:px-4 py-2 sm:py-3 text-slate-600">{item.unit}</td>
                 </tr>
               ))}
               {lowStockItemsList.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={3} className="px-3 sm:px-4 py-8 text-center text-slate-400">
                     No low stock items
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
-        
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-            <p className="text-sm text-slate-500">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, lowStockItemsList.length)} of {lowStockItemsList.length} items
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 rounded-md border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous
-              </button>
-              <span className="px-3 py-1 text-sm text-slate-700">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 rounded-md border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-              </button>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="sm:hidden space-y-2">
+            {paginatedLowStock.map((item) => (
+              <div key={item.id} className="border border-slate-300 rounded-lg p-2 bg-slate-50">
+                <div className="flex justify-between items-center mb-1">
+                  <div className="font-medium text-slate-800 text-xs flex-1 min-w-0 truncate">{item.name}</div>
+                  <span className={`text-xs font-semibold flex-shrink-0 ml-2 ${
+                    item.stock === 0 ? 'text-red-600' : 
+                    item.stock < 5 ? 'text-orange-600' : 'text-yellow-600'
+                  }`}>
+                    Stock: {item.stock}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-600">{item.unit}</div>
+              </div>
+            ))}
+            {lowStockItemsList.length === 0 && (
+              <div className="text-center py-4 text-slate-400 text-xs">No low stock items</div>
+            )}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-4 pt-4 border-t border-slate-100 gap-3 sm:gap-0">
+              <p className="text-xs sm:text-sm text-slate-500">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, lowStockItemsList.length)} of {lowStockItemsList.length} items
+              </p>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="flex-1 sm:flex-initial px-2 sm:px-3 py-1.5 sm:py-1 rounded-md border border-slate-300 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Prev
+                </button>
+                <span className="px-2 sm:px-3 py-1.5 sm:py-1 text-xs sm:text-sm text-slate-700 flex-1 sm:flex-initial text-center">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="flex-1 sm:flex-initial px-2 sm:px-3 py-1.5 sm:py-1 rounded-md border border-slate-300 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
-                )}
-          
-          </div>
+          )}
         </div>
-   
+      </div>
+    </div>
+
   );
 };
 

@@ -81,131 +81,166 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
   const handleNext = () => setPage((prev) => Math.min(totalPages, prev + 1));
 
   return (
-    <div className="max-w-7xl mx-auto h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Expenses</h1>
-          <div className="text-sm text-slate-500">
-            Total:{' '}
-            <span className="font-bold text-slate-700">₹{totalExpense.toLocaleString()}</span>
+    <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Expenses</h1>
+            <div className="text-xs sm:text-sm text-slate-500">
+              Total:{' '}
+              <span className="font-bold text-slate-700">₹{totalExpense.toLocaleString()}</span>
+            </div>
           </div>
+
+          <button
+            onClick={() => {
+              setFormData({
+                category: '',
+                amount: 0,
+                date: new Date().toISOString().split('T')[0],
+                notes: '',
+              });
+              setIsModalOpen(true);
+            }}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center justify-center sm:justify-start space-x-2 transition-colors shadow-sm text-sm w-full sm:w-auto"
+          >
+            <Plus size={18} />
+            <span className="hidden sm:inline">Add Expense</span>
+            <span className="sm:hidden">New</span>
+          </button>
         </div>
 
-        <button
-          onClick={() => {
-            setFormData({
-              category: '',
-              amount: 0,
-              date: new Date().toISOString().split('T')[0],
-              notes: '',
-            });
-            setIsModalOpen(true);
-          }}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors shadow-sm"
-        >
-          <Plus size={18} />
-          <span>Add Expense</span>
-        </button>
-      </div>
+        <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
+          {/* ✅ Search + Page size dropdown */}
+          <div className="p-3 sm:p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+            <div className="relative flex-1 w-full sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search expenses..."
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-        {/* ✅ Search + Page size dropdown */}
-        <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search expenses..."
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setPage(1); // ✅ reset page
-              }}
-            />
+            {/* ✅ Rows dropdown */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-600">Rows:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 sm:px-3 py-2 border border-slate-300 rounded-lg bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                {[10, 20, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* ✅ Rows dropdown */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-600">Rows:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              className="px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              {[10, 20, 50, 100].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 sticky top-0 z-10">
-              <tr>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  Notes
-                </th>
-                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
-                  Amount
-                </th>
-              </tr>
-            </thead>
-
-            <tbody className="bg-white divide-y divide-slate-100">
-              {paginatedExpenses.map((expense) => (
-                <tr key={expense.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-slate-600">
-                    <div className="flex items-center space-x-2">
-                      <Calendar size={14} />
-                      <span>{new Date(expense.date).toLocaleDateString()}</span>
-                    </div>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap font-medium text-slate-900">
-                    <span className="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full font-medium border border-red-100">
-                      {expense.category}
-                    </span>
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap text-slate-500 text-sm">
-                    {expense.notes || '-'}
-                  </td>
-
-                  <td className="px-6 py-4 whitespace-nowrap text-right font-bold text-slate-800">
-                    ₹{expense.amount.toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-
-              {filteredExpenses.length === 0 && (
+          {/* Desktop Table View */}
+          <div className="hidden sm:block overflow-auto flex-1">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50 sticky top-0 z-10">
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                    <Wallet size={48} className="mx-auto mb-2 opacity-20" />
-                    No expenses recorded yet.
-                  </td>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                    Date
+                  </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                    Category
+                  </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                    Notes
+                  </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
+                    Amount
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody className="bg-white divide-y divide-slate-100">
+                {paginatedExpenses.map((expense) => (
+                  <tr key={expense.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-slate-600 text-sm">
+                      <div className="flex items-center space-x-2">
+                        <Calendar size={14} />
+                        <span>{new Date(expense.date).toLocaleDateString()}</span>
+                      </div>
+                    </td>
+
+                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap font-medium text-slate-900">
+                      <span className="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full font-medium border border-red-100">
+                        {expense.category}
+                      </span>
+                    </td>
+
+                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-slate-500 text-sm">
+                      {expense.notes || '-'}
+                    </td>
+
+                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right font-bold text-slate-800">
+                      ₹{expense.amount.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+
+                {filteredExpenses.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 lg:px-6 py-12 text-center text-slate-400">
+                      <Wallet size={48} className="mx-auto mb-2 opacity-20" />
+                      No expenses recorded yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="sm:hidden overflow-auto flex-1 p-3 space-y-3">
+            {paginatedExpenses.map((expense) => (
+              <div key={expense.id} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2">
+                <div className="flex justify-between items-start gap-2 pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-1 text-xs text-slate-600">
+                    <Calendar size={14} />
+                    <span>{new Date(expense.date).toLocaleDateString()}</span>
+                  </div>
+                  <span className="px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full font-medium border border-red-100 flex-shrink-0">
+                    {expense.category}
+                  </span>
+                </div>
+                {expense.notes && (
+                  <div className="text-xs text-slate-600">
+                    <span className="font-medium text-slate-500">Notes:</span> {expense.notes}
+                  </div>
+                )}
+                <div className="text-right">
+                  <span className="font-bold text-slate-800">₹{expense.amount.toLocaleString()}</span>
+                </div>
+              </div>
+            ))}
+            {filteredExpenses.length === 0 && (
+              <div className="text-center py-12 text-slate-400">
+                <Wallet size={48} className="mx-auto mb-2 opacity-20" />
+                No expenses recorded yet.
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ✅ Pagination bar (Previous 1 Next style) */}
         {filteredExpenses.length > 0 && (
-          <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-            <p className="text-xs text-slate-500">
+          <div className="px-3 sm:px-4 py-3 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+            <p className="text-xs text-slate-500 order-2 sm:order-1">
               Showing{' '}
               <span className="font-medium">
                 {startIndex + 1}–{Math.min(startIndex + paginatedExpenses.length, filteredExpenses.length)}
@@ -213,23 +248,23 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
               of <span className="font-medium">{filteredExpenses.length}</span> expenses
             </p>
 
-            <div className="inline-flex items-center gap-2 text-sm">
+            <div className="inline-flex items-center gap-2 text-xs sm:text-sm order-1 sm:order-2 w-full sm:w-auto">
               <button
                 onClick={handlePrevious}
                 disabled={currentPage === 1}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-initial bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm"
               >
-                Previous
+                Prev
               </button>
 
-              <span className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
+              <span className="px-2 sm:px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-700">
                 {currentPage}
               </span>
 
               <button
                 onClick={handleNext}
                 disabled={currentPage === totalPages}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-initial bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm"
               >
                 Next
               </button>
@@ -240,10 +275,10 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800">Add Expense</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-lg sm:rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-base sm:text-lg font-bold text-slate-800">Add Expense</h2>
               <button onClick={() => {
                 setIsModalOpen(false);
                 setFormData({
@@ -257,12 +292,12 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Category *</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Category *</label>
                 <select
                   required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white text-sm"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                 >
@@ -275,15 +310,15 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Amount *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Amount *</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2 text-slate-400">₹</span>
+                    <span className="absolute left-3 top-2 text-slate-400 text-sm">₹</span>
                     <input
                       required
                       type="number"
-                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm"
                       value={formData.amount || ''}
                       onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
                     />
@@ -291,10 +326,10 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Date</label>
                   <input
                     type="date"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   />
@@ -302,17 +337,17 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Notes</label>
                 <textarea
                   rows={2}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none resize-none text-sm"
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Optional description..."
                 />
               </div>
 
-              <div className="pt-4 flex justify-end space-x-3">
+              <div className="pt-4 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -324,14 +359,14 @@ const Expenses: React.FC<ExpensesProps> = ({ onRefresh }) => {
                       notes: '',
                     });
                   }}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm"
                 >
                   {loading ? 'Saving...' : 'Save Expense'}
                 </button>

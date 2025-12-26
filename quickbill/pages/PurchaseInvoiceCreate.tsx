@@ -311,41 +311,41 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto h-full flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="h-full flex flex-col bg-white overflow-hidden max-w-full sm:max-w-5xl sm:mx-auto sm:rounded-xl sm:shadow-sm sm:border sm:border-slate-200">
       {/* Header */}
-      <div className="p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-        <div className="flex items-center space-x-3">
-          <button onClick={onCancel} className="p-2 hover:bg-slate-200 rounded-full transition-colors" type="button">
-            <ArrowLeft size={20} className="text-slate-600" />
+      <div className="p-3 sm:p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-wrap gap-2 sm:gap-0">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+          <button onClick={onCancel} className="p-2 hover:bg-slate-200 rounded-full transition-colors flex-shrink-0" type="button">
+            <ArrowLeft size={18} className="text-slate-600 sm:w-5 sm:h-5 w-4 h-4" />
           </button>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate">
               {editInvoice ? "Edit Purchase Bill" : "New Purchase Bill"}
             </h1>
-            <div className="text-xs text-slate-500 mt-0.5">Purchase Invoice Create</div>
+            <div className="text-xs text-slate-500 mt-0.5 hidden sm:block">Purchase Invoice Create</div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
           <button
             type="button"
             onClick={() => setInvoiceNumber(makePurchaseBillNo())}
-            className="text-sm px-3 py-1.5 border border-slate-300 rounded-lg bg-white hover:bg-slate-100"
+            className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 border border-slate-300 rounded-lg bg-white hover:bg-slate-100 whitespace-nowrap"
           >
             Regenerate
           </button>
-          <div className="text-slate-600 font-medium">#{invoiceNumber}</div>
+          <div className="text-slate-600 font-medium text-xs sm:text-base">#{invoiceNumber}</div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6 space-y-8">
+      <div className="flex-1 overflow-auto p-3 sm:p-6 space-y-4 sm:space-y-8">
         {/* Party & Details */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Supplier *</label>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Supplier *</label>
             <select
               required
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white text-sm"
               value={selectedPartyId}
               onChange={(e) => setSelectedPartyId(e.target.value)}
             >
@@ -359,29 +359,29 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Bill No.</label>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Bill No.</label>
             <input
               type="text"
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600"
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-sm"
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Date</label>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Date</label>
             <input
               type="date"
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
               value={invoiceDate}
               onChange={(e) => setInvoiceDate(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1">Payment Mode</label>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Payment Mode</label>
             <select
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white text-sm"
               value={paymentMode}
               onChange={(e) => setPaymentMode(e.target.value as any)}
             >
@@ -394,11 +394,11 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
         </div>
 
         {/* Barcode + Add Item */}
-        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex items-center space-x-3">
+        <div className="bg-slate-50 p-3 sm:p-4 rounded-lg border border-slate-200 space-y-3 sm:flex sm:items-center sm:space-y-0 sm:space-x-3">
           {!hideAddItemButton && (
             <button
               onClick={() => setShowItemModal(true)}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center space-x-2 transition-colors font-medium"
+              className="w-full sm:w-auto px-3 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center justify-center sm:justify-start space-x-2 transition-colors font-medium text-sm"
               type="button"
             >
               <Plus size={18} />
@@ -406,11 +406,11 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
             </button>
           )}
 
-          <div className="p-2 bg-orange-100 rounded-full text-orange-600">
+          <div className="p-2 bg-orange-100 rounded-full text-orange-600 hidden sm:block flex-shrink-0">
             <ScanBarcode size={24} />
           </div>
 
-          <div className="flex-1 relative">
+          <div className="flex-1 relative min-w-0">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
               Scan Barcode / Item Name
             </label>
@@ -419,7 +419,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
               ref={barcodeInputRef}
               type="text"
               placeholder="Scan barcode, type item name/code..."
-              className="w-full bg-white border border-slate-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-orange-500 outline-none"
+              className="w-full bg-white border border-slate-300 rounded-md px-3 sm:px-4 py-2 focus:ring-2 focus:ring-orange-500 outline-none text-sm"
               value={barcodeInput}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleBarcodeScan}
@@ -431,7 +431,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                 {filteredItems.length > 0 ? filteredItems.map((item, index) => (
                   <div
                     key={item.id}
-                    className={`px-4 py-2 cursor-pointer border-b border-slate-100 last:border-b-0 ${index === selectedSuggestionIndex ? "bg-orange-100 text-orange-900" : "hover:bg-orange-50"
+                    className={`px-3 sm:px-4 py-2 cursor-pointer border-b border-slate-100 last:border-b-0 text-sm ${index === selectedSuggestionIndex ? "bg-orange-100 text-orange-900" : "hover:bg-orange-50"
                       }`}
                     onMouseDown={(e) => {
                       e.preventDefault();
@@ -456,26 +456,92 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
           </div>
         </div>
 
-        {/* Items Table */}
+        {/* Items Table - Responsive */}
         <div>
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-4/12">Item</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Qty</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">MRP</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Purchase Rate</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Amount</th>
-                <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12" />
-              </tr>
-            </thead>
+          <div className="hidden sm:block">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-4/12">Item</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Qty</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">MRP</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Purchase Rate</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Amount</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12" />
+                </tr>
+              </thead>
 
-            <tbody>
-              {rows.map((row, index) => (
-                <tr key={index} className="border-b border-slate-100">
-                  <td className="py-3 pr-4">
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={index} className="border-b border-slate-100">
+                    <td className="py-3 pr-4">
+                      <select
+                        className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+                        value={row.itemId}
+                        onChange={(e) => updateRow(index, "itemId", e.target.value)}
+                      >
+                        <option value="">Select Item</option>
+                        {items.map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.name} (Stock: {i.stock})
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    <td className="py-3 px-2">
+                      <input
+                        type="number"
+                        min="1"
+                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        value={row.quantity}
+                        onChange={(e) => updateRow(index, "quantity", parseFloat(e.target.value) || 0)}
+                      />
+                    </td>
+
+                    <td className="py-3 px-2">
+                      <input
+                        type="number"
+                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        value={row.mrp || ""}
+                        onChange={(e) => updateRow(index, "mrp", parseFloat(e.target.value) || 0)}
+                        placeholder="MRP"
+                      />
+                    </td>
+
+                    <td className="py-3 px-2">
+                      <input
+                        type="number"
+                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        value={row.price}
+                        onChange={(e) => updateRow(index, "price", parseFloat(e.target.value) || 0)}
+                      />
+                    </td>
+
+                    <td className="py-3 px-2 text-right font-medium text-slate-700 text-sm">
+                      ₹{Number(row.amount || 0).toFixed(2)}
+                    </td>
+
+                    <td className="py-3 pl-2 text-right">
+                      <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600" type="button">
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="sm:hidden space-y-3">
+            {rows.map((row, index) => (
+              <div key={index} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <label className="text-xs text-slate-500 font-semibold">Item</label>
                     <select
-                      className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+                      className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-xs"
                       value={row.itemId}
                       onChange={(e) => updateRow(index, "itemId", e.target.value)}
                     >
@@ -486,55 +552,56 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                         </option>
                       ))}
                     </select>
-                  </td>
+                  </div>
+                  <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600 flex-shrink-0 mt-5" type="button">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
 
-                  <td className="py-3 px-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-slate-500 font-semibold">Qty</label>
                     <input
                       type="number"
                       min="1"
-                      className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                      className="w-full p-2 border border-slate-300 rounded text-right text-xs"
                       value={row.quantity}
                       onChange={(e) => updateRow(index, "quantity", parseFloat(e.target.value) || 0)}
                     />
-                  </td>
-
-                  <td className="py-3 px-2">
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 font-semibold">MRP</label>
                     <input
                       type="number"
-                      className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                      className="w-full p-2 border border-slate-300 rounded text-right text-xs"
                       value={row.mrp || ""}
                       onChange={(e) => updateRow(index, "mrp", parseFloat(e.target.value) || 0)}
-                      placeholder="MRP"
                     />
-                  </td>
+                  </div>
+                </div>
 
-                  <td className="py-3 px-2">
-                    <input
-                      type="number"
-                      className="w-full p-2 border border-slate-300 rounded text-right text-sm"
-                      value={row.price}
-                      onChange={(e) => updateRow(index, "price", parseFloat(e.target.value) || 0)}
-                    />
-                  </td>
+                <div>
+                  <label className="text-xs text-slate-500 font-semibold">Purchase Rate</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-slate-300 rounded text-right text-xs"
+                    value={row.price}
+                    onChange={(e) => updateRow(index, "price", parseFloat(e.target.value) || 0)}
+                  />
+                </div>
 
-                  <td className="py-3 px-2 text-right font-medium text-slate-700">
-                    ₹{Number(row.amount || 0).toFixed(2)}
-                  </td>
-
-                  <td className="py-3 pl-2 text-right">
-                    <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600" type="button">
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                <div className="bg-slate-100 p-2 rounded text-right">
+                  <span className="text-xs text-slate-500">Amount: </span>
+                  <span className="font-semibold text-slate-800 text-sm">₹{Number(row.amount || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
 
           <button
             onClick={addRow}
             type="button"
-            className="mt-4 flex items-center space-x-2 text-orange-600 font-medium hover:text-orange-800"
+            className="mt-3 sm:mt-4 w-full sm:w-auto flex items-center justify-center sm:justify-start space-x-2 text-orange-600 font-medium hover:text-orange-800 text-sm"
           >
             <Plus size={18} />
             <span>Add Row</span>
@@ -542,17 +609,17 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
         </div>
 
         {/* Totals */}
-        <div className="flex justify-end pt-6 border-t border-slate-100">
-          <div className="w-64 space-y-3">
-            <div className="flex justify-between text-slate-600">
+        <div className="flex justify-end pt-4 sm:pt-6 border-t border-slate-100">
+          <div className="w-full sm:w-64 space-y-2 sm:space-y-3">
+            <div className="flex justify-between text-slate-600 text-sm">
               <span>Subtotal</span>
               <span>₹{totals.subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-slate-600">
+            <div className="flex justify-between text-slate-600 text-sm">
               <span>Tax (Approx)</span>
               <span>₹{totals.tax.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-xl font-bold text-slate-800 border-t border-slate-300 pt-3">
+            <div className="flex justify-between text-lg sm:text-xl font-bold text-slate-800 border-t border-slate-300 pt-2 sm:pt-3">
               <span>Total</span>
               <span>₹{totals.total.toFixed(2)}</span>
             </div>
@@ -561,16 +628,16 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
       </div>
 
       {/* Footer actions */}
-      <div className="p-6 border-t border-slate-200 bg-slate-50 flex justify-between items-center">
-        <div className="text-sm text-slate-500">
+      <div className="p-3 sm:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+        <div className="text-xs sm:text-sm text-slate-500 truncate">
           {rows.length} items • Type: <span className="font-semibold">PURCHASE</span>
         </div>
 
-        <div className="flex space-x-4">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
           <button
             onClick={onCancel}
             type="button"
-            className="px-6 py-2 border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-100"
+            className="px-4 py-2 border border-slate-300 rounded-lg text-slate-600 font-medium hover:bg-slate-100 text-sm"
           >
             Cancel
           </button>
@@ -579,9 +646,9 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
             onClick={() => handleSave(false)}
             disabled={loading || !rows.some((r) => r.itemId)}
             type="button"
-            className="px-6 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 shadow-md flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
-            <Save size={18} />
+            <Save size={16} />
             <span>Save</span>
           </button>
 
@@ -589,9 +656,9 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
             onClick={() => handleSave(true)}
             disabled={loading || !rows.some((r) => r.itemId)}
             type="button"
-            className="px-6 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 shadow-md flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
-            <Printer size={18} />
+            <Printer size={16} />
             <span>Save & Print</span>
           </button>
         </div>
@@ -599,10 +666,10 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
       {/* Add New Item Modal */}
       {showItemModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800">Add New Item</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 flex-shrink-0">
+              <h2 className="text-base sm:text-lg font-bold text-slate-800">Add New Item</h2>
               <button onClick={() => setShowItemModal(false)} className="text-slate-400 hover:text-slate-600" type="button">
                 <X size={20} />
               </button>
@@ -637,54 +704,54 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                   setLoading(false);
                 }
               }}
-              className="p-6 space-y-4 max-h-[70vh] overflow-y-auto"
+              className="p-4 sm:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1"
             >
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Item Name *</label>
-                <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.name} onChange={(e) => setItemFormData({ ...itemFormData, name: e.target.value })} />
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Item Name *</label>
+                <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.name} onChange={(e) => setItemFormData({ ...itemFormData, name: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Item Code</label>
-                  <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.code} onChange={(e) => setItemFormData({ ...itemFormData, code: e.target.value })} />
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Item Code</label>
+                  <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.code} onChange={(e) => setItemFormData({ ...itemFormData, code: e.target.value })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Barcode</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Barcode</label>
                   <div className="flex gap-2">
-                    <input type="text" className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.barcode} onChange={(e) => setItemFormData({ ...itemFormData, barcode: e.target.value })} />
+                    <input type="text" className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.barcode} onChange={(e) => setItemFormData({ ...itemFormData, barcode: e.target.value })} />
                     <button
                       type="button"
                       onClick={generateBarcode}
-                      className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-1"
+                      className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-1 flex-shrink-0"
                       title="Generate Barcode"
                     >
-                      <Sparkles size={16} />
+                      <Sparkles size={14} className="sm:w-4 sm:h-4" />
                     </button>
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">MRP</label>
-                  <input type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.mrp} onChange={(e) => setItemFormData({ ...itemFormData, mrp: Number(e.target.value) })} />
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">MRP</label>
+                  <input type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.mrp} onChange={(e) => setItemFormData({ ...itemFormData, mrp: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Purchase Price *</label>
-                  <input required type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.purchasePrice} onChange={(e) => setItemFormData({ ...itemFormData, purchasePrice: Number(e.target.value) })} />
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Purchase Price *</label>
+                  <input required type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.purchasePrice} onChange={(e) => setItemFormData({ ...itemFormData, purchasePrice: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Selling Price *</label>
-                  <input required type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.sellingPrice} onChange={(e) => setItemFormData({ ...itemFormData, sellingPrice: Number(e.target.value) })} />
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Selling Price *</label>
+                  <input required type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.sellingPrice} onChange={(e) => setItemFormData({ ...itemFormData, sellingPrice: Number(e.target.value) })} />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Stock</label>
-                  <input type="number" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.stock} onChange={(e) => setItemFormData({ ...itemFormData, stock: Number(e.target.value) })} />
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Stock</label>
+                  <input type="number" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.stock} onChange={(e) => setItemFormData({ ...itemFormData, stock: Number(e.target.value) })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Unit</label>
-                  <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white" value={itemFormData.unit} onChange={(e) => setItemFormData({ ...itemFormData, unit: e.target.value })}>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Unit</label>
+                  <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white text-sm" value={itemFormData.unit} onChange={(e) => setItemFormData({ ...itemFormData, unit: e.target.value })}>
                     <option value="pcs">Pieces</option>
                     <option value="kg">Kilogram</option>
                     <option value="ltr">Liter</option>
@@ -692,22 +759,22 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
-                  <input type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none" value={itemFormData.taxRate} onChange={(e) => setItemFormData({ ...itemFormData, taxRate: Number(e.target.value) })} />
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
+                  <input type="number" step="1" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.taxRate} onChange={(e) => setItemFormData({ ...itemFormData, taxRate: Number(e.target.value) })} />
                 </div>
               </div>
-              <div className="pt-4 flex justify-end space-x-3">
+              <div className="pt-3 sm:pt-4 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 border-t border-slate-100 mt-4">
                 <button
                   type="button"
                   onClick={() => setShowItemModal(false)}
-                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm"
                 >
                   {loading ? "Saving..." : "Save Item"}
                 </button>
