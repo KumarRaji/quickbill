@@ -20,6 +20,7 @@ import UsersPage from "./pages/Users";
 import SaleReturn from "./pages/SaleReturn";
 import PurchaseReturn from "./pages/PurchaseReturn";
 import PurchaseBills from "./pages/PurchaseBills";
+import NotFound from "./pages/NotFound";
 
 // ✅ Your new separate create page
 import PurchaseInvoiceCreate from "./pages/PurchaseInvoiceCreate";
@@ -59,6 +60,17 @@ const App: React.FC = () => {
     setLoadingAuth(false);
   }, []);
 
+  // Redirect based on auth: force /login when logged out, push to dashboard if visiting /login while authenticated
+  useEffect(() => {
+    if (!loadingAuth) {
+      if (!user && location.pathname !== "/login") {
+        navigate("/login", { replace: true });
+      } else if (user && location.pathname === "/login") {
+        navigate("/dashboard", { replace: true });
+      }
+    }
+  }, [user, location.pathname, loadingAuth, navigate]);
+
   // ===================== DATA HELPERS =====================
   const refreshData = async () => {
     try {
@@ -89,7 +101,7 @@ const App: React.FC = () => {
       try {
         const path = location.pathname;
 
-        if (path === "/" || path === "/reports") {
+        if (path === "/dashboard" || path === "/reports") {
           await refreshData();
         } else if (path === "/quick-sale") {
           const [p, i] = await Promise.all([PartyService.getAll(), ItemService.getAll()]);
@@ -139,7 +151,7 @@ const App: React.FC = () => {
   // ===================== AUTH HANDLERS =====================
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
-    navigate("/", { replace: true });
+    navigate("/dashboard", { replace: true });
     setCurrentView("DASHBOARD");
   };
 
@@ -165,7 +177,7 @@ const App: React.FC = () => {
     setCurrentView(view);
 
     const routes: Record<string, string> = {
-      DASHBOARD: "/",
+      DASHBOARD: "/dashboard",
       PARTIES: "/parties",
       SUPPLIERS: "/suppliers",
       ITEMS: "/items",
@@ -184,7 +196,7 @@ const App: React.FC = () => {
 
     // special screens no route
     if (view !== "CREATE_TRANSACTION" && view !== "VIEW_INVOICE") {
-      navigate(routes[view] || "/");
+      navigate(routes[view] || "/dashboard");
     }
   };
 
@@ -251,7 +263,7 @@ const App: React.FC = () => {
 
   const getCurrentViewFromPath = (): ViewState => {
     const pathMap: Record<string, ViewState> = {
-      "/": "DASHBOARD",
+      "/dashboard": "DASHBOARD",
       "/parties": "PARTIES",
       "/suppliers": "SUPPLIERS",
       "/items": "ITEMS",
@@ -342,7 +354,9 @@ const App: React.FC = () => {
     // Normal Routes
     return (
       <Routes>
-        <Route path="/" element={<Dashboard invoices={invoices} parties={parties} items={items} expenses={expenses} />} />
+        <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
+        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+        <Route path="/dashboard" element={<Dashboard invoices={invoices} parties={parties} items={items} expenses={expenses} />} />
 
         {/* Sales Invoice view route (non-print unless autoPrint is set) */}
         <Route
@@ -367,7 +381,7 @@ const App: React.FC = () => {
             <InvoiceCreate
               parties={parties}
               items={items}
-              onCancel={() => navigate("/")}
+              onCancel={() => navigate("/sales/invoices")}
               onSuccess={(invoice, shouldPrint) => {
                 refreshData();
                 if (shouldPrint) {
@@ -376,7 +390,7 @@ const App: React.FC = () => {
                   setAutoPrint(true);
                   setCurrentView("VIEW_INVOICE");
                 } else {
-                  navigate("/");
+                  navigate("/sales/invoices");
                 }
               }}
               initialType="SALE"
@@ -594,6 +608,10 @@ const App: React.FC = () => {
             )
           }
         />
+
+        {/* 404 */}
+        <Route path="/404" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
     );
   };
@@ -603,7 +621,13 @@ const App: React.FC = () => {
   }
 
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    // While unauthenticated, render router so /login route works with redirects
+    return (
+      <Routes>
+        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
   }
 
   return (
