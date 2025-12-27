@@ -24,6 +24,7 @@ import { ViewState, User } from "../types";
 interface LayoutProps {
   currentView: ViewState;
   onChangeView: (view: ViewState) => void;
+  onQuickSale: () => void;
   user: User;
   onLogout: () => void;
   children: React.ReactNode;
@@ -32,6 +33,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({
   currentView,
   onChangeView,
+  onQuickSale,
   user,
   onLogout,
   children,
@@ -63,7 +65,7 @@ const Layout: React.FC<LayoutProps> = ({
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
           <button
-            onClick={() => onChangeView("CREATE_TRANSACTION")}
+            onClick={onQuickSale}
             className="w-full mb-6 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 transition-all shadow-lg hover:shadow-blue-500/20"
           >
             <PlusCircle size={20} />

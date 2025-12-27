@@ -103,7 +103,7 @@ const App: React.FC = () => {
 
         if (path === "/dashboard" || path === "/reports") {
           await refreshData();
-        } else if (path === "/quick-sale") {
+        } else if (path === "/sales/create" || path === "/quick-sale") {
           const [p, i] = await Promise.all([PartyService.getAll(), ItemService.getAll()]);
           setParties(p);
           setItems(i);
@@ -174,6 +174,20 @@ const App: React.FC = () => {
       return;
     }
 
+    // Quick Sale should show its dedicated URL
+    if (view === "CREATE_TRANSACTION") {
+      setCreationType("SALE");
+      setCurrentView("CREATE_TRANSACTION");
+        navigate("/sales/create", { replace: true });
+      return;
+    }
+
+    // Viewing invoice shouldn't trigger navigation here
+    if (view === "VIEW_INVOICE") {
+      setCurrentView(view);
+      return;
+    }
+
     setCurrentView(view);
 
     const routes: Record<string, string> = {
@@ -195,14 +209,15 @@ const App: React.FC = () => {
     };
 
     // special screens no route
-    if (view !== "CREATE_TRANSACTION" && view !== "VIEW_INVOICE") {
-      navigate(routes[view] || "/dashboard");
-    }
+    navigate(routes[view] || "/dashboard");
   };
 
   const startTransaction = (type: TransactionType) => {
     setCreationType(type);
     setCurrentView("CREATE_TRANSACTION");
+    if (type === "SALE") {
+      navigate("/sales/create", { replace: true });
+    }
   };
 
   const handleCreateInvoiceSuccess = (newInvoice: Invoice, shouldPrint: boolean = false) => {
@@ -272,6 +287,7 @@ const App: React.FC = () => {
       "/sales/invoices": "SALES_INVOICES",
       "/sale-return": "SALE_RETURN_NEW",
       "/sales/payment-in": "PAYMENT_IN",
+      "/sales/create": "CREATE_TRANSACTION",
       "/purchases/bills": "PURCHASE_INVOICES",
       "/purchases/returns": "PURCHASE_RETURNS",
       "/purchases/payment-out": "PAYMENT_OUT",
@@ -325,7 +341,7 @@ const App: React.FC = () => {
             onCreate={() => startTransaction("SALE")}
             onEdit={(inv) => {
               setSelectedInvoice(inv);
-              navigate("/quick-sale");
+              navigate("/sales/create");
             }}
             onDelete={async (inv) => {
               if (confirm(`Delete invoice ${inv.invoiceNumber}?`)) {
@@ -376,7 +392,7 @@ const App: React.FC = () => {
         />
 
         <Route
-          path="/quick-sale"
+            path="/sales/create"
           element={
             <InvoiceCreate
               parties={parties}
@@ -398,6 +414,7 @@ const App: React.FC = () => {
             />
           }
         />
+          <Route path="/quick-sale" element={<Navigate to="/sales/create" replace />} />
 
         <Route path="/parties" element={<Parties parties={parties} onRefresh={refreshData} />} />
         <Route path="/suppliers" element={<Suppliers suppliers={suppliers} onRefresh={refreshData} />} />
@@ -631,7 +648,13 @@ const App: React.FC = () => {
   }
 
   return (
-    <Layout currentView={getCurrentViewFromPath()} onChangeView={changeView} user={user} onLogout={handleLogout}>
+    <Layout
+      currentView={getCurrentViewFromPath()}
+      onChangeView={changeView}
+      onQuickSale={() => changeView("CREATE_TRANSACTION")}
+      user={user}
+      onLogout={handleLogout}
+    >
       {renderContent()}
     </Layout>
   );
