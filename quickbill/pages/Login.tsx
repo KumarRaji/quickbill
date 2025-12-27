@@ -30,17 +30,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-3 sm:p-6">
-      <div className="bg-white rounded-lg sm:rounded-xl shadow-md sm:shadow-lg w-full max-w-sm overflow-hidden flex flex-col">
-        <div className="bg-blue-600 p-3 sm:p-6 text-center">
-          <div className="w-10 sm:w-14 h-10 sm:h-14 bg-white rounded-lg flex items-center justify-center text-blue-600 font-bold text-xl sm:text-2xl mx-auto mb-2 sm:mb-3">
+    <div className="min-h-screen bg-white flex items-center justify-center p-2 sm:p-6">
+      <div className="bg-white rounded-lg sm:rounded-xl shadow-md sm:shadow-lg w-full max-w-xs sm:max-w-sm overflow-hidden flex flex-col">
+        <div className="bg-blue-600 p-4 sm:p-6 text-center">
+          <div className="w-11 sm:w-14 h-11 sm:h-14 bg-white rounded-lg flex items-center justify-center text-blue-600 font-bold text-lg sm:text-2xl mx-auto mb-2 sm:mb-3">
             Q
           </div>
-          <h1 className="text-base sm:text-xl font-bold text-white">Welcome to QuickBill</h1>
+          <h1 className="text-sm sm:text-xl font-bold text-white">Welcome to QuickBill</h1>
           <p className="text-blue-100 text-xs mt-0.5 sm:mt-1">Sign in to manage your business</p>
         </div>
         
-        <div className="p-3 sm:p-6">
+        <div className="p-4 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
             {error && (
               <div className="bg-red-50 text-red-600 p-2 sm:p-2.5 rounded text-xs text-center">
@@ -88,12 +88,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </button>
           </form>
 
-          <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 text-center">
-             <p className="text-[9px] sm:text-xs text-slate-400 mb-1.5 sm:mb-2">Demo Credentials (user / pass):</p>
-             <div className="flex justify-center flex-wrap gap-1 sm:gap-1.5 text-[9px] sm:text-xs">
-               <span className="bg-purple-50 text-purple-700 border border-purple-200 px-1.5 sm:px-2 py-0.5 rounded">superadmin / password</span>
-               <span className="bg-slate-50 text-slate-600 border border-slate-200 px-1.5 sm:px-2 py-0.5 rounded">admin / password</span>
-               <span className="bg-slate-50 text-slate-600 border border-slate-200 px-1.5 sm:px-2 py-0.5 rounded">staff / password</span>
+          <div className="mt-3 sm:mt-4 pt-3 sm:pt-3 border-t border-slate-100 text-center">
+             <p className="text-[8px] sm:text-xs text-slate-400 mb-1 sm:mb-2">Demo Credentials (user / pass):</p>
+             <div className="flex justify-center flex-wrap gap-1 sm:gap-1.5 text-[8px] sm:text-xs">
+               <span className="bg-purple-50 text-purple-700 border border-purple-200 px-1 sm:px-2 py-0.5 rounded">superadmin / password</span>
+               <span className="bg-slate-50 text-slate-600 border border-slate-200 px-1 sm:px-2 py-0.5 rounded">admin / password</span>
+               <span className="bg-slate-50 text-slate-600 border border-slate-200 px-1 sm:px-2 py-0.5 rounded">staff / password</span>
              </div>
           </div>
         </div>
