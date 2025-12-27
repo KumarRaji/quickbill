@@ -261,6 +261,7 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                             max={r.purchasedQty}
                             value={r.returnQty}
                             onChange={(e) => updateQty(r.itemId, Number(e.target.value))}
+                            onFocus={(e) => e.target.select()}
                             className="w-20 sm:w-24 rounded-lg border border-slate-300 px-2 sm:px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
                           />
                         </td>
@@ -301,6 +302,7 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                         max={r.purchasedQty}
                         value={r.returnQty}
                         onChange={(e) => updateQty(r.itemId, Number(e.target.value))}
+                        onFocus={(e) => e.target.select()}
                         className="w-full px-2 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs mt-1"
                       />
                     </div>
