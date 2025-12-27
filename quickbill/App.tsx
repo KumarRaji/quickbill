@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
@@ -214,6 +214,11 @@ const App: React.FC = () => {
     setSelectedInvoice(invoice);
     setAutoPrint(false);
     setCurrentView("VIEW_INVOICE");
+
+    // Route sales views to dedicated URL; keep purchases on their list path
+    if (invoice.type === "SALE" || invoice.type === "RETURN") {
+      navigate("/sales/invoice-view");
+    }
   };
 
   const handlePrintInvoice = (invoice: Invoice) => {
@@ -223,6 +228,10 @@ const App: React.FC = () => {
     setSelectedInvoice(invoice);
     setAutoPrint(true);
     setCurrentView("VIEW_INVOICE");
+
+    if (invoice.type === "SALE" || invoice.type === "RETURN") {
+      navigate("/sales/invoice-view");
+    }
   };
 
   const handleBackFromInvoice = () => {
@@ -334,6 +343,23 @@ const App: React.FC = () => {
     return (
       <Routes>
         <Route path="/" element={<Dashboard invoices={invoices} parties={parties} items={items} expenses={expenses} />} />
+
+        {/* Sales Invoice view route (non-print unless autoPrint is set) */}
+        <Route
+          path="/sales/invoice-view"
+          element={
+            selectedInvoice ? (
+              <InvoiceView
+                invoice={selectedInvoice}
+                onBack={handleBackFromInvoice}
+                autoPrint={autoPrint}
+                parties={parties}
+              />
+            ) : (
+              <Navigate to={lastListPath || "/sales/invoices"} replace />
+            )
+          }
+        />
 
         <Route
           path="/quick-sale"

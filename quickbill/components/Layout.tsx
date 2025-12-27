@@ -50,12 +50,16 @@ const Layout: React.FC<LayoutProps> = ({
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-white shadow-xl">
-        <div className="p-6 flex items-center space-x-3 border-b border-slate-700">
+        <button
+          type="button"
+          onClick={() => go("DASHBOARD")}
+          className="p-6 flex items-center space-x-3 border-b border-slate-700 text-left hover:bg-slate-800 transition-colors"
+        >
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center font-bold text-xl">
             Q
           </div>
           <span className="text-xl font-bold tracking-tight">QuickBill</span>
-        </div>
+        </button>
 
         <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
           <button

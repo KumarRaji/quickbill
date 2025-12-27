@@ -155,8 +155,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
               {paginatedInvoices.map((inv) => (
                 <tr
                   key={inv.id}
-                  className="hover:bg-slate-50 transition-colors cursor-pointer"
-                  onClick={() => onView(inv)}
+                  className="hover:bg-slate-50 transition-colors"
                 >
                   <td className="px-4 lg:px-6 py-3 text-sm text-slate-600">
                     {new Date(inv.date).toLocaleDateString()}
@@ -281,8 +280,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
             paginatedInvoices.map((inv) => (
               <div
                 key={inv.id}
-                className="border border-slate-300 rounded-lg p-3 bg-white space-y-2 cursor-pointer hover:bg-slate-50"
-                onClick={() => onView(inv)}
+                className="border border-slate-300 rounded-lg p-3 bg-white space-y-2 hover:bg-slate-50"
               >
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex-1 min-w-0">
