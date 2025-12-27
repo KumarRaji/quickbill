@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, Eye, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, Edit2, Trash2, Printer } from "lucide-react";
 import { Invoice } from "../types";
 import { InvoiceService } from "../services/api";
 
@@ -7,12 +7,14 @@ interface PurchaseBillsProps {
   onCreateNew: () => void;
   onViewInvoice: (invoice: Invoice) => void;
   onEditInvoice: (invoice: Invoice) => void;
+  onPrintInvoice: (invoice: Invoice) => void;
 }
 
 export default function PurchaseBills({
   onCreateNew,
   onViewInvoice,
   onEditInvoice,
+  onPrintInvoice,
 }: PurchaseBillsProps) {
   const [bills, setBills] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -311,6 +313,18 @@ export default function PurchaseBills({
                             </button>
 
                             <button
+                              onClick={() => onPrintInvoice(bill)}
+                              disabled={isDeleting}
+                              className={`p-2 rounded-lg transition-colors ${
+                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-slate-600 hover:bg-slate-100"
+                              }`}
+                              title="Print"
+                              type="button"
+                            >
+                              <Printer size={18} />
+                            </button>
+
+                            <button
                               onClick={() => onEditInvoice(bill)}
                               disabled={isDeleting}
                               className={`p-2 rounded-lg transition-colors ${
@@ -402,6 +416,18 @@ export default function PurchaseBills({
                       >
                         <Eye size={16} />
                         <span className="hidden xs:inline">View</span>
+                      </button>
+
+                      <button
+                        onClick={() => onPrintInvoice(bill)}
+                        disabled={isDeleting}
+                        className={`flex-1 flex items-center justify-center gap-1 p-2 rounded text-xs font-medium transition-colors ${
+                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                        type="button"
+                      >
+                        <Printer size={16} />
+                        <span className="hidden xs:inline">Print</span>
                       </button>
 
                       <button

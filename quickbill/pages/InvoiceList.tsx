@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Invoice, TransactionType } from '../types';
-import { FileText, Eye, Undo2, ShoppingCart, Printer, Plus, Edit, Trash2 } from 'lucide-react';
+import { FileText, Eye, Undo2, ShoppingCart, Printer, Plus, Edit, Trash2, Search } from 'lucide-react';
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -17,10 +17,34 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // ✅ Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAID' | 'UNPAID'>('ALL');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
+
   // ✅ Filter first
   const filteredInvoices = useMemo(() => {
-    return invoices.filter((inv) => inv.type === type);
-  }, [invoices, type]);
+    const term = searchTerm.trim().toLowerCase();
+
+    return invoices.filter((inv) => {
+      if (inv.type !== type) return false;
+
+      const matchesSearch =
+        !term ||
+        String(inv.invoiceNumber || '').toLowerCase().includes(term) ||
+        String(inv.partyName || '').toLowerCase().includes(term);
+
+      const status = String(inv.status || '').toUpperCase();
+      const matchesStatus = statusFilter === 'ALL' || status === statusFilter;
+
+      const invDate = inv.date ? new Date(inv.date) : null;
+      const fromOk = !fromDate || (invDate && invDate >= new Date(fromDate + 'T00:00:00'));
+      const toOk = !toDate || (invDate && invDate <= new Date(toDate + 'T23:59:59'));
+
+      return matchesSearch && matchesStatus && fromOk && toOk;
+    });
+  }, [invoices, type, searchTerm, statusFilter, fromDate, toDate]);
 
   // ✅ Pagination calculations after filter
   const totalPages = Math.max(1, Math.ceil(filteredInvoices.length / pageSize));
@@ -120,6 +144,71 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
           </button>
         </div>
 
+        {/* Filters */}
+        <div className="bg-white border border-slate-200 rounded-lg p-3 sm:p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
+            {/* Search */}
+            <div className="relative lg:col-span-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                placeholder="Search by invoice number or customer..."
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            {/* From Date */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">From</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              />
+            </div>
+
+            {/* To Date */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">To</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              />
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value as 'ALL' | 'PAID' | 'UNPAID');
+                  setPage(1);
+                }}
+                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              >
+                <option value="ALL">All</option>
+                <option value="UNPAID">Unpaid</option>
+                <option value="PAID">Paid</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         {/* Table Container */}
         <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           {/* Table - Desktop Only */}
@@ -145,7 +234,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                 <th className="px-4 lg:px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center">
                   Status
                 </th>
-                <th className="px-4 lg:px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-right">
+                <th className="px-4 lg:px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center">
                   Action
                 </th>
               </tr>
@@ -205,8 +294,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                     </span>
                   </td>
 
-                  <td className="px-4 lg:px-6 py-3 text-right">
-                    <div className="flex justify-end space-x-1 lg:space-x-2">
+                  <td className="px-4 lg:px-6 py-3 text-center">
+                    <div className="flex justify-center space-x-1 lg:space-x-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -220,22 +309,22 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          onEdit(inv);
-                        }}
-                        className="text-green-600 hover:text-green-800 p-1"
-                        title="Edit"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
                           onPrint(inv);
                         }}
                         className="text-slate-500 hover:text-slate-800 p-1"
                         title="Print"
                       >
                         <Printer size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(inv);
+                        }}
+                        className="text-green-600 hover:text-green-800 p-1"
+                        title="Edit"
+                      >
+                        <Edit size={18} />
                       </button>
                       <button
                         onClick={(e) => {
@@ -346,22 +435,22 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onEdit(inv);
-                    }}
-                    className="flex-1 text-green-600 hover:text-green-800 hover:bg-green-50 p-1.5 rounded text-xs font-medium flex items-center justify-center gap-1"
-                  >
-                    <Edit size={16} />
-                    Edit
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
                       onPrint(inv);
                     }}
                     className="flex-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 p-1.5 rounded text-xs font-medium flex items-center justify-center gap-1"
                   >
                     <Printer size={16} />
                     Print
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(inv);
+                    }}
+                    className="flex-1 text-green-600 hover:text-green-800 hover:bg-green-50 p-1.5 rounded text-xs font-medium flex items-center justify-center gap-1"
+                  >
+                    <Edit size={16} />
+                    Edit
                   </button>
                   <button
                     onClick={(e) => {

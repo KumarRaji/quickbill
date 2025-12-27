@@ -468,6 +468,7 @@ const App: React.FC = () => {
                 setLastListPath("/purchases/bills");
                 navigate("/purchases/create"); // ✅ open same form page
               }}
+              onPrintInvoice={handlePrintInvoice}
             />
           }
         />
