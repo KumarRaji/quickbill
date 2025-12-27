@@ -123,7 +123,7 @@ const App: React.FC = () => {
         } else if (path.startsWith("/suppliers")) {
           const s = await SupplierService.getAll();
           setSuppliers(s);
-        } else if (path.startsWith("/items") || path.startsWith("/stock")) {
+        } else if (path.startsWith("/items") || path.startsWith("/stock") || path.startsWith("/stock-management")) {
           const i = await ItemService.getAll();
           setItems(i);
         } else if (path.startsWith("/purchases/create")) {
@@ -181,7 +181,7 @@ const App: React.FC = () => {
       PARTIES: "/parties",
       SUPPLIERS: "/suppliers",
       ITEMS: "/items",
-      STOCK: "/stock",
+      STOCK: "/stock-management",
       STOCK_MANAGEMENT: "/stock-management",
       SALES_INVOICES: "/sales/invoices",
       SALE_RETURN_NEW: "/sale-return",
@@ -267,7 +267,7 @@ const App: React.FC = () => {
       "/parties": "PARTIES",
       "/suppliers": "SUPPLIERS",
       "/items": "ITEMS",
-      "/stock": "STOCK",
+      "/stock": "STOCK_MANAGEMENT",
       "/stock-management": "STOCK_MANAGEMENT",
       "/sales/invoices": "SALES_INVOICES",
       "/sale-return": "SALE_RETURN_NEW",
@@ -402,7 +402,7 @@ const App: React.FC = () => {
         <Route path="/parties" element={<Parties parties={parties} onRefresh={refreshData} />} />
         <Route path="/suppliers" element={<Suppliers suppliers={suppliers} onRefresh={refreshData} />} />
         <Route path="/items" element={<Items items={items} onRefresh={refreshData} userRole={user?.role} />} />
-        <Route path="/stock" element={<Stock items={items} onRefresh={refreshData} userRole={user?.role} />} />
+        <Route path="/stock" element={<Navigate to="/stock-management" replace />} />
         <Route path="/stock-management" element={<StockManagement onRefresh={refreshData} />} />
 
         {/* Sales */}
