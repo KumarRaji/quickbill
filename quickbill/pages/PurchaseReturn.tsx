@@ -11,6 +11,7 @@ type Props = {
 };
 
 type ReturnRow = {
+  rowId: string; // unique per line to avoid cross-updates on duplicate items
   itemId: string;
   itemName: string;
   purchasedQty: number; // remaining qty in original purchase bill (net after previous returns)
@@ -40,7 +41,8 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
   const returnRows: ReturnRow[] = useMemo(() => {
     if (!selectedInvoice) return [];
 
-    return (selectedInvoice.items || []).map((it) => ({
+    return (selectedInvoice.items || []).map((it, idx) => ({
+      rowId: `${it.itemId || "item"}-${idx}`,
       itemId: it.itemId,
       itemName: it.itemName,
       purchasedQty: Number(it.quantity || 0),
@@ -68,10 +70,10 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
     });
   }, [purchaseInvoices, searchQuery]);
 
-  const updateQty = (itemId: string, qty: number) => {
+  const updateQty = (rowId: string, qty: number) => {
     setRows((prev) =>
       prev.map((r) =>
-        r.itemId === itemId ? { ...r, returnQty: Number.isFinite(qty) ? qty : 0 } : r
+        r.rowId === rowId ? { ...r, returnQty: Number.isFinite(qty) ? qty : 0 } : r
       )
     );
   };
@@ -249,7 +251,7 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {rows.map((r) => (
-                      <tr key={r.itemId} className="hover:bg-slate-50">
+                      <tr key={r.rowId} className="hover:bg-slate-50">
                         <td className="px-4 lg:px-6 py-3 sm:py-4 font-medium text-slate-800 text-sm">{r.itemName}</td>
                         <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-700 text-sm">{r.purchasedQty}</td>
                         <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-700 text-sm">₹{r.price.toFixed(2)}</td>
@@ -260,7 +262,7 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                             min={0}
                             max={r.purchasedQty}
                             value={r.returnQty}
-                            onChange={(e) => updateQty(r.itemId, Number(e.target.value))}
+                            onChange={(e) => updateQty(r.rowId, Number(e.target.value))}
                             onFocus={(e) => e.target.select()}
                             className="w-20 sm:w-24 rounded-lg border border-slate-300 px-2 sm:px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
                           />
@@ -275,7 +277,7 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
             {/* Mobile Card View */}
             <div className="sm:hidden p-3 space-y-3 flex-1 overflow-auto min-h-0">
               {rows.map((r) => (
-                <div key={r.itemId} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2">
+                <div key={r.rowId} className="border border-slate-300 rounded-lg p-3 bg-white space-y-2">
                   <div className="flex justify-between items-start gap-2 pb-2 border-b border-slate-200">
                     <div className="flex-1">
                       <div className="font-medium text-slate-900 text-sm">{r.itemName}</div>
@@ -301,7 +303,7 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                         min={0}
                         max={r.purchasedQty}
                         value={r.returnQty}
-                        onChange={(e) => updateQty(r.itemId, Number(e.target.value))}
+                        onChange={(e) => updateQty(r.rowId, Number(e.target.value))}
                         onFocus={(e) => e.target.select()}
                         className="w-full px-2 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs mt-1"
                       />

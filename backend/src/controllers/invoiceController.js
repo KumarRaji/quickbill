@@ -428,11 +428,11 @@ exports.createInvoice = (req, res) => {
           .json({ message: "Failed to create invoice", error: txErr.message });
       }
 
-      // ✅ For purchase types, validate supplier exists in parties table
+      // ✅ For purchase types, validate supplier exists in suppliers table
       const validateSupplier = (callback) => {
         if (isPurchaseType && partyIdNum !== CASH_PARTY_ID) {
           conn.query(
-            "SELECT * FROM parties WHERE id = ? AND type = 'SUPPLIER'",
+            "SELECT * FROM suppliers WHERE id = ?",
             [partyIdNum],
             (err, rows) => {
               if (err) return callback(err);
@@ -1320,7 +1320,7 @@ exports.deleteInvoice = (req, res) => {
                     const balDelta = -getBalanceDelta("PURCHASE", total);
 
                     conn.query(
-                      "UPDATE parties SET balance = balance + ? WHERE id = ? AND type='SUPPLIER'",
+                      "UPDATE suppliers SET balance = balance + ? WHERE id = ?",
                       [balDelta, supplierId],
                       (balErr) => {
                         if (balErr) {
@@ -1852,7 +1852,7 @@ exports.applyPurchaseReturn = (req, res) => {
 
                         // 9) supplier balance: PURCHASE_RETURN means we owe supplier less => balance += returnGrand
                         conn.query(
-                          "UPDATE parties SET balance = balance + ? WHERE id = ? AND type='SUPPLIER'",
+                          "UPDATE suppliers SET balance = balance + ? WHERE id = ?",
                           [returnGrand, original.supplier_id],
                           (balErr) => {
                             if (balErr) return rollback(500, { message: "Failed to update supplier balance", error: balErr.message });
