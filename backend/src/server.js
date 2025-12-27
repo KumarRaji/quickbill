@@ -16,11 +16,8 @@ const stockRoutes = require("./routes/stock.routes");
 const app = express();
 
 app.use(express.json());
-app.use(
-  cors({
-    origin: ["http://localhost:3000", "http://localhost:5173", "http://192.168.1.4:3000"],
-  })
-);
+// Global CORS (allow all origins). Tighten if you need to restrict later.
+app.use(cors());
 
 // Health check
 app.get("/", (req, res) => {
@@ -52,7 +49,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Internal server error" });
 });
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

@@ -1316,10 +1316,10 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
       {/* Tabs */}
       <div className="overflow-x-auto sm:overflow-visible -mx-3 sm:mx-0 px-3 sm:px-0 mb-6">
-        <div className="flex gap-1 sm:gap-2 bg-white p-1.5 sm:p-2 rounded-lg sm:rounded-xl border border-slate-200 shadow-sm w-fit sm:w-full">
+        <div className="flex gap-0.5 sm:gap-1 bg-white p-1 sm:p-1.5 rounded-lg sm:rounded-xl border border-slate-200 shadow-sm w-fit sm:w-full">
           <button
             onClick={() => changeTab('STOCK')}
-            className={`flex items-center space-x-1.5 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'STOCK' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            className={`flex items-center space-x-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'STOCK' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
               }`}
           >
             <Package size={16} />
@@ -1329,7 +1329,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
           <button
             onClick={() => changeTab('ITEMS')}
-            className={`flex items-center space-x-1.5 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'ITEMS' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            className={`flex items-center space-x-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'ITEMS' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
               }`}
           >
             <Package size={16} />
@@ -1339,7 +1339,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
           <button
             onClick={() => changeTab('SALES')}
-            className={`flex items-center space-x-1.5 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'SALES' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            className={`flex items-center space-x-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'SALES' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
               }`}
           >
             <TrendingUp size={16} />
@@ -1349,7 +1349,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
           <button
             onClick={() => changeTab('SALE_RETURNS')}
-            className={`flex items-center space-x-1.5 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'SALE_RETURNS' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            className={`flex items-center space-x-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'SALE_RETURNS' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
               }`}
           >
             <TrendingUp size={16} className="rotate-180" />
@@ -1359,7 +1359,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
           <button
             onClick={() => changeTab('PURCHASES')}
-            className={`flex items-center space-x-1.5 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'PURCHASES' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            className={`flex items-center space-x-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'PURCHASES' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
               }`}
           >
             <Package size={16} />
@@ -1369,7 +1369,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
           <button
             onClick={() => changeTab('PURCHASE_RETURNS')}
-            className={`flex items-center space-x-1.5 px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'PURCHASE_RETURNS' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+            className={`flex items-center space-x-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'PURCHASE_RETURNS' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
               }`}
           >
             <Package size={16} className="rotate-180" />
