@@ -301,7 +301,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                           e.stopPropagation();
                           onView(inv);
                         }}
-                        className="text-blue-600 hover:text-blue-800 p-1"
+                        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 rounded"
                         title="View"
                       >
                         <Eye size={18} />
@@ -311,7 +311,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                           e.stopPropagation();
                           onPrint(inv);
                         }}
-                        className="text-slate-500 hover:text-slate-800 p-1"
+                        className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 p-1 rounded"
                         title="Print"
                       >
                         <Printer size={18} />
@@ -321,7 +321,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                           e.stopPropagation();
                           onEdit(inv);
                         }}
-                        className="text-green-600 hover:text-green-800 p-1"
+                        className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1 rounded"
                         title="Edit"
                       >
                         <Edit size={18} />
@@ -331,7 +331,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                           e.stopPropagation();
                           onDelete(inv);
                         }}
-                        className="text-red-600 hover:text-red-800 p-1"
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
                         title="Delete"
                       >
                         <Trash2 size={18} />
