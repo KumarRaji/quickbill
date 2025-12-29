@@ -617,7 +617,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
 
         {/* Low Stock Items Table */}
         <div className="bg-white p-3 sm:p-6 rounded-lg sm:rounded-xl shadow-sm border border-slate-100">
-          <h3 className="text-sm sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6">Low Stock Items</h3>
+          <h3 className="text-sm sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6">Low Stock Items (Below 10 Units)</h3>
           <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-xs sm:text-sm text-left">
               <thead className="text-xs text-slate-500 uppercase bg-slate-50">
