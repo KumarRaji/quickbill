@@ -29,6 +29,9 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [invoiceNumber, setInvoiceNumber] = useState<string>(makePurchaseBillNo());
   const [paymentMode, setPaymentMode] = useState<"CASH" | "ONLINE" | "CHEQUE" | "CREDIT">("CASH");
+  const [taxMode, setTaxMode] = useState<"IN_TAX" | "OUT_TAX">(editInvoice?.taxMode || "IN_TAX"); // IN_TAX => price inclusive of GST, OUT_TAX => add GST on top
+  const [gstType, setGstType] = useState<"IN_TAX" | "OUT_TAX">(editInvoice?.gstType || "IN_TAX");
+  const [amountPaid, setAmountPaid] = useState<number>(Number(editInvoice?.amountPaid || 0));
 
   // barcode / suggestions
   const [barcodeInput, setBarcodeInput] = useState("");
@@ -39,6 +42,12 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
   const [rows, setRows] = useState<InvoiceItem[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const handleNumber = (val: string) => {
+    if (val === "") return undefined;
+    const n = Number(val);
+    return Number.isFinite(n) ? n : undefined;
+  };
 
   // add item modal
   const [showItemModal, setShowItemModal] = useState(false);
@@ -78,6 +87,9 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     setInvoiceNumber(editInvoice.invoiceNumber || makePurchaseBillNo());
 
     setPaymentMode((editInvoice.paymentMode as any) || "CASH");
+    setTaxMode(editInvoice.taxMode || "OUT_TAX");
+    setGstType(editInvoice.gstType || "IN_TAX");
+    setAmountPaid(Number(editInvoice.amountPaid || 0));
 
     const editRows: InvoiceItem[] = (editInvoice.items ?? []).map((it) => ({
       itemId: String(it.itemId ?? ""),
@@ -256,19 +268,63 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   const totals = useMemo(() => {
     return rows.reduce(
       (acc, row) => {
-        const amount = Number(row.amount || 0);
+        const qty = Number(row.quantity || 0);
+        const rate = Number(row.price || 0);
         const taxRate = Number(row.taxRate || 0);
-        const taxAmount = (amount * taxRate) / 100;
 
-        return {
-          subtotal: acc.subtotal + amount,
-          tax: acc.tax + taxAmount,
-          total: acc.total + amount + taxAmount,
-        };
+        const gross = rate * qty;
+        const rateFraction = taxRate / 100;
+
+        let taxable = gross;
+        let taxAmount = 0;
+        if (taxMode === "IN_TAX" && rateFraction > 0) {
+          taxable = gross / (1 + rateFraction);
+          taxAmount = gross - taxable; // peel out GST from inclusive rate
+        } else {
+          taxAmount = taxable * rateFraction; // add GST on top
+        }
+
+        const lineTotal = taxMode === "IN_TAX" ? gross : taxable + taxAmount;
+
+        acc.subtotal += taxable;
+        acc.taxable += taxable;
+        acc.tax += taxAmount;
+        acc.total += lineTotal;
+
+        if (gstType === "IN_TAX") {
+          acc.cgst += taxAmount / 2;
+          acc.sgst += taxAmount / 2;
+        } else {
+          acc.igst += taxAmount;
+        }
+
+        return acc;
       },
-      { subtotal: 0, tax: 0, total: 0 }
+      { subtotal: 0, taxable: 0, tax: 0, total: 0, cgst: 0, sgst: 0, igst: 0 }
     );
-  }, [rows]);
+  }, [rows, gstType, taxMode]);
+
+  // Round-off to nearest rupee for cleaner payable total
+  const roundedTotal = Math.round(totals.total);
+  const roundOffAmount = Number((roundedTotal - totals.total).toFixed(2));
+  const payableTotal = Number((totals.total + roundOffAmount).toFixed(2));
+
+  const computeDueStatus = (paid: number, total: number) => {
+    if (total <= 0) return "PAID" as const;
+    if (paid >= total) return "PAID" as const;
+    if (paid > 0) return "PARTIAL" as const;
+    return "PENDING" as const;
+  };
+
+  const effectiveAmountPaid = Number(amountPaid || 0);
+  const remainingPayable = Math.max(0, payableTotal - effectiveAmountPaid);
+  const dueStatus = computeDueStatus(effectiveAmountPaid, payableTotal);
+  const dueBadgeClass =
+    dueStatus === "PAID"
+      ? "bg-green-100 text-green-700"
+      : dueStatus === "PARTIAL"
+      ? "bg-blue-100 text-blue-700"
+      : "bg-amber-100 text-amber-700";
 
   const handleSave = async (shouldPrint: boolean = false) => {
     if (!rows.some((r) => r.itemId)) return;
@@ -280,6 +336,10 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     setLoading(true);
     const supplier = suppliers.find((s) => String(s.id) === selectedPartyId);
 
+    const invoiceDueStatus = dueStatus;
+    const invoiceStatus: "PAID" | "UNPAID" | "PENDING" =
+      invoiceDueStatus === "PAID" ? "PAID" : invoiceDueStatus === "PENDING" ? "PENDING" : "UNPAID";
+
     const payload: any = {
       type: transactionType,
       invoiceNo: invoiceNumber,
@@ -288,18 +348,31 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
       partyId: selectedPartyId || "CASH",
       partyName: supplier?.name || "Cash Purchase",
       items: rows.filter((r) => r.itemId),
-      totalAmount: totals.total,
+      totalAmount: payableTotal,
       totalTax: totals.tax,
-      status: selectedPartyId ? "UNPAID" : "PAID",
+      status: invoiceStatus,
+      amountPaid: effectiveAmountPaid,
+      amountDue: remainingPayable,
+      dueStatus: invoiceDueStatus,
+      roundOff: roundOffAmount,
+      taxMode,
+      gstType,
       paymentMode,
       notes: "",
     };
 
     try {
       console.log('Saving purchase bill with payload:', payload);
-      const saved = editInvoice?.id
+      const savedRaw = editInvoice?.id
         ? await InvoiceService.update(editInvoice.id, payload)
         : await InvoiceService.create(payload);
+
+      const saved: Invoice = {
+        ...savedRaw,
+        amountPaid: effectiveAmountPaid,
+        amountDue: remainingPayable,
+        dueStatus: invoiceDueStatus,
+      };
 
       onSuccess(saved, shouldPrint);
     } catch (e: any) {
@@ -326,7 +399,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+        <div className="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0 flex-wrap justify-end text-[11px] sm:text-sm">
           <button
             type="button"
             onClick={() => setInvoiceNumber(makePurchaseBillNo())}
@@ -335,6 +408,54 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
             Regenerate
           </button>
           <div className="text-slate-600 font-medium text-xs sm:text-base">#{invoiceNumber}</div>
+
+          <div className="flex items-center space-x-2 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-xs ml-2 mt-2 sm:mt-0">
+            <span className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Tax Mode</span>
+            <div className="flex items-center bg-slate-100 rounded-md overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setTaxMode("IN_TAX")}
+                className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                  taxMode === "IN_TAX" ? "bg-orange-600 text-white" : "text-slate-600 hover:text-orange-700"
+                }`}
+              >
+                Inclusive
+              </button>
+              <button
+                type="button"
+                onClick={() => setTaxMode("OUT_TAX")}
+                className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                  taxMode === "OUT_TAX" ? "bg-orange-600 text-white" : "text-slate-600 hover:text-orange-700"
+                }`}
+              >
+                Exclusive
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-xs ml-2 mt-2 sm:mt-0">
+            <span className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">GST Type</span>
+            <div className="flex items-center bg-slate-100 rounded-md overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setGstType("IN_TAX")}
+                className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                  gstType === "IN_TAX" ? "bg-orange-600 text-white" : "text-slate-600 hover:text-orange-700"
+                }`}
+              >
+                CGST/SGST
+              </button>
+              <button
+                type="button"
+                onClick={() => setGstType("OUT_TAX")}
+                className={`px-3 py-1 text-xs font-semibold transition-colors ${
+                  gstType === "OUT_TAX" ? "bg-orange-600 text-white" : "text-slate-600 hover:text-orange-700"
+                }`}
+              >
+                IGST
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -462,11 +583,12 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-4/12">Item</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right">Qty</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">MRP</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Purchase Rate</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right">Amount</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-3/12">Item</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right pr-2">Qty</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right pr-2">MRP</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right pr-2">Purchase Rate</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right pr-2">Tax %</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right pr-2">Amount</th>
                   <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12" />
                 </tr>
               </thead>
@@ -474,7 +596,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
               <tbody>
                 {rows.map((row, index) => (
                   <tr key={index} className="border-b border-slate-100">
-                    <td className="py-3 pr-4">
+                    <td className="py-3 pr-4 w-3/12">
                       <select
                         className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
                         value={row.itemId}
@@ -489,7 +611,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                       </select>
                     </td>
 
-                    <td className="py-3 px-2">
+                    <td className="py-3 px-2 w-1/12">
                       <input
                         type="number"
                         min="1"
@@ -499,7 +621,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                       />
                     </td>
 
-                    <td className="py-3 px-2">
+                    <td className="py-3 px-2 w-2/12">
                       <input
                         type="number"
                         className="w-full p-2 border border-slate-300 rounded text-right text-sm"
@@ -509,7 +631,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                       />
                     </td>
 
-                    <td className="py-3 px-2">
+                    <td className="py-3 px-2 w-2/12">
                       <input
                         type="number"
                         className="w-full p-2 border border-slate-300 rounded text-right text-sm"
@@ -518,11 +640,22 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                       />
                     </td>
 
-                    <td className="py-3 px-2 text-right font-medium text-slate-700 text-sm">
+                    <td className="py-3 px-2 w-1/12">
+                      <input
+                        type="number"
+                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        value={row.taxRate ?? ""}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => updateRow(index, "taxRate", parseFloat(e.target.value) || 0)}
+                        placeholder="GST %"
+                      />
+                    </td>
+
+                    <td className="py-3 px-2 w-2/12 text-right font-medium text-slate-700 text-sm">
                       ₹{Number(row.amount || 0).toFixed(2)}
                     </td>
 
-                    <td className="py-3 pl-2 text-right">
+                    <td className="py-3 pl-2 w-1/12 text-right">
                       <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600" type="button">
                         <Trash2 size={18} />
                       </button>
@@ -590,6 +723,17 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                   />
                 </div>
 
+                <div>
+                  <label className="text-xs text-slate-500 font-semibold">Tax Rate (%)</label>
+                  <input
+                    type="number"
+                    className="w-full p-2 border border-slate-300 rounded text-right text-xs"
+                    value={row.taxRate ?? ""}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => updateRow(index, "taxRate", parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+
                 <div className="bg-slate-100 p-2 rounded text-right">
                   <span className="text-xs text-slate-500">Amount: </span>
                   <span className="font-semibold text-slate-800 text-sm">₹{Number(row.amount || 0).toFixed(2)}</span>
@@ -608,20 +752,82 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
           </button>
         </div>
 
-        {/* Totals */}
-        <div className="flex justify-end pt-4 sm:pt-6 border-t border-slate-100">
-          <div className="w-full sm:w-64 space-y-2 sm:space-y-3">
-            <div className="flex justify-between text-slate-600 text-sm">
-              <span>Subtotal</span>
-              <span>₹{totals.subtotal.toFixed(2)}</span>
+        {/* Totals, GST, and Payment Summary */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 pt-4 sm:pt-6 border-t border-slate-100">
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-4 shadow-sm">
+              <div className="flex justify-between text-slate-600 text-sm">
+                <span>Taxable Amount</span>
+                <span>₹{totals.taxable.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-slate-600 text-sm">
+                <span>GST ({gstType === "IN_TAX" ? "CGST/SGST" : "IGST"})</span>
+                <span>₹{totals.tax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-slate-600 text-sm">
+                <span>Entered Amount</span>
+                <span>₹{totals.subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-lg sm:text-xl font-bold text-slate-800 border-t border-slate-300 pt-2 sm:pt-3">
+                <span>Total</span>
+                <span>₹{totals.total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-slate-600 text-sm border-t border-slate-200 pt-2">
+                <span>Round Off</span>
+                <span>{roundOffAmount >= 0 ? "+" : "-"}₹{Math.abs(roundOffAmount).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-lg sm:text-xl font-bold text-slate-800">
+                <span>Payable Total</span>
+                <span>₹{payableTotal.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-slate-600 text-sm">
-              <span>Tax (Approx)</span>
-              <span>₹{totals.tax.toFixed(2)}</span>
+
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-4 shadow-sm h-full">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Payment Summary</h3>
+                <p className="text-[11px] text-slate-500">Track how much of this bill is already paid.</p>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-[11px] font-semibold ${dueBadgeClass}`}>
+                {dueStatus}
+              </span>
             </div>
-            <div className="flex justify-between text-lg sm:text-xl font-bold text-slate-800 border-t border-slate-300 pt-2 sm:pt-3">
-              <span>Total</span>
-              <span>₹{totals.total.toFixed(2)}</span>
+
+            <div className="space-y-3">
+              <div className="flex justify-between text-slate-600 text-sm">
+                <span>Bill Total (Rounded)</span>
+                <span className="font-semibold text-slate-900">₹{payableTotal.toFixed(2)}</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Amount Paid Now</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₹</span>
+                  <input
+                    type="number"
+                    className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm"
+                    value={amountPaid ?? ""}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = handleNumber(e.target.value);
+                      setAmountPaid(value ?? 0);
+                    }}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center text-base sm:text-lg font-bold text-slate-800">
+                <span>Remaining Payable</span>
+                <span className="flex items-center gap-2">
+                  ₹{remainingPayable.toFixed(2)}
+                  <span className={`px-2 py-1 rounded-full text-[11px] font-semibold ${dueBadgeClass}`}>
+                    {dueStatus}
+                  </span>
+                </span>
+              </div>
             </div>
           </div>
         </div>

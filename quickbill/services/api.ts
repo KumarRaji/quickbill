@@ -230,6 +230,21 @@ export const InvoiceService = {
 
   // ✅ UPDATE invoice (PATCH)
   update: async (id: string, data: Partial<Invoice>): Promise<Invoice> => {
+    if (data.type === "PURCHASE" || data.type === "PURCHASE_RETURN") {
+      const purchasePayload: any = {
+        ...data,
+        supplierId: data.partyId,
+      };
+      delete purchasePayload.partyId;
+
+      const res = await fetch(`${API_BASE}/purchase-bills/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(purchasePayload),
+      });
+      return handleResponse<Invoice>(res);
+    }
+
     const res = await fetch(`${API_BASE}/invoices/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

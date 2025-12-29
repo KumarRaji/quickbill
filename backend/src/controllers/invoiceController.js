@@ -63,7 +63,30 @@ function getBalanceDelta(type, total) {
 exports.getInvoices = (req, res) => {
   // ✅ FETCH FROM BOTH SALE AND PURCHASE INVOICES
   const saleSql = `
-    SELECT i.*, 
+    SELECT 
+      i.id,
+      i.party_id,
+      i.invoice_no,
+      CASE 
+        WHEN i.original_invoice_id IS NOT NULL THEN 'RETURN'
+        ELSE 'SALE'
+      END as type,
+      i.total_amount,
+      COALESCE(i.amount_paid, 0) as amount_paid,
+      COALESCE(i.amount_due, GREATEST(0, i.total_amount - COALESCE(i.amount_paid,0))) as amount_due,
+      COALESCE(i.due_status,
+        CASE
+          WHEN COALESCE(i.amount_due, GREATEST(0, i.total_amount - COALESCE(i.amount_paid,0))) <= 0 THEN 'PAID'
+          WHEN COALESCE(i.amount_paid,0) > 0 THEN 'PARTIAL'
+          ELSE 'PENDING'
+        END
+      ) as due_status,
+      i.invoice_date,
+      i.notes,
+      i.created_at,
+      i.payment_mode,
+      i.original_invoice_id as original_invoice_id,
+      i.is_closed,
       COALESCE(p.name, 'Cash Customer') as party_name,
       orig.invoice_no as original_invoice_no,
       'SALE' as source_table
@@ -82,6 +105,15 @@ exports.getInvoices = (req, res) => {
         ELSE 'PURCHASE'
       END as type,
       i.total_amount,
+      COALESCE(i.amount_paid, 0) as amount_paid,
+      COALESCE(i.amount_due, GREATEST(0, i.total_amount - COALESCE(i.amount_paid,0))) as amount_due,
+      COALESCE(i.due_status,
+        CASE
+          WHEN COALESCE(i.amount_due, GREATEST(0, i.total_amount - COALESCE(i.amount_paid,0))) <= 0 THEN 'PAID'
+          WHEN COALESCE(i.amount_paid,0) > 0 THEN 'PARTIAL'
+          ELSE 'PENDING'
+        END
+      ) as due_status,
       i.invoice_date,
       i.notes,
       i.created_at,
@@ -223,17 +255,35 @@ exports.getInvoices = (req, res) => {
           return sum + taxAmount;
         }, 0);
 
+        // Round-off derived from stored total minus sum of line totals
+        const lineTotal = invoiceItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+        const roundOff = Number(inv.total_amount || 0) - lineTotal;
+
         return {
           id: String(inv.id),
           partyId: String(inv.party_id),
           invoiceNumber: inv.invoice_no,
           type: inv.type,
           totalAmount: Number(inv.total_amount),
+          roundOff: Number(roundOff.toFixed(2)),
+          amountPaid: Number(inv.amount_paid || 0),
+          amountDue: inv.amount_due != null ? Number(inv.amount_due) : Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0)),
+          dueStatus:
+            inv.due_status ||
+            (inv.amount_due != null
+              ? (Number(inv.amount_due) <= 0 ? "PAID" : Number(inv.amount_paid || 0) > 0 ? "PARTIAL" : "PENDING")
+              : Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0)) <= 0
+                ? "PAID"
+                : Number(inv.amount_paid || 0) > 0
+                ? "PARTIAL"
+                : "PENDING"),
           totalTax,
           date: inv.invoice_date,
           notes: inv.notes,
           paymentMode: inv.payment_mode,
-          status: "PAID",
+          status: inv.status || (inv.type === "PURCHASE" || inv.type === "PURCHASE_RETURN"
+            ? (inv.due_status === "PAID" || (inv.amount_due != null && Number(inv.amount_due) <= 0) ? "PAID" : "UNPAID")
+            : "PAID"),
           partyName: inv.party_name || "Cash Customer",
           originalRefNumber: inv.original_invoice_no || null,
           items: invoiceItems,
@@ -281,9 +331,17 @@ exports.getInvoiceById = (req, res) => {
           invoiceNumber: inv.invoice_no,
           type: inv.type,
           totalAmount: Number(inv.total_amount),
+          roundOff: Number((Number(inv.total_amount || 0) - (items || []).reduce((s, it) => s + Number(it.total || 0), 0)).toFixed(2)),
           date: inv.invoice_date,
           notes: inv.notes,
           paymentMode: inv.payment_mode,
+          amountPaid: Number(inv.amount_paid || 0),
+          amountDue: inv.amount_due != null ? Number(inv.amount_due) : Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0)),
+          dueStatus: inv.due_status || (Number(inv.amount_due || Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0))) <= 0
+            ? "PAID"
+            : Number(inv.amount_paid || 0) > 0
+            ? "PARTIAL"
+            : "PENDING"),
           items: (items || []).map((it) => ({
             id: String(it.id),
             itemId: String(it.item_id),
@@ -329,9 +387,17 @@ exports.getInvoiceById = (req, res) => {
           invoiceNumber: inv.invoice_no,
           type: "PURCHASE",
           totalAmount: Number(inv.total_amount),
+          roundOff: Number((Number(inv.total_amount || 0) - (items || []).reduce((s, it) => s + Number(it.total || 0), 0)).toFixed(2)),
           date: inv.invoice_date,
           notes: inv.notes,
           paymentMode: inv.payment_mode,
+          amountPaid: Number(inv.amount_paid || 0),
+          amountDue: inv.amount_due != null ? Number(inv.amount_due) : Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0)),
+          dueStatus: inv.due_status || (Number(inv.amount_due || Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0))) <= 0
+            ? "PAID"
+            : Number(inv.amount_paid || 0) > 0
+            ? "PARTIAL"
+            : "PENDING"),
           items: (items || []).map((it) => ({
             id: String(it.id),
             itemId: String(it.item_id),
@@ -410,6 +476,14 @@ exports.createInvoice = (req, res) => {
 
   const total = Number(totalAmount);
   const isPurchaseType = type === "PURCHASE" || type === "PURCHASE_RETURN";
+  const roundOffVal = Number(req.body.roundOff || 0);
+
+  const amountPaidNum = Number(req.body.amountPaid || 0);
+  const amountDueNum = Number(
+    req.body.amountDue != null ? req.body.amountDue : Math.max(0, total - amountPaidNum)
+  );
+  const dueStatusVal =
+    req.body.dueStatus || (amountDueNum <= 0 ? "PAID" : amountPaidNum > 0 ? "PARTIAL" : "PENDING");
 
   pool.getConnection((connErr, conn) => {
     if (connErr) {
@@ -469,16 +543,16 @@ exports.createInvoice = (req, res) => {
         if (isPurchaseType) {
           invSql = `
             INSERT INTO purchase_invoices
-            (supplier_id, invoice_no, total_amount, invoice_date, notes, payment_mode, original_purchase_invoice_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (supplier_id, invoice_no, total_amount, invoice_date, notes, payment_mode, original_purchase_invoice_id, amount_paid, amount_due, due_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
           tableName = "purchase_invoices";
           itemsTableName = "purchase_invoice_items";
         } else {
           invSql = `
             INSERT INTO sale_invoices
-            (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, original_invoice_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, original_invoice_id, amount_paid, amount_due, due_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
           tableName = "sale_invoices";
           itemsTableName = "sale_invoice_items";
@@ -491,13 +565,47 @@ exports.createInvoice = (req, res) => {
           let originalRefId = null;
           if (type === "PURCHASE_RETURN" && originalRefNumber) {
             // Will be set after checking DB
-            invValues = [partyIdNum, generatedInvoiceNo, total, date ? new Date(date) : new Date(), notes || null, paymentMode || "CASH", null];
+            invValues = [
+              partyIdNum,
+              generatedInvoiceNo,
+              total,
+              date ? new Date(date) : new Date(),
+              notes || null,
+              paymentMode || "CASH",
+              null,
+              amountPaidNum,
+              amountDueNum,
+              dueStatusVal,
+            ];
           } else {
-            invValues = [partyIdNum, generatedInvoiceNo, total, date ? new Date(date) : new Date(), notes || null, paymentMode || "CASH", null];
+            invValues = [
+              partyIdNum,
+              generatedInvoiceNo,
+              total,
+              date ? new Date(date) : new Date(),
+              notes || null,
+              paymentMode || "CASH",
+              null,
+              amountPaidNum,
+              amountDueNum,
+              dueStatusVal,
+            ];
           }
         } else {
           // For sale
-          invValues = [partyIdNum, generatedInvoiceNo, type, total, date ? new Date(date) : new Date(), notes || null, paymentMode || "CASH", null];
+          invValues = [
+            partyIdNum,
+            generatedInvoiceNo,
+            type,
+            total,
+            date ? new Date(date) : new Date(),
+            notes || null,
+            paymentMode || "CASH",
+            null,
+            amountPaidNum,
+            amountDueNum,
+            dueStatusVal,
+          ];
         }
 
         conn.query(invSql, invValues, (invErr, invResult) => {
@@ -627,6 +735,7 @@ exports.createInvoice = (req, res) => {
                         type,
                         totalAmount: total,
                         totalTax,
+                        roundOff: roundOffVal,
                         date,
                         notes,
                         paymentMode,
@@ -855,9 +964,36 @@ exports.updateInvoice = (req, res) => {
                             });
                           }
 
+                          // Normalize payment tracking for due status
+                          const paidInput =
+                            req.body.amountPaid != null
+                              ? Number(req.body.amountPaid)
+                              : Number(oldInv.amount_paid || 0);
+                          const amountPaidNum = isNaN(paidInput)
+                            ? Number(oldInv.amount_paid || 0)
+                            : paidInput;
+
+                          const dueInput =
+                            req.body.amountDue != null
+                              ? Number(req.body.amountDue)
+                              : Math.max(0, newTotal - amountPaidNum);
+                          const amountDueNum = isNaN(dueInput)
+                            ? Math.max(0, newTotal - amountPaidNum)
+                            : Math.max(0, dueInput);
+
+                          const dueStatusVal =
+                            req.body.dueStatus ||
+                            (amountDueNum <= 0
+                              ? "PAID"
+                              : amountPaidNum > 0
+                              ? "PARTIAL"
+                              : "PENDING");
+
+                            const roundOffVal = Number(req.body.roundOff || 0);
+
                           const updateSql = `
                             UPDATE sale_invoices
-                            SET party_id = ?, invoice_no = ?, type = ?, total_amount = ?, invoice_date = ?, notes = ?, payment_mode = ?
+                            SET party_id = ?, invoice_no = ?, type = ?, total_amount = ?, invoice_date = ?, notes = ?, payment_mode = ?, amount_paid = ?, amount_due = ?, due_status = ?
                             WHERE id = ?
                           `;
 
@@ -871,6 +1007,9 @@ exports.updateInvoice = (req, res) => {
                               date ? new Date(date) : oldInv.invoice_date,
                               notes !== undefined ? notes : oldInv.notes,
                               paymentMode || oldInv.payment_mode,
+                              amountPaidNum,
+                              amountDueNum,
+                              dueStatusVal,
                               id,
                             ],
                             (updErr) => {
@@ -945,12 +1084,21 @@ exports.updateInvoice = (req, res) => {
                                           type,
                                           totalAmount: newTotal,
                                           totalTax,
+                                          roundOff: roundOffVal,
                                           date: date || oldInv.invoice_date,
                                           notes:
                                             notes !== undefined ? notes : oldInv.notes,
                                           paymentMode:
                                             paymentMode || oldInv.payment_mode,
-                                          status: "PAID",
+                                          status:
+                                            dueStatusVal === "PAID"
+                                              ? "PAID"
+                                              : dueStatusVal === "PENDING"
+                                              ? "PENDING"
+                                              : "UNPAID",
+                                          amountPaid: amountPaidNum,
+                                          amountDue: amountDueNum,
+                                          dueStatus: dueStatusVal,
                                           items: newItems,
                                         });
                                       });

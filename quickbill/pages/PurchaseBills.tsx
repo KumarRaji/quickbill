@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, Eye, Edit2, Trash2, Printer } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, Printer } from "lucide-react";
 import { Invoice } from "../types";
 import { InvoiceService } from "../services/api";
 
@@ -21,7 +21,7 @@ export default function PurchaseBills({
 
   // search + filters
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "PAID" | "UNPAID">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "PARTIAL" | "PAID">("ALL");
   const [fromDate, setFromDate] = useState<string>(""); // yyyy-mm-dd
   const [toDate, setToDate] = useState<string>(""); // yyyy-mm-dd
 
@@ -30,6 +30,33 @@ export default function PurchaseBills({
   // pagination
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Helpers before useMemo to avoid TDZ when filtering
+  const getDueStatus = (bill: Invoice) => {
+    const total = Number(bill.totalAmount ?? 0);
+    const paid = Number(bill.amountPaid ?? 0);
+    const dueValue = bill.amountDue;
+    const due = dueValue !== undefined && dueValue !== null ? Number(dueValue) : Math.max(0, total - paid);
+
+    if (due <= 0) return "PAID" as const;
+    if (paid > 0 && paid < total) return "PARTIAL" as const;
+    if (paid >= total) return "PAID" as const;
+    return "PENDING" as const;
+  };
+
+  const getDueBadgeClass = (status: "PAID" | "PARTIAL" | "PENDING") => {
+    if (status === "PAID") return "bg-green-100 text-green-800";
+    if (status === "PARTIAL") return "bg-blue-100 text-blue-700";
+    return "bg-amber-100 text-amber-700";
+  };
+
+  const getRemainingDue = (bill: Invoice) => {
+    const total = Number(bill.totalAmount ?? 0);
+    const paid = Number(bill.amountPaid ?? 0);
+    const dueValue = bill.amountDue;
+    const due = dueValue !== undefined && dueValue !== null ? Number(dueValue) : Math.max(0, total - paid);
+    return Math.max(0, due);
+  };
 
   const loadBills = useCallback(async () => {
     try {
@@ -82,13 +109,13 @@ export default function PurchaseBills({
     return bills.filter((bill) => {
       const invoiceNo = (bill.invoiceNumber ?? "").toString().toLowerCase();
       const supplier = (bill.partyName ?? "").toString().toLowerCase();
-      const status = (bill.status || "UNPAID") as "PAID" | "UNPAID";
+      const dueStatus = getDueStatus(bill);
 
       // search
       const matchesSearch = !term || invoiceNo.includes(term) || supplier.includes(term);
 
       // status filter
-      const matchesStatus = statusFilter === "ALL" || status === statusFilter;
+      const matchesStatus = statusFilter === "ALL" || dueStatus === statusFilter;
 
       // date filter (safe)
       const billDate = bill.date ? new Date(bill.date) : null;
@@ -179,13 +206,14 @@ export default function PurchaseBills({
               <select
                 value={statusFilter}
                 onChange={(e) => {
-                  setStatusFilter(e.target.value as any);
+                  setStatusFilter(e.target.value as "ALL" | "PENDING" | "PARTIAL" | "PAID");
                   setPage(1);
                 }}
                 className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 outline-none text-sm"
               >
                 <option value="ALL">All</option>
-                <option value="UNPAID">Unpaid</option>
+                <option value="PENDING">Pending</option>
+                <option value="PARTIAL">Partial</option>
                 <option value="PAID">Paid</option>
               </select>
             </div>
@@ -248,7 +276,7 @@ export default function PurchaseBills({
                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Items</th>
                     <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Tax Rate (%)</th>
                     <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Amount</th>
-                    <th className="px-4 lg:px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Status</th>
+                    <th className="px-4 lg:px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Due Status</th>
                     <th className="px-4 lg:px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Action</th>
                   </tr>
                 </thead>
@@ -258,7 +286,8 @@ export default function PurchaseBills({
                     const amount = Number(bill.totalAmount ?? 0);
                     const dateStr = bill.date ? new Date(bill.date).toLocaleDateString() : "-";
                     const supplier = bill.partyName || "-";
-                    const status = bill.status || "UNPAID";
+                    const dueStatus = getDueStatus(bill);
+                    const remainingDue = getRemainingDue(bill);
 
                     const items = Array.isArray(bill.items) ? bill.items : [];
                     const isDeleting = deletingId === bill.id;
@@ -289,22 +318,23 @@ export default function PurchaseBills({
                         </td>
 
                         <td className="px-4 lg:px-6 py-4 text-center">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              status === "PAID" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {status}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getDueBadgeClass(dueStatus)}`}
+                            >
+                              {dueStatus}
+                            </span>
+                            <span className="text-[11px] text-slate-500">Due: ₹{remainingDue.toFixed(2)}</span>
+                          </div>
                         </td>
 
                         <td className="px-4 lg:px-6 py-4 text-center">
-                          <div className="flex justify-center space-x-2">
+                          <div className="flex justify-center space-x-1 lg:space-x-2">
                             <button
                               onClick={() => onViewInvoice(bill)}
                               disabled={isDeleting}
-                              className={`p-2 rounded-lg transition-colors ${
-                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
+                              className={`p-1 rounded ${
+                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                               }`}
                               title="View"
                               type="button"
@@ -315,8 +345,8 @@ export default function PurchaseBills({
                             <button
                               onClick={() => onPrintInvoice(bill)}
                               disabled={isDeleting}
-                              className={`p-2 rounded-lg transition-colors ${
-                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-slate-600 hover:bg-slate-100"
+                              className={`p-1 rounded ${
+                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                               }`}
                               title="Print"
                               type="button"
@@ -327,20 +357,20 @@ export default function PurchaseBills({
                             <button
                               onClick={() => onEditInvoice(bill)}
                               disabled={isDeleting}
-                              className={`p-2 rounded-lg transition-colors ${
-                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-green-600 hover:bg-green-50"
+                              className={`p-1 rounded ${
+                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-green-600 hover:text-green-800 hover:bg-green-50"
                               }`}
                               title="Edit"
                               type="button"
                             >
-                              <Edit2 size={18} />
+                              <Edit size={18} />
                             </button>
 
                             <button
                               onClick={() => handleDelete(bill)}
                               disabled={isDeleting}
-                              className={`p-2 rounded-lg transition-colors ${
-                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-red-600 hover:bg-red-50"
+                              className={`p-1 rounded ${
+                                isDeleting ? "text-slate-400 cursor-not-allowed" : "text-red-600 hover:text-red-800 hover:bg-red-50"
                               }`}
                               title={isDeleting ? "Deleting..." : "Delete"}
                               type="button"
@@ -364,7 +394,8 @@ export default function PurchaseBills({
                 const amount = Number(bill.totalAmount ?? 0);
                 const dateStr = bill.date ? new Date(bill.date).toLocaleDateString() : "-";
                 const supplier = bill.partyName || "-";
-                const status = bill.status || "UNPAID";
+                const dueStatus = getDueStatus(bill);
+                const remainingDue = getRemainingDue(bill);
                 const items = Array.isArray(bill.items) ? bill.items : [];
                 const isDeleting = deletingId === bill.id;
 
@@ -376,11 +407,9 @@ export default function PurchaseBills({
                         <div className="text-xs text-slate-500">{dateStr}</div>
                       </div>
                       <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${
-                          status === "PAID" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                        }`}
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${getDueBadgeClass(dueStatus)}`}
                       >
-                        {status}
+                        {dueStatus}
                       </span>
                     </div>
 
@@ -394,6 +423,8 @@ export default function PurchaseBills({
                         <div className="font-medium text-slate-900">₹{amount.toFixed(2)}</div>
                       </div>
                     </div>
+
+                    <div className="text-[11px] text-slate-500">Due: ₹{remainingDue.toFixed(2)}</div>
 
                     <div className="bg-slate-100 p-2 rounded text-xs space-y-1">
                       <div className="font-semibold text-slate-600">Items ({items.length})</div>
@@ -409,8 +440,8 @@ export default function PurchaseBills({
                       <button
                         onClick={() => onViewInvoice(bill)}
                         disabled={isDeleting}
-                        className={`flex-1 flex items-center justify-center gap-1 p-2 rounded text-xs font-medium transition-colors ${
-                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-blue-600 hover:bg-blue-50"
+                        className={`flex-1 flex items-center justify-center gap-1 p-1.5 rounded text-xs font-medium transition-colors ${
+                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                         }`}
                         type="button"
                       >
@@ -421,8 +452,8 @@ export default function PurchaseBills({
                       <button
                         onClick={() => onPrintInvoice(bill)}
                         disabled={isDeleting}
-                        className={`flex-1 flex items-center justify-center gap-1 p-2 rounded text-xs font-medium transition-colors ${
-                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-slate-600 hover:bg-slate-100"
+                        className={`flex-1 flex items-center justify-center gap-1 p-1.5 rounded text-xs font-medium transition-colors ${
+                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                         }`}
                         type="button"
                       >
@@ -433,20 +464,20 @@ export default function PurchaseBills({
                       <button
                         onClick={() => onEditInvoice(bill)}
                         disabled={isDeleting}
-                        className={`flex-1 flex items-center justify-center gap-1 p-2 rounded text-xs font-medium transition-colors ${
-                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-green-600 hover:bg-green-50"
+                        className={`flex-1 flex items-center justify-center gap-1 p-1.5 rounded text-xs font-medium transition-colors ${
+                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-green-600 hover:text-green-800 hover:bg-green-50"
                         }`}
                         type="button"
                       >
-                        <Edit2 size={16} />
+                        <Edit size={16} />
                         <span className="hidden xs:inline">Edit</span>
                       </button>
 
                       <button
                         onClick={() => handleDelete(bill)}
                         disabled={isDeleting}
-                        className={`flex-1 flex items-center justify-center gap-1 p-2 rounded text-xs font-medium transition-colors ${
-                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-red-600 hover:bg-red-50"
+                        className={`flex-1 flex items-center justify-center gap-1 p-1.5 rounded text-xs font-medium transition-colors ${
+                          isDeleting ? "text-slate-400 cursor-not-allowed" : "text-red-600 hover:text-red-800 hover:bg-red-50"
                         }`}
                         type="button"
                       >

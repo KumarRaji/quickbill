@@ -21,6 +21,21 @@ import {
   Calendar as CalendarIcon, // 👈 alias to avoid any Calendar name conflicts
 } from 'lucide-react';
 
+const getRemainingDue = (invoice: Invoice) => {
+  const amountPaid = Number(invoice.amountPaid) || 0;
+  const baseDue = invoice.amountDue ?? invoice.totalAmount - amountPaid;
+  return Math.max(0, baseDue);
+};
+
+const getDueStatus = (invoice: Invoice) => {
+  const remaining = getRemainingDue(invoice);
+  const amountPaid = Number(invoice.amountPaid) || 0;
+
+  if (remaining <= 0) return 'PAID';
+  if (amountPaid > 0) return 'PARTIAL';
+  return 'PENDING';
+};
+
 interface DashboardProps {
   invoices: Invoice[];
   parties: Party[];
@@ -182,6 +197,30 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
       .map(([name, sales]) => ({ name, sales }))
       .slice(-7);
   }, [filteredInvoices]);
+
+  const saleDueInvoices = useMemo(() => {
+    return invoices
+      .filter((inv) => inv.type === 'SALE')
+      .map((inv) => {
+        const remainingDue = getRemainingDue(inv);
+        const dueStatus = inv.dueStatus ?? getDueStatus(inv);
+        return { ...inv, remainingDue, dueStatus };
+      })
+      .filter((inv) => inv.dueStatus === 'PENDING' || inv.dueStatus === 'PARTIAL')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [invoices]);
+
+  const purchaseDueInvoices = useMemo(() => {
+    return invoices
+      .filter((inv) => inv.type === 'PURCHASE')
+      .map((inv) => {
+        const remainingDue = getRemainingDue(inv);
+        const dueStatus = inv.dueStatus ?? getDueStatus(inv);
+        return { ...inv, remainingDue, dueStatus };
+      })
+      .filter((inv) => inv.dueStatus === 'PENDING' || inv.dueStatus === 'PARTIAL')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [invoices]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
@@ -409,6 +448,170 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
                 <div className="text-center py-4 text-slate-400 text-xs">No transactions yet</div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Sale Payment Due */}
+        <div className="bg-white p-3 sm:p-6 rounded-lg sm:rounded-xl shadow-sm border border-slate-100">
+          <h3 className="text-sm sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6">Sale Payment Due</h3>
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-xs sm:text-sm text-left">
+              <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                <tr>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3">Date</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3">Invoice</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3">Customer</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right">Amount</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center">Due Status</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right">Remaining Due</th>
+                </tr>
+              </thead>
+              <tbody>
+                {saleDueInvoices.slice(0, 5).map((inv) => (
+                  <tr key={inv.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-slate-700">
+                      {new Date(inv.date).toLocaleDateString('en-IN')}
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-slate-800">{inv.invoiceNumber}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-slate-700">{getPartyName(inv.partyName)}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-medium text-slate-800">₹{inv.totalAmount.toLocaleString()}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          inv.dueStatus === 'PENDING'
+                            ? 'bg-red-100 text-red-700'
+                            : inv.dueStatus === 'PARTIAL'
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}
+                      >
+                        {inv.dueStatus}
+                      </span>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-800">₹{inv.remainingDue.toLocaleString()}</td>
+                  </tr>
+                ))}
+                {saleDueInvoices.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-3 sm:px-4 py-8 text-center text-slate-400">
+                      All sale invoices are fully paid
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="sm:hidden space-y-2">
+            {saleDueInvoices.slice(0, 5).map((inv) => (
+              <div key={inv.id} className="border border-slate-300 rounded-lg p-2 bg-slate-50 space-y-1">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-800 text-xs truncate">{inv.invoiceNumber}</div>
+                    <div className="text-[11px] text-slate-600 truncate">{getPartyName(inv.partyName)}</div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs font-semibold flex-shrink-0 ${
+                      inv.dueStatus === 'PENDING'
+                        ? 'bg-red-100 text-red-700'
+                        : inv.dueStatus === 'PARTIAL'
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'bg-green-100 text-green-700'
+                    }`}
+                  >
+                    {inv.dueStatus}
+                  </span>
+                </div>
+                <div className="text-xs font-medium text-slate-800">₹{inv.remainingDue.toLocaleString()} due</div>
+                <div className="text-[11px] text-slate-500">{new Date(inv.date).toLocaleDateString('en-IN')}</div>
+              </div>
+            ))}
+            {saleDueInvoices.length === 0 && (
+              <div className="text-center py-4 text-slate-400 text-xs">All sale invoices are fully paid</div>
+            )}
+          </div>
+        </div>
+
+        {/* Purchase Paymet Due */}
+        <div className="bg-white p-3 sm:p-6 rounded-lg sm:rounded-xl shadow-sm border border-slate-100">
+          <h3 className="text-sm sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6">Purchase Paymet Due</h3>
+          <div className="hidden sm:block overflow-x-auto">
+            <table className="w-full text-xs sm:text-sm text-left">
+              <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                <tr>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3">Date</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3">Invoice</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3">Supplier</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right">Amount</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-center">Due Status</th>
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-right">Remaining Due</th>
+                </tr>
+              </thead>
+              <tbody>
+                {purchaseDueInvoices.slice(0, 5).map((inv) => (
+                  <tr key={inv.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-slate-700">
+                      {new Date(inv.date).toLocaleDateString('en-IN')}
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-slate-800">{inv.invoiceNumber}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-slate-700">{getPartyName(inv.partyName)}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-medium text-slate-800">₹{inv.totalAmount.toLocaleString()}</td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-center">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          inv.dueStatus === 'PENDING'
+                            ? 'bg-red-100 text-red-700'
+                            : inv.dueStatus === 'PARTIAL'
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}
+                      >
+                        {inv.dueStatus}
+                      </span>
+                    </td>
+                    <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-semibold text-slate-800">₹{inv.remainingDue.toLocaleString()}</td>
+                  </tr>
+                ))}
+                {purchaseDueInvoices.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-3 sm:px-4 py-8 text-center text-slate-400">
+                      All purchase bills are fully paid
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="sm:hidden space-y-2">
+            {purchaseDueInvoices.slice(0, 5).map((inv) => (
+              <div key={inv.id} className="border border-slate-300 rounded-lg p-2 bg-slate-50 space-y-1">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-slate-800 text-xs truncate">{inv.invoiceNumber}</div>
+                    <div className="text-[11px] text-slate-600 truncate">{getPartyName(inv.partyName)}</div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded text-xs font-semibold flex-shrink-0 ${
+                      inv.dueStatus === 'PENDING'
+                        ? 'bg-red-100 text-red-700'
+                        : inv.dueStatus === 'PARTIAL'
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'bg-green-100 text-green-700'
+                    }`}
+                  >
+                    {inv.dueStatus}
+                  </span>
+                </div>
+                <div className="text-xs font-medium text-slate-800">₹{inv.remainingDue.toLocaleString()} due</div>
+                <div className="text-[11px] text-slate-500">{new Date(inv.date).toLocaleDateString('en-IN')}</div>
+              </div>
+            ))}
+            {purchaseDueInvoices.length === 0 && (
+              <div className="text-center py-4 text-slate-400 text-xs">All purchase bills are fully paid</div>
+            )}
           </div>
         </div>
 

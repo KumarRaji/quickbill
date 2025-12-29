@@ -39,6 +39,8 @@ export type PaymentMode = "CASH" | "ONLINE" | "CHEQUE" | "CREDIT";
 
 export type InvoiceStatus = "PAID" | "UNPAID" | "PENDING"; // ✅ allow pending (failed payment scenario)
 
+export type DueStatus = "PENDING" | "PARTIAL" | "PAID";
+
 export interface Invoice {
   id: string;
   type: TransactionType;
@@ -58,6 +60,16 @@ export interface Invoice {
 
   status: InvoiceStatus;
   paymentMode: PaymentMode;
+
+  // Optional payment tracking for due status display
+  amountPaid?: number;
+  amountDue?: number;
+  dueStatus?: DueStatus;
+  roundOff?: number;
+
+  // Tax configuration captured on the invoice
+  taxMode?: "IN_TAX" | "OUT_TAX"; // IN_TAX => inclusive rates, OUT_TAX => add tax on top
+  gstType?: "IN_TAX" | "OUT_TAX"; // IN_TAX => CGST/SGST, OUT_TAX => IGST
 
   notes?: string | null;
 }

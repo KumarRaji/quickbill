@@ -40,7 +40,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
   const getDocTitle = () => {
     switch (invoice.type) {
       case 'SALE':
-        return 'TAX INVOICE';
+        return 'INVOICE';
       case 'RETURN':
         return 'CREDIT NOTE';
       case 'PURCHASE':
@@ -57,6 +57,10 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
   const StandardLayout: React.FC = () => {
     const items = invoice.items || [];
 
+    const roundOff = Number((invoice as any).roundOff || 0);
+    const payableTotal = Number(invoice.totalAmount || 0);
+    const grossBeforeRound = payableTotal - roundOff;
+
     const savings = items.reduce((acc: number, item: any) => {
       const mrp = Number(item.mrp || 0);
       const price = Number(item.price || item.rate || 0);
@@ -65,10 +69,43 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
       return acc + save;
     }, 0);
 
-    // If you have invoice.totalTax, subtotal = totalAmount - totalTax
-    const totalAmountNum = Number(invoice.totalAmount || 0);
-    const totalTaxNum = Number((invoice as any).totalTax || 0); // adjust if totalTax is on Invoice type
-    const subTotal = totalAmountNum - totalTaxNum;
+    const gstType = (invoice as any).gstType || 'IN_TAX';
+    const taxMode = (invoice as any).taxMode || 'OUT_TAX';
+
+    const gstTotals = items.reduce(
+      (acc, item: any) => {
+        const qty = Number(item.quantity || 0);
+        const rate = Number(item.price || item.rate || 0);
+        const taxRate = Number(item.taxRate || 0);
+
+        const gross = rate * qty;
+        const frac = taxRate / 100;
+
+        let taxable = gross;
+        let tax = 0;
+        if (taxMode === 'IN_TAX' && frac > 0) {
+          taxable = gross / (1 + frac);
+          tax = gross - taxable;
+        } else {
+          tax = taxable * frac;
+        }
+
+        acc.taxable += taxable;
+        acc.tax += tax;
+        if (gstType === 'IN_TAX') {
+          acc.cgst += tax / 2;
+          acc.sgst += tax / 2;
+        } else {
+          acc.igst += tax;
+        }
+        return acc;
+      },
+      { taxable: 0, cgst: 0, sgst: 0, igst: 0, tax: 0 }
+    );
+
+    const totalTaxNum = Number((invoice as any).totalTax ?? gstTotals.tax);
+    const subTotal = Math.max(0, grossBeforeRound - totalTaxNum);
+    const showGstBreakup = (gstTotals.tax || 0) > 0.0001;
 
     return (
       <div className="bg-white max-w-4xl mx-auto shadow-xl p-6 min-h-[1100px] print:shadow-none print:min-h-0 print:p-0">
@@ -118,13 +155,9 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
 
         {/* Bill To */}
         <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-100">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-            {invoice.type.includes('PURCHASE') ? 'Supplier' : 'Bill To'}
-          </h3>
           <h2 className="text-xl font-bold text-slate-800 mb-1">
-            {parties.find(p => p.id === invoice.partyId)?.name || invoice.partyName || `Party #${invoice.partyId}`}
+            Customer Name: {parties.find(p => p.id === invoice.partyId)?.name || invoice.partyName || `Party #${invoice.partyId}`}
           </h2>
-          <p className="text-slate-500">Party ID: {invoice.partyId}</p>
           <p className="text-slate-600 font-medium mt-2">Payment Mode: {invoice.paymentMode || 'CASH'}</p>
         </div>
 
@@ -173,9 +206,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
               <span>Tax Total</span>
               <span>₹{formatMoney((invoice as any).totalTax)}</span>
             </div>
-            <div className="flex justify-between py-2 text-lg font-bold text-slate-800">
-              <span>Total</span>
-              <span>₹{formatMoney(invoice.totalAmount)}</span>
+            <div className="flex justify-between py-2 text-slate-600 border-b border-slate-100">
+              <span>Round Off</span>
+              <span>{roundOff >= 0 ? '+' : '-'}₹{formatMoney(Math.abs(roundOff))}</span>
+            </div>
+            <div className="flex justify-between items-center py-2 text-lg font-bold text-slate-800 border-y-2 border-slate-400 mt-1">
+              <span>Payable Total</span>
+              <span>₹{formatMoney(payableTotal)}</span>
             </div>
           </div>
         </div>
@@ -186,6 +223,35 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
             You Have Saved : ₹{formatMoney(savings)}
           </div>
         </div>
+
+        <div className="border-t-2 border-slate-400 my-4" />
+
+        {/* GST Breakdown */}
+        {showGstBreakup && (
+          <div className="mb-6">
+            <h3 className="text-sm font-bold text-slate-700 mb-2">GST Breakup Details</h3>
+            <table className="w-full text-sm border border-slate-200 rounded-lg overflow-hidden">
+              <thead>
+                <tr className="bg-slate-100 text-slate-700">
+                  <th className="px-3 py-2 text-left">Taxable Amount</th>
+                  <th className="px-3 py-2 text-left">CGST</th>
+                  <th className="px-3 py-2 text-left">SGST</th>
+                  <th className="px-3 py-2 text-left">IGST</th>
+                  <th className="px-3 py-2 text-left">Total Tax</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-slate-200">
+                  <td className="px-3 py-2">₹{formatMoney(gstTotals.taxable)}</td>
+                  <td className="px-3 py-2">₹{formatMoney(gstTotals.cgst)}</td>
+                  <td className="px-3 py-2">₹{formatMoney(gstTotals.sgst)}</td>
+                  <td className="px-3 py-2">₹{formatMoney(gstTotals.igst)}</td>
+                  <td className="px-3 py-2 font-semibold">₹{formatMoney(gstTotals.tax)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Terms removed as requested */}
 
@@ -207,6 +273,10 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
   const ThermalLayout: React.FC = () => {
     const items = invoice.items || [];
 
+    const roundOff = Number((invoice as any).roundOff || 0);
+    const payableTotal = Number(invoice.totalAmount || 0);
+    const grossBeforeRound = payableTotal - roundOff;
+
     const savings = items.reduce((acc: number, item: any) => {
       const mrp = Number(item.mrp || 0);
       const price = Number(item.price || item.rate || 0);
@@ -215,8 +285,43 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
       return acc + save;
     }, 0);
 
+    const gstType = (invoice as any).gstType || 'IN_TAX';
+    const taxMode = (invoice as any).taxMode || 'OUT_TAX';
+    const gstTotals = items.reduce(
+      (acc, item: any) => {
+        const qty = Number(item.quantity || 0);
+        const rate = Number(item.price || item.rate || 0);
+        const taxRate = Number(item.taxRate || 0);
+
+        const gross = rate * qty;
+        const frac = taxRate / 100;
+
+        let taxable = gross;
+        let tax = 0;
+        if (taxMode === 'IN_TAX' && frac > 0) {
+          taxable = gross / (1 + frac);
+          tax = gross - taxable;
+        } else {
+          tax = taxable * frac;
+        }
+
+        acc.taxable += taxable;
+        acc.tax += tax;
+        if (gstType === 'IN_TAX') {
+          acc.cgst += tax / 2;
+          acc.sgst += tax / 2;
+        } else {
+          acc.igst += tax;
+        }
+        return acc;
+      },
+      { taxable: 0, cgst: 0, sgst: 0, igst: 0, tax: 0 }
+    );
+
+    const showGstBreakup = (gstTotals.tax || 0) > 0.0001;
+
     return (
-      <div className="bg-white mx-auto p-2 shadow-xl print:shadow-none w-[300px] print:w-full font-mono text-sm text-black leading-tight">
+      <div className="bg-white mx-auto p-2 shadow-xl print:shadow-none w-[300px] thermal-print font-mono text-sm text-black leading-tight">
         <div className="text-center mb-2">
           <h2 className="text-lg font-bold uppercase">QuickBill</h2>
           <p className="text-xs">123 Business Hub, Tech City</p>
@@ -224,7 +329,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
           <p className="text-xs">GST: 24ABCDE1234F1Z5</p>
         </div>
 
-        <div className="border-b border-dashed border-black my-2" />
+        <div className="border-b-2 border-black my-2" />
 
         <div className="flex justify-between text-xs mb-1">
           <span>Type:</span>
@@ -254,7 +359,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         <div className="border-b border-dashed border-black my-2" />
 
         <div className="mb-2">
-          <span className="text-xs font-bold">Party: </span>
+          <span className="text-xs font-bold">Customer Name: </span>
           <span className="text-xs">
             {parties.find(p => p.id === invoice.partyId)?.name || (invoice as any).partyName || `#${invoice.partyId}`}
           </span>
@@ -302,19 +407,43 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
 
         <div className="border-b border-dashed border-black my-2" />
 
-        <div className="flex justify-between text-xs mb-4">
-          <span>(Inc. Taxes)</span>
-          <span>₹{formatMoney((invoice as any).totalTax)}</span>
+        <div className="flex justify-between text-xs mb-1">
+          <span>Tax Total</span>
+          <span>₹{formatMoney((invoice as any).totalTax ?? gstTotals.tax)}</span>
         </div>
-        <div className="flex justify-between font-bold text-sm mb-1">
-          <span>TOTAL:</span>
-          <span>₹{formatMoney(invoice.totalAmount)}</span>
+        <div className="flex justify-between text-xs mb-1">
+          <span>Round Off</span>
+          <span>{roundOff >= 0 ? '+' : '-'}₹{formatMoney(Math.abs(roundOff))}</span>
+        </div>
+        <div className="flex justify-between items-center font-bold text-sm mb-2 border-y-2 border-black py-1">
+          <span>Payable</span>
+          <span>₹{formatMoney(payableTotal)}</span>
         </div>
         <div className="text-center mt-2 mb-2">
           <div className="inline-block bg-green-100 text-green-800 font-semibold px-3 py-1 rounded">
             You Have Saved : ₹{formatMoney(savings)}
           </div>
         </div>
+
+        <div className="border-b border-dashed border-black my-2" />
+
+        {showGstBreakup && (
+          <div className="mb-3">
+            <div className="text-xs font-bold mb-1">GST Breakup Details</div>
+            <div className="grid grid-cols-5 gap-1 text-[11px] leading-tight">
+              <div className="font-semibold">Taxable Amount</div>
+              <div className="font-semibold">CGST</div>
+              <div className="font-semibold">SGST</div>
+              <div className="font-semibold">IGST</div>
+              <div className="font-semibold">Total Tax</div>
+              <div>₹{formatMoney(gstTotals.taxable)}</div>
+              <div>₹{formatMoney(gstTotals.cgst)}</div>
+              <div>₹{formatMoney(gstTotals.sgst)}</div>
+              <div>₹{formatMoney(gstTotals.igst)}</div>
+              <div className="font-semibold">₹{formatMoney(gstTotals.tax)}</div>
+            </div>
+          </div>
+        )}
 
         <div className="border-b border-dashed border-black my-2" />
 
@@ -337,6 +466,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
             display: block !important;
             visibility: visible !important;
             opacity: 1 !important;
+          }
+          body {
+            font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif !important;
+          }
+          .thermal-print {
+            width: 80mm !important;
+            margin: 0 auto !important;
           }
         }
       `}</style>

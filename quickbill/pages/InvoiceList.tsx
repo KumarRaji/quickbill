@@ -19,9 +19,56 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
 
   // ✅ Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PAID' | 'UNPAID'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'PARTIAL' | 'PAID'>('ALL');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
+
+  // Helper: derive due status and badges BEFORE useMemo to avoid TDZ during render
+  const getDueStatus = (inv: Invoice) => {
+    const total = Number(inv.totalAmount ?? 0);
+    const paidRaw = inv.amountPaid;
+    const dueRaw = inv.amountDue;
+    const hasPaidField = paidRaw !== undefined && paidRaw !== null;
+    const hasDueField = dueRaw !== undefined && dueRaw !== null;
+    const paid = Number(paidRaw ?? 0);
+    const due = hasDueField ? Number(dueRaw) : Math.max(0, total - paid);
+    const legacyStatus = String(inv.status || '').toUpperCase();
+
+    // Prefer explicit due value if present
+    if (hasDueField && Number.isFinite(due)) {
+      if (due <= 0) return 'PAID' as const;
+      if (paid > 0 && paid < total) return 'PARTIAL' as const;
+      return 'PENDING' as const;
+    }
+
+    // No paid/due info: fall back to total
+    if (!hasPaidField) {
+      if (total <= 0) return 'PAID' as const;
+      // Treat missing payment info as pending even if legacy status says PAID
+      if (legacyStatus === 'PAID') return 'PENDING' as const;
+      if (legacyStatus === 'UNPAID' || legacyStatus === 'PENDING') return 'PENDING' as const;
+    }
+
+    if (total <= 0) return 'PAID' as const;
+    if (paid >= total) return 'PAID' as const;
+    if (paid > 0) return 'PARTIAL' as const;
+    return 'PENDING' as const;
+  };
+
+  const getDueBadgeClass = (status: 'PAID' | 'PARTIAL' | 'PENDING') => {
+    if (status === 'PAID') return 'bg-green-100 text-green-700';
+    if (status === 'PARTIAL') return 'bg-blue-100 text-blue-700';
+    return 'bg-amber-100 text-amber-700';
+  };
+
+  const getRemainingDue = (inv: Invoice) => {
+    const total = Number(inv.totalAmount ?? 0);
+    const paid = Number(inv.amountPaid ?? 0);
+    const dueRaw = inv.amountDue;
+    const hasDueField = dueRaw !== undefined && dueRaw !== null;
+    const due = hasDueField ? Number(dueRaw) : Math.max(0, total - paid);
+    return Math.max(0, due);
+  };
 
   // ✅ Filter first
   const filteredInvoices = useMemo(() => {
@@ -35,8 +82,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
         String(inv.invoiceNumber || '').toLowerCase().includes(term) ||
         String(inv.partyName || '').toLowerCase().includes(term);
 
-      const status = String(inv.status || '').toUpperCase();
-      const matchesStatus = statusFilter === 'ALL' || status === statusFilter;
+      const derivedStatus = getDueStatus(inv);
+      const matchesStatus = statusFilter === 'ALL' || derivedStatus === statusFilter;
 
       const invDate = inv.date ? new Date(inv.date) : null;
       const fromOk = !fromDate || (invDate && invDate >= new Date(fromDate + 'T00:00:00'));
@@ -113,25 +160,6 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2 sm:gap-3 flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800 truncate">{getTitle()}</h1>
-
-            {/* Page size dropdown */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-600 whitespace-nowrap">Rows per page:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="px-2 sm:px-3 py-1.5 border border-slate-300 rounded-lg bg-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {[10, 20, 50, 100].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           <button
@@ -146,7 +174,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
 
         {/* Filters */}
         <div className="bg-white border border-slate-200 rounded-lg p-3 sm:p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 items-end">
             {/* Search */}
             <div className="relative lg:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -196,14 +224,33 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
               <select
                 value={statusFilter}
                 onChange={(e) => {
-                  setStatusFilter(e.target.value as 'ALL' | 'PAID' | 'UNPAID');
+                  setStatusFilter(e.target.value as 'ALL' | 'PENDING' | 'PARTIAL' | 'PAID');
                   setPage(1);
                 }}
                 className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
               >
                 <option value="ALL">All</option>
-                <option value="UNPAID">Unpaid</option>
+                <option value="PENDING">Pending</option>
+                <option value="PARTIAL">Partial</option>
                 <option value="PAID">Paid</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Rows</label>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              >
+                {[10, 20, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -232,7 +279,7 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                   Amount
                 </th>
                 <th className="px-4 lg:px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center">
-                  Status
+                  Due Status
                 </th>
                 <th className="px-4 lg:px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b text-center">
                   Action
@@ -241,7 +288,11 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
             </thead>
 
             <tbody className="divide-y divide-slate-100">
-              {paginatedInvoices.map((inv) => (
+              {paginatedInvoices.map((inv) => {
+                const dueStatus = getDueStatus(inv);
+                const remainingDue = getRemainingDue(inv);
+
+                return (
                 <tr
                   key={inv.id}
                   className="hover:bg-slate-50 transition-colors"
@@ -283,15 +334,14 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                   </td>
 
                   <td className="px-4 lg:px-6 py-3 text-center">
-                    <span
-                      className={`px-2 py-1 text-xs font-bold rounded-full ${
-                        inv.status === 'PAID'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                    >
-                      {inv.status}
-                    </span>
+                    <div className="flex flex-col items-center gap-1">
+                      <span
+                        className={`px-2 py-1 text-xs font-bold rounded-full ${getDueBadgeClass(dueStatus)}`}
+                      >
+                        {dueStatus}
+                      </span>
+                      <span className="text-[11px] text-slate-500">Due: ₹{remainingDue.toFixed(2)}</span>
+                    </div>
                   </td>
 
                   <td className="px-4 lg:px-6 py-3 text-center">
@@ -339,7 +389,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
 
               {filteredInvoices.length === 0 && (
                 <tr>
@@ -366,7 +417,11 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
           {/* Mobile Card View */}
           <div className="sm:hidden space-y-3">
           {paginatedInvoices.length > 0 ? (
-            paginatedInvoices.map((inv) => (
+            paginatedInvoices.map((inv) => {
+              const dueStatus = getDueStatus(inv);
+              const remainingDue = getRemainingDue(inv);
+
+              return (
               <div
                 key={inv.id}
                 className="border border-slate-300 rounded-lg p-3 bg-white space-y-2 hover:bg-slate-50"
@@ -377,13 +432,9 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                     <div className="text-sm font-medium text-slate-800 truncate">{inv.invoiceNumber}</div>
                   </div>
                   <span
-                    className={`px-2 py-1 text-xs font-bold rounded-full flex-shrink-0 ${
-                      inv.status === 'PAID'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                    }`}
+                    className={`px-2 py-1 text-xs font-bold rounded-full flex-shrink-0 ${getDueBadgeClass(dueStatus)}`}
                   >
-                    {inv.status}
+                    {dueStatus}
                   </span>
                 </div>
 
@@ -419,6 +470,10 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                   >
                     ₹{inv.totalAmount.toLocaleString()}
                   </span>
+                </div>
+
+                <div className="text-[11px] text-slate-500">
+                  Due: ₹{remainingDue.toFixed(2)}
                 </div>
 
                 <div className="flex gap-2 pt-2 border-t border-slate-200">
@@ -470,7 +525,8 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
                   </div>
                 )}
               </div>
-            ))
+            );
+            })
           ) : (
             <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
               {type === 'SALE' && <FileText size={48} className="mx-auto mb-2 opacity-20" />}
