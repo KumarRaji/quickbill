@@ -123,6 +123,15 @@ const Layout: React.FC<LayoutProps> = ({
             />
           )}
 
+          {canManageData && (
+            <NavItem
+              active={currentView === "EXPENSES"}
+              onClick={() => onChangeView("EXPENSES")}
+              icon={Wallet}
+              label="Expenses"
+            />
+          )}
+
           <div className="pt-4 pb-2 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
             Sales
           </div>
@@ -133,12 +142,12 @@ const Layout: React.FC<LayoutProps> = ({
             icon={FileText}
             label="Sale Invoices"
           />
-          <NavItem
+          {/* <NavItem
             active={currentView === "PAYMENT_IN"}
             onClick={() => onChangeView("PAYMENT_IN")}
             icon={TrendingDown}
             label="Cash Deposit"
-          />
+          /> */}
           <NavItem
             active={currentView === "SALE_RETURN_NEW"}
             onClick={() => onChangeView("SALE_RETURN_NEW")}
@@ -147,7 +156,7 @@ const Layout: React.FC<LayoutProps> = ({
           />
 
           <div className="pt-4 pb-2 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Purchases & Expenses
+            Purchases
           </div>
 
           <NavItem
@@ -162,21 +171,12 @@ const Layout: React.FC<LayoutProps> = ({
             icon={Undo2}
             label="Purchase Return"
           />
-          <NavItem
+          {/* <NavItem
             active={currentView === "PAYMENT_OUT"}
             onClick={() => onChangeView("PAYMENT_OUT")}
             icon={TrendingUp}
             label="Payment Out"
-          />
-
-          {canManageData && (
-            <NavItem
-              active={currentView === "EXPENSES"}
-              onClick={() => onChangeView("EXPENSES")}
-              icon={Wallet}
-              label="Expenses"
-            />
-          )}
+          /> */}
 
           {isSuperAdmin && (
             <>
@@ -277,6 +277,9 @@ const Layout: React.FC<LayoutProps> = ({
               {canManageData && (
                 <NavItem active={currentView === "REPORTS"} onClick={() => go("REPORTS")} icon={BarChart3} label="Reports" />
               )}
+              {canManageData && (
+                <NavItem active={currentView === "EXPENSES"} onClick={() => go("EXPENSES")} icon={Wallet} label="Expenses" />
+              )}
 
               <div className="border-t border-slate-800 my-2 pt-2 text-xs text-slate-500 uppercase">
                 Sales
@@ -291,9 +294,6 @@ const Layout: React.FC<LayoutProps> = ({
               <NavItem active={currentView === "PURCHASE_INVOICES"} onClick={() => go("PURCHASE_INVOICES")} icon={ShoppingCart} label="Purchase Bills" />
               <NavItem active={currentView === "PURCHASE_RETURNS"} onClick={() => go("PURCHASE_RETURNS")} icon={Undo2} label="Purchase Return" />
               <NavItem active={currentView === "PAYMENT_OUT"} onClick={() => go("PAYMENT_OUT")} icon={TrendingUp} label="Payment Out" />
-              {canManageData && (
-                <NavItem active={currentView === "EXPENSES"} onClick={() => go("EXPENSES")} icon={Wallet} label="Expenses" />
-              )}
 
               {isSuperAdmin && (
                 <>
