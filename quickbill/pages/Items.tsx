@@ -511,9 +511,6 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                         </span>
                       )}
                       </div>
-                      {item.category && (
-                        <div className="text-xs text-slate-500 mt-1">Category: {item.category}</div>
-                      )}
                     </td>
 
                     <td className="px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm text-slate-700">

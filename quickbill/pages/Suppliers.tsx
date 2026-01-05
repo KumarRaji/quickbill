@@ -138,6 +138,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
                 <tr>
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">Name</th>
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">Phone</th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">Address</th>
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">Balance</th>
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">Actions</th>
                 </tr>
@@ -154,6 +155,9 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
                         <Phone size={14} />
                         <span>{supplier.phone}</span>
                       </div>
+                    </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm text-slate-600 max-w-xs truncate">
+                      {supplier.address || '—'}
                     </td>
                     <td className={`px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap font-medium text-xs sm:text-sm ${supplier.balance > 0 ? 'text-green-600' : supplier.balance < 0 ? 'text-red-600' : 'text-slate-600'}`}>
                       ₹{Math.abs(supplier.balance).toLocaleString()} {supplier.balance > 0 ? 'Cr' : supplier.balance < 0 ? 'Dr' : ''}
@@ -172,7 +176,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
                 ))}
                 {filteredSuppliers.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 lg:px-6 py-12 text-center text-xs sm:text-sm text-slate-400">No suppliers found matching your search.</td>
+                    <td colSpan={5} className="px-4 lg:px-6 py-12 text-center text-xs sm:text-sm text-slate-400">No suppliers found matching your search.</td>
                   </tr>
                 )}
               </tbody>
