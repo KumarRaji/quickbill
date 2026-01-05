@@ -4,6 +4,7 @@ import { Search, Plus, Edit2, Trash2, ScanBarcode, X, Upload, Sparkles, Printer 
 import { ItemService } from '../services/api';
 import Barcode from 'react-barcode';
 import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 
 interface ItemsProps {
   items: Item[];
@@ -141,6 +142,87 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
         }, 250);
       }, 100);
     }, 100);
+  };
+
+  const qrValueForItem = (item: Item) => {
+    return item.barcode || item.code || `${item.name} (ID: ${item.id})`;
+  };
+
+  // Print selected QR codes
+  const printSelectedQRCodes = async () => {
+    const itemsToPrint = items.filter(item => selectedItems.includes(item.id));
+    if (itemsToPrint.length === 0) {
+      alert('No items selected');
+      return;
+    }
+
+    try {
+      const qrEntries = await Promise.all(
+        itemsToPrint.map(async (item) => {
+          const value = qrValueForItem(item);
+          const src = await QRCode.toDataURL(value, { width: 200, margin: 1 });
+          return { item, src, value };
+        })
+      );
+
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      document.body.appendChild(tempDiv);
+
+      qrEntries.forEach(({ item, src, value }) => {
+        const container = document.createElement('div');
+        container.style.cssText = 'page-break-inside: avoid; margin: 16px; text-align: center; display: inline-block; width: 220px; font-family: Arial;';
+
+        const nameDiv = document.createElement('div');
+        nameDiv.style.cssText = 'font-size: 14px; margin-bottom: 4px; color: #111; font-weight: 700;';
+        nameDiv.textContent = item.name;
+
+        const codeDiv = document.createElement('div');
+        codeDiv.style.cssText = 'font-size: 11px; margin-bottom: 6px; color: #444;';
+        const details = [item.category ? `Cat: ${item.category}` : null, item.code ? `Code: ${item.code}` : null, item.barcode ? `Barcode: ${item.barcode}` : null].filter(Boolean).join(' • ');
+        codeDiv.textContent = details || `ID: ${item.id}`;
+
+        const img = document.createElement('img');
+        img.src = src;
+        img.style.cssText = 'width: 180px; height: 180px; object-fit: contain; margin: 0 auto; display: block;';
+        img.alt = `QR for ${value}`;
+
+        container.appendChild(nameDiv);
+        container.appendChild(codeDiv);
+        container.appendChild(img);
+        tempDiv.appendChild(container);
+      });
+
+      const printWindow = window.open('', '', 'width=900,height=700');
+      if (!printWindow) {
+        document.body.removeChild(tempDiv);
+        return;
+      }
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print QR Codes</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; }
+              @media print { body { padding: 10px; } }
+            </style>
+          </head>
+          <body>${tempDiv.innerHTML}</body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        setTimeout(() => printWindow.close(), 100);
+        document.body.removeChild(tempDiv);
+      }, 200);
+    } catch (err: any) {
+      console.error('QR print error', err);
+      alert(err?.message || 'Failed to generate QR codes');
+    }
   };
 
   // Toggle item selection
@@ -292,6 +374,17 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               <Printer size={16} />
               <span className="hidden sm:inline">Print Barcodes ({selectedItems.length})</span>
               <span className="sm:hidden">Print ({selectedItems.length})</span>
+            </button>
+          )}
+
+          {selectedItems.length > 0 && (
+            <button
+              onClick={printSelectedQRCodes}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-xs sm:text-sm"
+            >
+              <Printer size={16} />
+              <span className="hidden sm:inline">Print QR Codes ({selectedItems.length})</span>
+              <span className="sm:hidden">QR ({selectedItems.length})</span>
             </button>
           )}
           
