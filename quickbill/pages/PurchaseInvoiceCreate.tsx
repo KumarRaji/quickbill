@@ -24,6 +24,55 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 }) => {
   const transactionType = "PURCHASE" as const;
 
+  // Try to infer home state: prefer COMPANY_GSTIN prefix, fallback to explicit env, then default 33 (TN)
+  const ENV_HOME_STATE_CODE = (import.meta.env.VITE_HOME_STATE_CODE || "").trim();
+  const COMPANY_GSTIN = (import.meta.env.VITE_COMPANY_GSTIN || "").trim();
+  const inferredHomeStateFromGSTIN = COMPANY_GSTIN.match(/^\d{2}/)?.[0];
+  const HOME_STATE_CODE = inferredHomeStateFromGSTIN || ENV_HOME_STATE_CODE || "33";
+
+  const stateHints: Record<string, string[]> = {
+    "01": ["jammu", "kashmir", "ladakh"],
+    "02": ["himachal"],
+    "03": ["punjab"],
+    "04": ["chandigarh"],
+    "06": ["haryana"],
+    "07": ["delhi"],
+    "08": ["rajasthan"],
+    "09": ["uttar pradesh", "uttar pradesh"],
+    "10": ["bihar"],
+    "18": ["assam"],
+    "19": ["west bengal"],
+    "20": ["jharkhand"],
+    "21": ["odisha", "orissa"],
+    "22": ["chhattisgarh"],
+    "23": ["madhya pradesh"],
+    "24": ["gujarat", "gj"],
+    "27": ["maharashtra", "mh"],
+    "29": ["karnataka"],
+    "32": ["kerala"],
+    "33": ["tamil nadu"],
+    "36": ["telangana"],
+    "37": ["andhra pradesh"],
+  };
+
+  const detectStateCode = (supplier?: Supplier | null): string | null => {
+    if (!supplier) return null;
+
+    const gstin = (supplier.gstin || "").trim();
+    if (gstin.length >= 2) {
+      const maybeCode = gstin.slice(0, 2);
+      if (/^\d{2}$/.test(maybeCode)) return maybeCode;
+    }
+
+    const addr = (supplier.address || "").toLowerCase();
+    if (addr) {
+      for (const [code, hints] of Object.entries(stateHints)) {
+        if (hints.some((h) => addr.includes(h))) return code;
+      }
+    }
+    return null;
+  };
+
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedPartyId, setSelectedPartyId] = useState<string>("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
@@ -32,6 +81,14 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   const [taxMode, setTaxMode] = useState<"IN_TAX" | "OUT_TAX">(editInvoice?.taxMode || "IN_TAX"); // IN_TAX => price inclusive of GST, OUT_TAX => add GST on top
   const [gstType, setGstType] = useState<"IN_TAX" | "OUT_TAX">(editInvoice?.gstType || "IN_TAX");
   const [amountPaid, setAmountPaid] = useState<number>(Number(editInvoice?.amountPaid || 0));
+
+  const applySupplierGstType = (supplierId: string) => {
+    const sup = suppliers.find((s) => String(s.id) === String(supplierId));
+    if (!sup) return;
+    const code = detectStateCode(sup);
+    if (!code) return;
+    setGstType(code === HOME_STATE_CODE ? "IN_TAX" : "OUT_TAX");
+  };
 
   // barcode / suggestions
   const [barcodeInput, setBarcodeInput] = useState("");
@@ -72,6 +129,12 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   useEffect(() => {
     SupplierService.getAll().then(setSuppliers).catch(console.error);
   }, []);
+
+  // Auto-set GST type based on supplier address/GSTIN vs home state when creating new bills
+  useEffect(() => {
+    if (!selectedPartyId || editInvoice) return;
+    applySupplierGstType(selectedPartyId);
+  }, [selectedPartyId, suppliers]);
 
   // ✅ Prefill when editing
   useEffect(() => {
