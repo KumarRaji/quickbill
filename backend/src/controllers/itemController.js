@@ -25,7 +25,7 @@ const normalizeBarcode = (v) => {
 /* ----------------------------- GET /api/items ----------------------------- */
 exports.getItems = (req, res) => {
   const sql =
-    "SELECT id, name, code, barcode, supplier_id, selling_price, purchase_price, stock, mrp, unit, tax_rate FROM items ORDER BY id DESC";
+    "SELECT id, name, category, code, barcode, supplier_id, selling_price, purchase_price, stock, mrp, unit, tax_rate FROM items ORDER BY id DESC";
 
   pool.query(sql, (err, rows) => {
     if (err) {
@@ -36,6 +36,7 @@ exports.getItems = (req, res) => {
     const items = rows.map((i) => ({
       id: i.id.toString(),
       name: i.name,
+      category: i.category,
       code: i.code,
       barcode: i.barcode,
       supplierId: i.supplier_id,
@@ -53,7 +54,7 @@ exports.getItems = (req, res) => {
 
 /* ----------------------------- POST /api/items ----------------------------- */
 exports.createItem = (req, res) => {
-  const { name, code, barcode, sellingPrice, purchasePrice, stock, unit, taxRate, mrp } = req.body;
+  const { name, category, code, barcode, sellingPrice, purchasePrice, stock, unit, taxRate, mrp } = req.body;
 
   if (!name || sellingPrice == null || purchasePrice == null) {
     return res.status(400).json({
@@ -62,12 +63,13 @@ exports.createItem = (req, res) => {
   }
 
   const sql =
-    "INSERT INTO items (name, code, barcode, selling_price, purchase_price, mrp, stock, unit, tax_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    "INSERT INTO items (name, category, code, barcode, selling_price, purchase_price, mrp, stock, unit, tax_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
   pool.query(
     sql,
     [
       name,
+      category || null,
       code || null,
       normalizeBarcode(barcode),
       toNum(sellingPrice, 0),
@@ -86,6 +88,7 @@ exports.createItem = (req, res) => {
       res.status(201).json({
         id: result.insertId.toString(),
         name,
+        category: category || null,
         code: code || null,
         barcode: normalizeBarcode(barcode),
         sellingPrice: toNum(sellingPrice, 0),
@@ -102,15 +105,16 @@ exports.createItem = (req, res) => {
 /* ----------------------------- PUT /api/items/:id ----------------------------- */
 exports.updateItem = (req, res) => {
   const { id } = req.params;
-  const { name, code, barcode, sellingPrice, purchasePrice, stock, unit, taxRate, mrp } = req.body;
+  const { name, category, code, barcode, sellingPrice, purchasePrice, stock, unit, taxRate, mrp } = req.body;
 
   const sql =
-    "UPDATE items SET name=?, code=?, barcode=?, selling_price=?, purchase_price=?, mrp=?, stock=?, unit=?, tax_rate=? WHERE id=?";
+    "UPDATE items SET name=?, category=?, code=?, barcode=?, selling_price=?, purchase_price=?, mrp=?, stock=?, unit=?, tax_rate=? WHERE id=?";
 
   pool.query(
     sql,
     [
       name,
+      category || null,
       code || null,
       normalizeBarcode(barcode),
       toNum(sellingPrice, 0),
@@ -240,6 +244,7 @@ exports.bulkUploadItems = async (req, res) => {
       const rowNo = idx + 2;
 
       const name = String(pick(r, ["name", "Name", "itemName", "Item Name"]) || "").trim();
+      const category = String(pick(r, ["category", "Category", "categoryName", "Category Name"]) || "").trim();
       const codeVal = pick(r, ["code", "Code"]);
       const barcodeVal = pick(r, ["barcode", "Barcode"]);
 
@@ -265,7 +270,7 @@ exports.bulkUploadItems = async (req, res) => {
       if (mrp < 0) errors.push({ row: rowNo, message: "mrp cannot be negative" });
       if (taxRate < 0) errors.push({ row: rowNo, message: "taxRate cannot be negative" });
 
-      values.push([name, code, barcode, sellingPrice, purchasePrice, mrp, stock, unit, taxRate]);
+      values.push([name, category || null, code, barcode, sellingPrice, purchasePrice, mrp, stock, unit, taxRate]);
     });
 
     if (errors.length) {
@@ -277,10 +282,11 @@ exports.bulkUploadItems = async (req, res) => {
 
     const sql = `
       INSERT INTO items
-        (name, code, barcode, selling_price, purchase_price, mrp, stock, unit, tax_rate)
+        (name, category, code, barcode, selling_price, purchase_price, mrp, stock, unit, tax_rate)
       VALUES ?
       ON DUPLICATE KEY UPDATE
         name = VALUES(name),
+        category = VALUES(category),
         code = VALUES(code),
         selling_price = VALUES(selling_price),
         purchase_price = VALUES(purchase_price),

@@ -11,6 +11,7 @@ export interface Party {
 export interface Item {
   id: string;
   name: string;
+  category?: string;
   code?: string;
   barcode?: string;        // Scannable barcode (UPC/EAN)
   supplierId?: number;

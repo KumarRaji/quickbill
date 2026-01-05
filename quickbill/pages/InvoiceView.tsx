@@ -256,7 +256,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         {/* Terms removed as requested */}
 
         <div className="mt-4 text-center text-sm text-slate-600 font-medium">
-          Product once sold can not be taken back.
+          Welcome Again !!
         </div>
 
         <div className="mt-6 text-center text-xs text-slate-400">
@@ -448,11 +448,11 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         <div className="border-b border-dashed border-black my-2" />
 
         <div className="mt-4 text-center text-sm text-slate-600 font-medium">
-          Product once sold can not be taken back.
+          Welcome Again !!
         </div>
 
         <div className="text-center text-xs mt-2">
-          Thank you ! Visit Again !
+          Thank you ! Visit Again !!
         </div>
       </div>
     );

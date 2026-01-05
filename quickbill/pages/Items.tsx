@@ -18,6 +18,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
   const [formData, setFormData] = useState<Partial<Item>>({
     name: '',
+    category: '',
     code: '',
     barcode: '',
     sellingPrice: 0,
@@ -161,6 +162,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
   const filteredItems = items.filter(
     (i) =>
       i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (i.category && i.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (i.code && i.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (i.barcode && i.barcode.includes(searchTerm))
   );
@@ -179,7 +181,8 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
   const handleEdit = (item: Item) => {
     setEditingId(item.id);
-    setFormData(item);
+    // Ensure category shows even if backend returns null/undefined
+    setFormData({ ...item, category: item.category ?? '' });
     setIsModalOpen(true);
   };
 
@@ -201,6 +204,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
     setEditingId(null);
     setFormData({
       name: '',
+      category: '',
       code: '',
       barcode: '',
       sellingPrice: 0,
@@ -234,9 +238,9 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
   // ✅ Download sample CSV
   const downloadSampleCSV = () => {
     const header =
-      'name,code,barcode,sellingPrice,purchasePrice,mrp,stock,unit,taxRate\n';
+      'name,category,code,barcode,sellingPrice,purchasePrice,mrp,stock,unit,taxRate\n';
     const sample =
-      'Pen,PEN-01,8901234567890,10,6,12,100,pcs,0\n';
+      'Pen,Stationery,PEN-01,8901234567890,10,6,12,100,pcs,0\n';
     const blob = new Blob([header + sample], {
       type: 'text/csv;charset=utf-8;',
     });
@@ -322,7 +326,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                 />
                 <input
                   type="text"
-                  placeholder="Search by Name, Code or Barcode..."
+                  placeholder="Search by Name, Category, Code or Barcode..."
                   className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
                   value={searchTerm}
                   onChange={(e) => {
@@ -369,6 +373,9 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                     Item Name
                   </th>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                    Category
+                  </th>
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">
                     MRP
                   </th>
@@ -411,6 +418,13 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                         </span>
                       )}
                       </div>
+                      {item.category && (
+                        <div className="text-xs text-slate-500 mt-1">Category: {item.category}</div>
+                      )}
+                    </td>
+
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm text-slate-700">
+                      {item.category || '-'}
                     </td>
 
                     <td className="px-4 lg:px-6 py-3 sm:py-4 text-right whitespace-nowrap text-xs sm:text-sm text-slate-500">
@@ -467,7 +481,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 lg:px-6 py-12 text-center text-xs sm:text-sm text-slate-400">
+                  <td colSpan={9} className="px-4 lg:px-6 py-12 text-center text-xs sm:text-sm text-slate-400">
                     No items found.
                   </td>
                 </tr>
@@ -487,6 +501,9 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     {item.code && <span>Code: {item.code}</span>}
                     {item.barcode && <span>#{item.barcode}</span>}
                   </div>
+                  {item.category && (
+                    <div className="text-[11px] text-slate-500 mt-1">Category: {item.category}</div>
+                  )}
                 </div>
                 <input
                   type="checkbox"
@@ -611,6 +628,19 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+                  Category
+                </label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  value={formData.category || ''}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  placeholder="e.g., Stationery, Grocery"
                 />
               </div>
 
@@ -844,7 +874,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               <div className="text-xs sm:text-sm text-slate-600">
                 Upload <b>.csv</b> or <b>.xlsx</b> with columns:
                 <div className="mt-2 text-xs bg-slate-50 border border-slate-200 rounded-lg p-2 sm:p-3 font-mono overflow-x-auto">
-                  name, code, barcode, sellingPrice, purchasePrice, mrp, stock, unit, taxRate
+                  name, category, code, barcode, sellingPrice, purchasePrice, mrp, stock, unit, taxRate
                 </div>
               </div>
 
