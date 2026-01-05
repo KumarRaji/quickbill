@@ -27,7 +27,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedPartyId, setSelectedPartyId] = useState<string>("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
-  const [invoiceNumber, setInvoiceNumber] = useState<string>(makePurchaseBillNo());
+  const [invoiceNumber, setInvoiceNumber] = useState<string>(() => editInvoice?.invoiceNumber || "");
   const [paymentMode, setPaymentMode] = useState<"CASH" | "ONLINE" | "CHEQUE" | "CREDIT">("CASH");
   const [taxMode, setTaxMode] = useState<"IN_TAX" | "OUT_TAX">(editInvoice?.taxMode || "IN_TAX"); // IN_TAX => price inclusive of GST, OUT_TAX => add GST on top
   const [gstType, setGstType] = useState<"IN_TAX" | "OUT_TAX">(editInvoice?.gstType || "IN_TAX");
@@ -84,7 +84,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     setInvoiceDate(
       editInvoice.date ? new Date(editInvoice.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]
     );
-    setInvoiceNumber(editInvoice.invoiceNumber || makePurchaseBillNo());
+    setInvoiceNumber(editInvoice.invoiceNumber || "");
 
     setPaymentMode((editInvoice.paymentMode as any) || "CASH");
     setTaxMode(editInvoice.taxMode || "OUT_TAX");
@@ -326,10 +326,17 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
       ? "bg-blue-100 text-blue-700"
       : "bg-amber-100 text-amber-700";
 
+  const billNumberDisplay = invoiceNumber.trim() ? `#${invoiceNumber.trim()}` : "Enter Bill No.";
+
   const handleSave = async (shouldPrint: boolean = false) => {
     if (!rows.some((r) => r.itemId)) return;
     if (!selectedPartyId) {
       alert('Please select a supplier');
+      return;
+    }
+    const cleanedInvoiceNumber = invoiceNumber.trim();
+    if (!cleanedInvoiceNumber) {
+      alert('Please enter the Bill No.');
       return;
     }
 
@@ -342,8 +349,8 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
     const payload: any = {
       type: transactionType,
-      invoiceNo: invoiceNumber,
-      invoiceNumber: invoiceNumber,
+      invoiceNo: cleanedInvoiceNumber,
+      invoiceNumber: cleanedInvoiceNumber,
       date: invoiceDate,
       partyId: selectedPartyId || "CASH",
       partyName: supplier?.name || "Cash Purchase",
@@ -407,7 +414,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
           >
             Regenerate
           </button>
-          <div className="text-slate-600 font-medium text-xs sm:text-base">#{invoiceNumber}</div>
+          <div className="text-slate-600 font-medium text-xs sm:text-base">{billNumberDisplay}</div>
 
           <div className="flex items-center space-x-2 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-xs ml-2 mt-2 sm:mt-0">
             <span className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Tax Mode</span>
@@ -480,10 +487,12 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Bill No.</label>
+            <label className="block text-xs sm:text-sm font-bold text-slate-700 mb-1">Bill No. *</label>
             <input
               type="text"
-              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-600 text-sm"
+              placeholder="Enter bill number"
+              className="w-full px-3 sm:px-4 py-2 border border-slate-300 rounded-lg bg-white text-slate-800 text-sm focus:ring-2 focus:ring-orange-500 outline-none placeholder-slate-400"
+              required
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
             />
