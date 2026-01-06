@@ -23,20 +23,20 @@ exports.getStock = (req, res) => {
 
 // POST /api/stock - Add stock item
 exports.addStock = (req, res) => {
-  const { name, code, barcode, supplier_id, purchase_price, mrp, quantity, unit } = req.body;
+  const { name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit } = req.body;
 
   if (!name || !quantity || !purchase_price) {
     return res.status(400).json({ message: 'Name, quantity, and purchase price are required' });
   }
 
   const sql = `
-    INSERT INTO stock (name, code, barcode, supplier_id, purchase_price, mrp, quantity, unit)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO stock (name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   pool.query(
     sql,
-    [name, code || null, barcode || null, supplier_id || null, purchase_price || 0, mrp || 0, quantity, unit || 'PCS'],
+    [name, category || null, code || null, barcode || null, supplier_id || null, purchase_price || 0, mrp || 0, quantity, unit || 'PCS'],
     (err, result) => {
       if (err) {
         console.error('Error adding stock:', err);
@@ -50,17 +50,17 @@ exports.addStock = (req, res) => {
 // PUT /api/stock/:id - Update stock item
 exports.updateStock = (req, res) => {
   const { id } = req.params;
-  const { name, code, barcode, supplier_id, purchase_price, mrp, quantity, unit } = req.body;
+  const { name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit } = req.body;
 
   const sql = `
     UPDATE stock 
-    SET name = ?, code = ?, barcode = ?, supplier_id = ?, purchase_price = ?, mrp = ?, quantity = ?, unit = ? 
+    SET name = ?, category = ?, code = ?, barcode = ?, supplier_id = ?, purchase_price = ?, mrp = ?, quantity = ?, unit = ? 
     WHERE id = ?
   `;
 
   pool.query(
     sql,
-    [name, code || null, barcode || null, supplier_id || null, purchase_price, mrp || 0, quantity, unit || 'PCS', id],
+    [name, category || null, code || null, barcode || null, supplier_id || null, purchase_price, mrp || 0, quantity, unit || 'PCS', id],
     (err, result) => {
       if (err) {
         console.error('Error updating stock:', err);
@@ -106,7 +106,7 @@ exports.bulkUpload = [upload.single('file'), (req, res) => {
       return res.status(400).json({ message: 'File is empty' });
     }
 
-    const sql = `INSERT INTO stock (name, code, barcode, supplier_id, purchase_price, mrp, quantity, unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = `INSERT INTO stock (name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     let inserted = 0;
 
     const processRow = (index) => {
@@ -116,6 +116,7 @@ exports.bulkUpload = [upload.single('file'), (req, res) => {
 
       const row = data[index];
       const name = row.name || row.Name;
+      const category = row.category || row.Category || null;
       const code = row.code || row.Code || null;
       const barcode = row.barcode || row.Barcode || null;
       const supplier_id = row.supplier_id || row.Supplier_ID || null;
@@ -128,7 +129,7 @@ exports.bulkUpload = [upload.single('file'), (req, res) => {
         return processRow(index + 1);
       }
 
-      pool.query(sql, [name, code, barcode, supplier_id, purchase_price, mrp, quantity, unit], (err) => {
+      pool.query(sql, [name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit], (err) => {
         if (!err) inserted++;
         processRow(index + 1);
       });
@@ -184,14 +185,15 @@ exports.moveToItems = (req, res) => {
 
         // Insert into items
         const insertSql = `
-          INSERT INTO items (name, code, barcode, supplier_id, mrp, selling_price, purchase_price, stock, unit, tax_rate)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO items (name, category, code, barcode, supplier_id, mrp, selling_price, purchase_price, stock, unit, tax_rate)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         conn.query(
           insertSql,
           [
             stock.name,
+              stock.category || null,
             stock.code,
             stock.barcode,
             stock.supplier_id,
@@ -200,7 +202,7 @@ exports.moveToItems = (req, res) => {
             stock.purchase_price,
             stock.quantity,
             stock.unit,
-            tax_rate
+              tax_rate
           ],
           (insertErr, insertResult) => {
             if (insertErr) {

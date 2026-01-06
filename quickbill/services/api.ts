@@ -415,6 +415,7 @@ export const PurchaseBillService = {
 export interface StockItem {
   id: string;
   name: string;
+  category?: string;
   code?: string;
   barcode?: string;
   supplier_id?: string;

@@ -136,6 +136,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50 sticky top-0 z-10">
                 <tr>
+                  <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 whitespace-nowrap">Supplier ID</th>
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">Name</th>
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">Phone</th>
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">Address</th>
@@ -146,6 +147,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
               <tbody className="bg-white divide-y divide-slate-100">
                 {paginatedSuppliers.map((supplier) => (
                   <tr key={supplier.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-xs sm:text-sm text-slate-500 whitespace-nowrap">{supplier.id}</td>
                     <td className="px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <div className="font-medium text-slate-900 text-sm">{supplier.name}</div>
                       {supplier.gstin && <div className="text-xs text-slate-400 mt-1">GST: {supplier.gstin}</div>}
@@ -176,7 +178,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
                 ))}
                 {filteredSuppliers.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 lg:px-6 py-12 text-center text-xs sm:text-sm text-slate-400">No suppliers found matching your search.</td>
+                    <td colSpan={6} className="px-4 lg:px-6 py-12 text-center text-xs sm:text-sm text-slate-400">No suppliers found matching your search.</td>
                   </tr>
                 )}
               </tbody>
@@ -190,6 +192,7 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
                 <div className="flex justify-between items-start gap-2 pb-2 border-b border-slate-200">
                   <div className="flex-1">
                     <div className="font-medium text-slate-900 text-sm">{supplier.name}</div>
+                    <div className="text-[11px] text-slate-500">ID: {supplier.id}</div>
                     {supplier.gstin && <div className="text-xs text-slate-400 mt-1">GST: {supplier.gstin}</div>}
                   </div>
                 </div>

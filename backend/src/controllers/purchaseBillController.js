@@ -167,8 +167,8 @@ exports.createPurchaseBill = (req, res) => {
             `;
             const insertStockSql = `
               INSERT INTO stock
-                (name, code, barcode, supplier_id, purchase_price, mrp, quantity, unit, purchase_invoice_id, item_id)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit, purchase_invoice_id, item_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             let idx = 0;
@@ -281,6 +281,7 @@ exports.createPurchaseBill = (req, res) => {
 
                   const stockPayload = [
                     it.itemName || it.name || `Item-${it.itemId}`,
+                    it.category || null,
                     it.code || null,
                     it.barcode || null,
                     supplierIdNum,
@@ -425,8 +426,8 @@ exports.updatePurchaseBill = (req, res) => {
                   `;
                   const insertStockSql = `
                     INSERT INTO stock
-                      (name, code, barcode, supplier_id, purchase_price, mrp, quantity, unit, purchase_invoice_id, item_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      (name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit, purchase_invoice_id, item_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   `;
 
                   let idxInsert = 0;
@@ -542,6 +543,7 @@ exports.updatePurchaseBill = (req, res) => {
 
                         const stockPayload = [
                           it.itemName || it.name || `Item-${it.itemId}`,
+                          it.category || null,
                           it.code || null,
                           it.barcode || null,
                           supplierIdNum,

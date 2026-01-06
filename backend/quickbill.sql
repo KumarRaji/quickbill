@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS items (
 CREATE TABLE IF NOT EXISTS stock (
   id INT NOT NULL AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
+  category VARCHAR(100) NULL,
   code VARCHAR(100) NULL,
   barcode VARCHAR(100) NULL,
   supplier_id INT UNSIGNED NULL,
@@ -349,3 +350,13 @@ ALTER TABLE purchase_invoices
   ADD COLUMN amount_due DECIMAL(12,2) NOT NULL DEFAULT 0,
   ADD COLUMN due_status ENUM('PENDING','PARTIAL','PAID') NOT NULL DEFAULT 'PENDING';
   
+ALTER TABLE stock
+  ADD COLUMN purchase_invoice_id INT UNSIGNED NULL AFTER supplier_id,
+  ADD COLUMN item_id INT UNSIGNED NULL AFTER purchase_invoice_id,
+  ADD KEY idx_stock_purchase_invoice (purchase_invoice_id),
+  ADD KEY idx_stock_item (item_id),
+  ADD CONSTRAINT fk_stock_purchase_invoice FOREIGN KEY (purchase_invoice_id) REFERENCES purchase_invoices(id) ON UPDATE CASCADE ON DELETE SET NULL,
+  ADD CONSTRAINT fk_stock_item FOREIGN KEY (item_id) REFERENCES items(id) ON UPDATE CASCADE ON DELETE SET NULL;
+  
+
+ ALTER TABLE stock ADD COLUMN category VARCHAR(100) NULL;

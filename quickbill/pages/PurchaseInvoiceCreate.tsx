@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Plus, Printer, Save, ScanBarcode, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowLeft, Barcode, Plus, Printer, Save, ScanBarcode, Sparkles, Trash2, X } from "lucide-react";
 import { Item, Invoice, InvoiceItem } from "../types";
 import { InvoiceService, ItemService, SupplierService, Supplier } from "../services/api";
 
@@ -13,6 +13,13 @@ export interface PurchaseInvoiceCreateProps {
 }
 
 const makePurchaseBillNo = () => `PUR-${Date.now().toString().slice(-6)}`;
+
+type PurchaseRow = InvoiceItem & {
+  manualMode?: boolean;
+  category?: string;
+  code?: string;
+  barcode?: string;
+};
 
 const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   items,
@@ -97,7 +104,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
 
-  const [rows, setRows] = useState<InvoiceItem[]>([]);
+  const [rows, setRows] = useState<PurchaseRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   const handleNumber = (val: string) => {
@@ -110,6 +117,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   const [showItemModal, setShowItemModal] = useState(false);
   const [itemFormData, setItemFormData] = useState<Partial<Item>>({
     name: "",
+    category: "",
     code: "",
     barcode: "",
     sellingPrice: 0,
@@ -121,9 +129,19 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   });
 
   // Generate random barcode (EAN-13 format)
-  const generateBarcode = () => {
-    const randomDigits = Math.floor(Math.random() * 1000000000000).toString().padStart(12, '0');
-    setItemFormData({ ...itemFormData, barcode: randomDigits });
+  const generateRandomBarcode = () => Math.floor(Math.random() * 1000000000000).toString().padStart(12, "0");
+
+  const handleGenerateItemBarcode = () => {
+    setItemFormData({ ...itemFormData, barcode: generateRandomBarcode() });
+  };
+
+  const handleGenerateRowBarcode = (index: number) => {
+    setRows((prev) => {
+      const copy = [...prev];
+      if (!copy[index]) return prev;
+      copy[index] = { ...copy[index], barcode: generateRandomBarcode() };
+      return copy.map(recalcRow);
+    });
   };
 
   useEffect(() => {
@@ -167,7 +185,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     setRows(editRows.map((r) => ({ ...r, amount: Number(r.price || 0) * Number(r.quantity || 0) })));
   }, [editInvoice]);
 
-  const createEmptyRow = (): InvoiceItem => ({
+  const createEmptyRow = (): PurchaseRow => ({
     itemId: "",
     itemName: "",
     quantity: 1,
@@ -175,20 +193,50 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     price: 0,
     taxRate: 0,
     amount: 0,
+    category: "",
+    code: "",
+    barcode: "",
   });
 
   const addRow = () => setRows((prev) => [...prev, createEmptyRow()]);
   const removeRow = (index: number) => setRows((prev) => prev.filter((_, i) => i !== index));
 
-  const recalcRow = (row: InvoiceItem) => {
+  const recalcRow = (row: PurchaseRow) => {
     row.amount = Number(row.price || 0) * Number(row.quantity || 0);
     return row;
   };
 
-  const updateRow = (index: number, field: keyof InvoiceItem, value: any) => {
+  const setManualMode = (index: number, enabled: boolean) => {
     setRows((prev) => {
       const newRows = [...prev];
-      const row = { ...newRows[index] } as InvoiceItem;
+      const row = { ...newRows[index] } as PurchaseRow;
+      row.manualMode = enabled;
+      if (enabled) {
+        row.itemId = "";
+        row.itemName = row.itemName || "";
+        row.category = row.category || "";
+        row.code = row.code || "";
+        row.barcode = row.barcode || "";
+      } else {
+        // Reset manual entry when leaving manual mode
+        row.itemName = "";
+        row.mrp = 0;
+        row.price = 0;
+        row.taxRate = 0;
+        row.amount = 0;
+        row.category = "";
+        row.code = "";
+        row.barcode = "";
+      }
+      newRows[index] = row;
+      return newRows;
+    });
+  };
+
+  const updateRow = (index: number, field: keyof PurchaseRow, value: any) => {
+    setRows((prev) => {
+      const newRows = [...prev];
+      const row = { ...newRows[index] } as PurchaseRow;
 
       if (field === "itemId") {
         const selectedItem = items.find((i) => i.id === value);
@@ -198,6 +246,10 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
           row.mrp = selectedItem.mrp || 0;
           row.price = Number(selectedItem.purchasePrice || 0);
           row.taxRate = Number(selectedItem.taxRate || 0);
+          row.category = selectedItem.category || "";
+          row.code = selectedItem.code || "";
+          row.barcode = selectedItem.barcode || "";
+          row.manualMode = false;
         } else {
           row.itemId = value;
         }
@@ -249,7 +301,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
         return copy;
       }
 
-      const newRow: InvoiceItem = recalcRow({
+      const newRow: PurchaseRow = recalcRow({
         itemId: item.id,
         itemName: item.name,
         quantity: 1,
@@ -257,6 +309,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
         price,
         taxRate: Number(item.taxRate || 0),
         amount: 0,
+        manualMode: false,
       });
 
       return [...prev, newRow];
@@ -391,8 +444,21 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
   const billNumberDisplay = invoiceNumber.trim() ? `#${invoiceNumber.trim()}` : "Enter Bill No.";
 
+  const columnWidths = {
+    item: "20%",
+    category: "12%",
+    code: "12%",
+    barcode: "10%",
+    qty: "10%",
+    mrp: "10%",
+    price: "10%",
+    tax: "5%",
+    amount: "8%",
+    actions: "4%",
+  };
+
   const handleSave = async (shouldPrint: boolean = false) => {
-    if (!rows.some((r) => r.itemId)) return;
+    if (!rows.some((r) => r.itemId || (r.manualMode && r.itemName?.trim()))) return;
     if (!selectedPartyId) {
       alert('Please select a supplier');
       return;
@@ -406,6 +472,36 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     setLoading(true);
     const supplier = suppliers.find((s) => String(s.id) === selectedPartyId);
 
+    // Ensure manual rows have a persisted itemId by creating items on the fly
+    const rowsWithItems: PurchaseRow[] = [...rows];
+    for (let i = 0; i < rowsWithItems.length; i++) {
+      const r = rowsWithItems[i];
+      if (r.manualMode && r.itemName?.trim() && !r.itemId) {
+        const newItemPayload: Partial<Item> = {
+          name: r.itemName.trim(),
+          category: r.category?.trim() || undefined,
+              code: r.code?.trim() || undefined,
+              barcode: r.barcode?.trim() || undefined,
+          sellingPrice: Number(r.price || 0),
+          purchasePrice: Number(r.price || 0),
+          mrp: Number(r.mrp || 0),
+          stock: Number(r.quantity || 0),
+          unit: 'pcs',
+          taxRate: Number(r.taxRate || 0),
+        };
+        const created = await ItemService.create(newItemPayload as Item);
+        r.itemId = created.id;
+        r.itemName = created.name;
+        r.manualMode = false;
+        // Normalize price/tax from created item if available
+        r.price = Number(created.purchasePrice || r.price || 0);
+        r.taxRate = Number(created.taxRate || r.taxRate || 0);
+        rowsWithItems[i] = recalcRow(r);
+      }
+    }
+    // Update UI state with any newly created items
+    setRows(rowsWithItems);
+
     const invoiceDueStatus = dueStatus;
     const invoiceStatus: "PAID" | "UNPAID" | "PENDING" =
       invoiceDueStatus === "PAID" ? "PAID" : invoiceDueStatus === "PENDING" ? "PENDING" : "UNPAID";
@@ -417,7 +513,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
       date: invoiceDate,
       partyId: selectedPartyId || "CASH",
       partyName: supplier?.name || "Cash Purchase",
-      items: rows.filter((r) => r.itemId),
+      items: rowsWithItems.filter((r) => r.itemId),
       totalAmount: payableTotal,
       totalTax: totals.tax,
       status: invoiceStatus,
@@ -655,67 +751,137 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-3/12">Item</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right pr-2">Qty</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right pr-2">MRP</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right pr-2">Purchase Rate</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12 text-right pr-2">Tax %</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-2/12 text-right pr-2">Amount</th>
-                  <th className="py-2 text-sm font-semibold text-slate-500 border-b w-1/12" />
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b" style={{ width: columnWidths.item }}>Item</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b" style={{ width: columnWidths.category }}>Category</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b" style={{ width: columnWidths.code }}>Item Code</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b" style={{ width: columnWidths.barcode }}>Barcode</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b text-right pr-2" style={{ width: columnWidths.qty }}>Qty</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b text-right pr-2" style={{ width: columnWidths.mrp }}>MRP</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b text-right pr-2" style={{ width: columnWidths.price }}>Purchase Rate</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b text-right pr-2" style={{ width: columnWidths.tax }}>Tax %</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b text-right pr-2" style={{ width: columnWidths.amount }}>Amount</th>
+                  <th className="py-2 text-sm font-semibold text-slate-500 border-b" style={{ width: columnWidths.actions }} />
                 </tr>
               </thead>
 
               <tbody>
                 {rows.map((row, index) => (
                   <tr key={index} className="border-b border-slate-100">
-                    <td className="py-3 pr-4 w-3/12">
-                      <select
-                        className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
-                        value={row.itemId}
-                        onChange={(e) => updateRow(index, "itemId", e.target.value)}
-                      >
-                        <option value="">Select Item</option>
-                        {items.map((i) => (
-                          <option key={i.id} value={i.id}>
-                            {i.name} (Stock: {i.stock})
-                          </option>
-                        ))}
-                      </select>
+                    <td className="py-3 pr-4 align-middle" style={{ width: columnWidths.item }}>
+                      {row.manualMode ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+                            placeholder="Enter item name"
+                            value={row.itemName}
+                            onChange={(e) => updateRow(index, "itemName", e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setManualMode(index, false)}
+                            className="text-xs text-orange-600 hover:text-orange-700 px-2 py-1 border border-orange-200 rounded"
+                          >
+                            Back
+                          </button>
+                        </div>
+                      ) : (
+                        <select
+                          className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+                          value={row.itemId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "__manual__") {
+                              setManualMode(index, true);
+                              return;
+                            }
+                            updateRow(index, "itemId", val);
+                          }}
+                        >
+                          <option value="">Select Item</option>
+                          <option value="__manual__">+ Add Item (manual)</option>
+                          {items.map((i) => (
+                            <option key={i.id} value={i.id}>
+                              {i.name} (Stock: {i.stock})
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
 
-                    <td className="py-3 px-2 w-1/12">
+                    <td className="py-3 px-2 align-middle" style={{ width: columnWidths.category }}>
+                      <input
+                        type="text"
+                        className="w-full h-10 px-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+                        placeholder="Category"
+                        value={row.category || ""}
+                        onChange={(e) => updateRow(index, "category", e.target.value)}
+                      />
+                    </td>
+
+                    <td className="py-3 px-2 align-middle" style={{ width: columnWidths.code }}>
+                      <input
+                        type="text"
+                        className="w-full h-10 px-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+                        placeholder="Item Code"
+                        value={row.code || ""}
+                        onChange={(e) => updateRow(index, "code", e.target.value)}
+                      />
+                    </td>
+
+                    <td className="py-3 px-2 align-middle" style={{ width: columnWidths.barcode }}>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          className="flex-1 h-10 px-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+                          placeholder="Barcode"
+                          value={row.barcode || ""}
+                          onChange={(e) => updateRow(index, "barcode", e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateRowBarcode(index)}
+                          className="h-10 px-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center"
+                          title="Generate Barcode"
+                        >
+                          <Sparkles size={16} />
+                        </button>
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-2 align-middle" style={{ width: columnWidths.qty }}>
                       <input
                         type="number"
                         min="1"
-                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        className="w-full h-10 px-2 border border-slate-300 rounded text-right text-sm"
                         value={row.quantity}
                         onChange={(e) => updateRow(index, "quantity", parseFloat(e.target.value) || 0)}
                       />
                     </td>
 
-                    <td className="py-3 px-2 w-2/12">
+                    <td className="py-3 px-2 align-middle" style={{ width: columnWidths.mrp }}>
                       <input
                         type="number"
-                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        className="w-full h-10 px-2 border border-slate-300 rounded text-right text-sm"
                         value={row.mrp || ""}
                         onChange={(e) => updateRow(index, "mrp", parseFloat(e.target.value) || 0)}
                         placeholder="MRP"
                       />
                     </td>
 
-                    <td className="py-3 px-2 w-2/12">
+                    <td className="py-3 px-2 align-middle" style={{ width: columnWidths.price }}>
                       <input
                         type="number"
-                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        className="w-full h-10 px-2 border border-slate-300 rounded text-right text-sm"
                         value={row.price}
                         onChange={(e) => updateRow(index, "price", parseFloat(e.target.value) || 0)}
                       />
                     </td>
 
-                    <td className="py-3 px-2 w-1/12">
+                    <td className="py-3 px-2 align-middle" style={{ width: columnWidths.tax }}>
                       <input
                         type="number"
-                        className="w-full p-2 border border-slate-300 rounded text-right text-sm"
+                        className="w-full h-10 px-2 border border-slate-300 rounded text-right text-sm"
                         value={row.taxRate ?? ""}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) => updateRow(index, "taxRate", parseFloat(e.target.value) || 0)}
@@ -723,11 +889,11 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                       />
                     </td>
 
-                    <td className="py-3 px-2 w-2/12 text-right font-medium text-slate-700 text-sm">
+                    <td className="py-3 px-2 text-right font-medium text-slate-700 text-sm" style={{ width: columnWidths.amount }}>
                       ₹{Number(row.amount || 0).toFixed(2)}
                     </td>
 
-                    <td className="py-3 pl-2 w-1/12 text-right">
+                    <td className="py-3 pl-2 text-right" style={{ width: columnWidths.actions }}>
                       <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600" type="button">
                         <Trash2 size={18} />
                       </button>
@@ -745,18 +911,45 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex-1 min-w-0">
                     <label className="text-xs text-slate-500 font-semibold">Item</label>
-                    <select
-                      className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-xs"
-                      value={row.itemId}
-                      onChange={(e) => updateRow(index, "itemId", e.target.value)}
-                    >
-                      <option value="">Select Item</option>
-                      {items.map((i) => (
-                        <option key={i.id} value={i.id}>
-                          {i.name} (Stock: {i.stock})
-                        </option>
-                      ))}
-                    </select>
+                    {row.manualMode ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type="text"
+                          className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-xs"
+                          placeholder="Enter item name"
+                          value={row.itemName}
+                          onChange={(e) => updateRow(index, "itemName", e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setManualMode(index, false)}
+                          className="text-[11px] text-orange-600 hover:text-orange-700 px-2 py-1 border border-orange-200 rounded"
+                        >
+                          Back
+                        </button>
+                      </div>
+                    ) : (
+                      <select
+                        className="w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-xs mt-1"
+                        value={row.itemId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "__manual__") {
+                            setManualMode(index, true);
+                            return;
+                          }
+                          updateRow(index, "itemId", val);
+                        }}
+                      >
+                        <option value="">Select Item</option>
+                        <option value="__manual__">+ Add Item (manual)</option>
+                        {items.map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.name} (Stock: {i.stock})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <button onClick={() => removeRow(index)} className="text-red-400 hover:text-red-600 flex-shrink-0 mt-5" type="button">
                     <Trash2 size={16} />
@@ -782,6 +975,46 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                       value={row.mrp || ""}
                       onChange={(e) => updateRow(index, "mrp", parseFloat(e.target.value) || 0)}
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 font-semibold">Category</label>
+                    <input
+                      type="text"
+                      className="w-full h-10 px-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-xs"
+                      placeholder="Category"
+                      value={row.category || ""}
+                      onChange={(e) => updateRow(index, "category", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 font-semibold">Item Code</label>
+                    <input
+                      type="text"
+                      className="w-full h-10 px-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-xs"
+                      placeholder="Item Code"
+                      value={row.code || ""}
+                      onChange={(e) => updateRow(index, "code", e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 font-semibold">Barcode</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="flex-1 h-10 px-2 border border-slate-300 rounded focus:ring-1 focus:ring-orange-500 outline-none text-xs"
+                        placeholder="Barcode"
+                        value={row.barcode || ""}
+                        onChange={(e) => updateRow(index, "barcode", e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateRowBarcode(index)}
+                          className="h-10 px-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center"
+                        title="Generate Barcode"
+                      >
+                        <Sparkles size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -922,7 +1155,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
           <button
             onClick={() => handleSave(false)}
-            disabled={loading || !rows.some((r) => r.itemId)}
+            disabled={loading || !rows.some((r) => r.itemId || (r.manualMode && r.itemName?.trim()))}
             type="button"
             className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
@@ -932,7 +1165,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
           <button
             onClick={() => handleSave(true)}
-            disabled={loading || !rows.some((r) => r.itemId)}
+            disabled={loading || !rows.some((r) => r.itemId || (r.manualMode && r.itemName?.trim()))}
             type="button"
             className="px-4 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
@@ -962,6 +1195,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                   setShowItemModal(false);
                   setItemFormData({
                     name: "",
+                    category: "",
                     code: "",
                     barcode: "",
                     sellingPrice: 0,
@@ -988,6 +1222,10 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Item Name *</label>
                 <input required type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.name} onChange={(e) => setItemFormData({ ...itemFormData, name: e.target.value })} />
               </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Category</label>
+                <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.category || ""} onChange={(e) => setItemFormData({ ...itemFormData, category: e.target.value })} placeholder="e.g., Stationery, Grocery" />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Item Code</label>
@@ -995,17 +1233,17 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Barcode</label>
-                  <div className="flex gap-2">
-                    <input type="text" className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.barcode} onChange={(e) => setItemFormData({ ...itemFormData, barcode: e.target.value })} />
-                    <button
-                      type="button"
-                      onClick={generateBarcode}
-                      className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-1 flex-shrink-0"
-                      title="Generate Barcode"
-                    >
-                      <Sparkles size={14} className="sm:w-4 sm:h-4" />
-                    </button>
-                  </div>
+                    <div className="flex gap-2">
+                      <input type="text" className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm" value={itemFormData.barcode} onChange={(e) => setItemFormData({ ...itemFormData, barcode: e.target.value })} />
+                      <button
+                        type="button"
+                        onClick={handleGenerateItemBarcode}
+                        className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-1 flex-shrink-0"
+                        title="Generate Barcode"
+                      >
+                        <Sparkles size={16} className="sm:w-4 sm:h-4" />
+                      </button>
+                    </div>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">

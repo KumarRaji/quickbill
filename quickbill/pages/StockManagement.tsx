@@ -21,6 +21,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
 
   const [formData, setFormData] = useState<Partial<StockItem>>({
     name: '',
+    category: '',
     code: '',
     barcode: '',
     supplier_id: '',
@@ -54,6 +55,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
   const resetForm = () => {
     setFormData({
       name: '',
+      category: '',
       code: '',
       barcode: '',
       supplier_id: '',
@@ -92,6 +94,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
     setSelectedStock(item);
     setFormData({
       name: item.name,
+      category: item.category ?? '',
       code: item.code,
       barcode: item.barcode,
       supplier_id: item.supplier_id,
@@ -138,6 +141,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
 
   const filteredStock = stock.filter((s) =>
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.category && s.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (s.code && s.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (s.barcode && s.barcode.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -262,6 +266,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
               <thead className="bg-slate-50 sticky top-0">
                 <tr>
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase">ITEM Info</th>
+                  <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase">Category</th>
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase">Supplier</th>
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-right">Purchase Price</th>
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-right">MRP</th>
@@ -285,6 +290,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                         )}
                       </div>
                     </td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-sm text-slate-600">{item.category || '-'}</td>
                     <td className="px-4 lg:px-6 py-3 sm:py-4 text-sm text-slate-600">{item.supplier_name || '-'}</td>
                     <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-sm text-slate-600">₹{Number(item.purchase_price).toFixed(2)}</td>
                     <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-sm text-slate-600">{item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}</td>
@@ -391,6 +397,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     <div className="text-xs text-slate-500 mt-1">
                       {item.code && <span>Code: {item.code}</span>}
                     </div>
+                    {item.category && <div className="text-[11px] text-slate-500 mt-1">Category: {item.category}</div>}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs py-2">
@@ -511,6 +518,16 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.category ?? ''}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    placeholder="e.g., Stationery, Grocery"
                   />
                 </div>
                 <div>
@@ -730,12 +747,12 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
               <div className="text-sm text-slate-600">
                 Upload <b>.csv</b> or <b>.xlsx</b> with columns:
                 <div className="mt-2 text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono">
-                  name, code, barcode, supplier_id, purchase_price, quantity, unit
+                  name, category, code, barcode, supplier_id, purchase_price, quantity, unit
                 </div>
               </div>
               <button
                 onClick={() => {
-                  const csv = 'name,code,barcode,supplier_id,purchase_price,quantity,unit\nSample Item,ITEM-001,1234567890123,,100,50,PCS\n';
+                  const csv = 'name,category,code,barcode,supplier_id,purchase_price,quantity,unit\nSample Item,Stationery,ITEM-001,1234567890123,,100,50,PCS\n';
                   const blob = new Blob([csv], { type: 'text/csv' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
