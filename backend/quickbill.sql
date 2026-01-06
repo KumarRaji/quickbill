@@ -85,6 +85,8 @@ CREATE TABLE IF NOT EXISTS stock (
   code VARCHAR(100) NULL,
   barcode VARCHAR(100) NULL,
   supplier_id INT UNSIGNED NULL,
+  purchase_invoice_id INT UNSIGNED NULL,
+  item_id INT UNSIGNED NULL,
   purchase_price DECIMAL(10,2) NOT NULL DEFAULT 0,
   mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
   quantity INT NOT NULL DEFAULT 0,
@@ -93,8 +95,18 @@ CREATE TABLE IF NOT EXISTS stock (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_stock_supplier (supplier_id),
+  KEY idx_stock_purchase_invoice (purchase_invoice_id),
+  KEY idx_stock_item (item_id),
   CONSTRAINT fk_stock_supplier
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_stock_purchase_invoice
+    FOREIGN KEY (purchase_invoice_id) REFERENCES purchase_invoices(id)
+    ON UPDATE CASCADE
+    ON DELETE SET NULL,
+  CONSTRAINT fk_stock_item
+    FOREIGN KEY (item_id) REFERENCES items(id)
     ON UPDATE CASCADE
     ON DELETE SET NULL
 ) ENGINE=InnoDB;
