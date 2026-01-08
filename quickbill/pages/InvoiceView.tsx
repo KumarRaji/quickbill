@@ -18,6 +18,7 @@ const formatMoney = (value: number | string | null | undefined): string => {
 
 const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = false, parties = [] }) => {
   const [viewMode, setViewMode] = useState<'A4' | 'THERMAL'>('A4');
+  const isPurchase = invoice.type === 'PURCHASE';
   
   console.log('=== Invoice View Debug ===');
   console.log('Full Invoice Object:', JSON.stringify(invoice, null, 2));
@@ -105,6 +106,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
 
     const totalTaxNum = Number((invoice as any).totalTax ?? gstTotals.tax);
     const subTotal = Math.max(0, grossBeforeRound - totalTaxNum);
+    const paidAmount = Number((invoice as any).amountPaid ?? (invoice as any).paidAmount ?? 0);
+    const balanceDue = Number((invoice as any).amountDue ?? (invoice as any).dueAmount ?? Math.max(0, payableTotal - paidAmount));
     const showGstBreakup = (gstTotals.tax || 0) > 0.0001;
 
     return (
@@ -195,8 +198,18 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
           </tbody>
         </table>
 
-        {/* Totals */}
-        <div className="flex justify-end mb-6">
+        {/* Totals + Payment Summary (Purchase only) */}
+        <div className={`flex ${isPurchase ? 'justify-between items-start gap-6' : 'justify-end'} mb-6`}>
+          {isPurchase && (
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 w-64">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Payment Summary</span>
+              <div className="mt-2 space-y-1">
+                <div className="text-xs">Paid Amount: <span className="font-bold text-green-600">₹{formatMoney(paidAmount)}</span></div>
+                <div className="text-xs">Balance Due: <span className="font-bold text-red-600">₹{formatMoney(balanceDue)}</span></div>
+              </div>
+            </div>
+          )}
+
           <div className="w-64">
             <div className="flex justify-between py-2 text-slate-600 border-b border-slate-100">
               <span>Subtotal</span>
@@ -256,7 +269,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         {/* Terms removed as requested */}
 
         <div className="mt-4 text-center text-sm text-slate-600 font-medium">
-          Welcome Again !!
+          Thank you ! Visit Again !!
         </div>
 
         <div className="mt-6 text-center text-xs text-slate-400">
@@ -319,6 +332,8 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
     );
 
     const showGstBreakup = (gstTotals.tax || 0) > 0.0001;
+    const paidAmount = Number((invoice as any).amountPaid ?? (invoice as any).paidAmount ?? 0);
+    const balanceDue = Number((invoice as any).amountDue ?? (invoice as any).dueAmount ?? Math.max(0, payableTotal - paidAmount));
 
     return (
       <div className="bg-white mx-auto p-2 shadow-xl print:shadow-none w-[300px] thermal-print font-mono text-sm text-black leading-tight">
@@ -407,6 +422,16 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
 
         <div className="border-b border-dashed border-black my-2" />
 
+        {isPurchase && (
+          <div className="mb-2 bg-slate-50 p-2 rounded border border-slate-200">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Payment Summary</div>
+            <div className="mt-1 text-[11px] space-y-1">
+              <div>Paid Amount: <span className="font-bold text-green-600">₹{formatMoney(paidAmount)}</span></div>
+              <div>Balance Due: <span className="font-bold text-red-600">₹{formatMoney(balanceDue)}</span></div>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-between text-xs mb-1">
           <span>Tax Total</span>
           <span>₹{formatMoney((invoice as any).totalTax ?? gstTotals.tax)}</span>
@@ -448,11 +473,11 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         <div className="border-b border-dashed border-black my-2" />
 
         <div className="mt-4 text-center text-sm text-slate-600 font-medium">
-          Welcome Again !!
+          Thank you ! Visit Again !!
         </div>
 
         <div className="text-center text-xs mt-2">
-          Thank you ! Visit Again !!
+           Welcome Again !!
         </div>
       </div>
     );
