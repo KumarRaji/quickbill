@@ -402,7 +402,10 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white overflow-hidden max-w-full sm:max-w-5xl sm:mx-auto sm:rounded-xl sm:shadow-sm sm:border sm:border-slate-200">
+    <div
+      className="h-full flex flex-col bg-white overflow-hidden max-w-full sm:max-w-5xl sm:mx-auto sm:rounded-xl sm:shadow-sm sm:border sm:border-slate-200"
+      style={{ width: "100%", maxWidth: "100%", margin: "0 auto", overflowX: "hidden" }}
+    >
       {/* Header */}
       <div className="p-3 sm:p-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-wrap gap-2 sm:gap-0">
         <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">

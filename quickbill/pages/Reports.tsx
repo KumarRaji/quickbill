@@ -1309,14 +1309,14 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
 
   return (
     <div className="min-h-screen bg-slate-50 p-3 sm:p-6 pb-6">
-      <div className="max-w-7xl mx-auto h-full flex flex-col">
+      <div className="w-full h-full flex flex-col">
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Business Reports</h1>
       </div>
 
       {/* Tabs */}
-      <div className="overflow-x-auto sm:overflow-visible -mx-3 sm:mx-0 px-3 sm:px-0 mb-6">
-        <div className="flex gap-0.5 sm:gap-1 bg-white p-1 sm:p-1.5 rounded-lg sm:rounded-xl border border-slate-200 shadow-sm w-fit sm:w-full">
+      <div className="overflow-x-visible sm:overflow-visible -mx-3 sm:mx-0 px-3 sm:px-0 mb-6 pb-1">
+        <div className="flex flex-wrap gap-0.5 sm:gap-1 bg-white p-1 sm:p-1.5 rounded-lg sm:rounded-xl border border-slate-200 shadow-sm w-full">
           <button
             onClick={() => changeTab('STOCK')}
             className={`flex items-center space-x-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${activeTab === 'STOCK' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
