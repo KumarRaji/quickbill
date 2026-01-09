@@ -2,12 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { UserService } from '../services/api';
-import { Plus, Search, ShieldCheck, Trash2, User as UserIcon } from 'lucide-react';
+import { Plus, Search, ShieldCheck, Trash2, User as UserIcon, Eye } from 'lucide-react';
 import { X } from 'lucide-react';
 
 const UsersPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewUser, setViewUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -33,13 +35,28 @@ const UsersPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(!formData.name || !formData.username || !formData.password) return;
+    if (!formData.name || !formData.username || !formData.password) {
+      setError('Password is required');
+      return;
+    }
     setError('');
     setLoading(true);
 
     try {
-      await UserService.create(formData);
+      if (editingUser) {
+        const payload: any = {
+          name: formData.name,
+          username: formData.username,
+          role: formData.role,
+        };
+        if (formData.password) payload.password = formData.password;
+        await UserService.update(editingUser.id, payload);
+      } else {
+        await UserService.create(formData);
+      }
+
       setFormData({ name: '', username: '', password: '', role: 'STAFF' });
+      setEditingUser(null);
       setIsModalOpen(false);
       fetchUsers();
     } catch (err: any) {
@@ -47,6 +64,18 @@ const UsersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openCreate = () => {
+    setEditingUser(null);
+    setFormData({ name: '', username: '', password: '', role: 'STAFF' });
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (u: User) => {
+    setEditingUser(u);
+    setFormData({ name: u.name, username: u.username, password: '', role: u.role });
+    setIsModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -60,6 +89,10 @@ const UsersPage: React.FC = () => {
     }
   };
 
+  const handleView = (u: User) => {
+    setViewUser(u);
+  };
+
   return (
     <div className="max-w-7xl mx-auto h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
@@ -68,7 +101,7 @@ const UsersPage: React.FC = () => {
            <p className="text-slate-500 text-sm">Create and manage access for your team</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={openCreate}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors shadow-sm"
         >
           <Plus size={18} />
@@ -110,7 +143,22 @@ const UsersPage: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {u.role !== 'SUPER_ADMIN' && (
+                    <div className="flex justify-end items-center space-x-2">
+                      <button
+                        onClick={() => handleView(u)}
+                        className="text-slate-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="View User"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(u)}
+                        className="text-slate-400 hover:text-amber-600 p-2 hover:bg-amber-50 rounded-lg transition-colors"
+                        title="Edit User"
+                      >
+                        <ShieldCheck size={18} />
+                      </button>
+                      {u.role !== 'SUPER_ADMIN' && (
                         <button 
                           onClick={() => handleDelete(u.id)}
                           className="text-slate-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
@@ -118,7 +166,8 @@ const UsersPage: React.FC = () => {
                         >
                           <Trash2 size={18} />
                         </button>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -131,8 +180,8 @@ const UsersPage: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800">Create User</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <h2 className="text-lg font-bold text-slate-800">{editingUser ? 'Edit User' : 'Create User'}</h2>
+              <button onClick={() => { setIsModalOpen(false); setEditingUser(null); }} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -165,7 +214,7 @@ const UsersPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Password *</label>
                 <input 
-                    required
+                  required
                     type="password" 
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                     value={formData.password}
@@ -208,6 +257,43 @@ const UsersPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View User Modal */}
+      {viewUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h2 className="text-lg font-bold text-slate-800">User Details</h2>
+              <button onClick={() => setViewUser(null)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-3 text-sm text-slate-700">
+              <div className="flex justify-between">
+                <span className="font-medium">Name</span>
+                <span>{viewUser.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Username</span>
+                <span>@{viewUser.username}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="font-medium">Role</span>
+                <span>{viewUser.role.replace('_', ' ')}</span>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 text-right">
+              <button
+                type="button"
+                onClick={() => setViewUser(null)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -77,6 +77,18 @@ export const UserService = {
     return handleResponse<User>(res);
   },
 
+  update: async (
+    id: string,
+    data: Partial<{ name: string; username: string; password: string; role: User["role"] }>
+  ): Promise<User> => {
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<User>(res);
+  },
+
   delete: async (id: string): Promise<void> => {
     const res = await fetch(`${API_BASE}/users/${id}`, {
       method: "DELETE",
