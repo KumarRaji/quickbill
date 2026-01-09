@@ -92,15 +92,24 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
     itemsToPrint.forEach(item => {
       const container = document.createElement('div');
       container.style.cssText = 'page-break-inside: avoid; margin: 20px; text-align: center; display: inline-block; width: 200px;';
+
       const itemNameDiv = document.createElement('div');
       itemNameDiv.style.cssText = 'font-size: 14px; margin-bottom: 3px; color: #333; font-weight: bold;';
       itemNameDiv.textContent = item.name;
+
       const mrpDiv = document.createElement('div');
-      mrpDiv.style.cssText = 'font-size: 11px; margin-bottom: 5px;';
+      mrpDiv.style.cssText = 'font-size: 11px; margin-bottom: 2px;';
       mrpDiv.textContent = item.mrp && item.mrp > 0 ? `MRP: ₹${item.mrp}` : '';
+
+      const sellingPriceDiv = document.createElement('div');
+      sellingPriceDiv.style.cssText = 'font-size: 11px; margin-bottom: 5px; font-weight: 600; color: #111;';
+      sellingPriceDiv.textContent = item.sellingPrice && item.sellingPrice > 0 ? `Selling Price: ₹${item.sellingPrice}` : '';
+
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
       container.appendChild(itemNameDiv);
       container.appendChild(mrpDiv);
+      container.appendChild(sellingPriceDiv);
       container.appendChild(svg);
       tempDiv.appendChild(container);
     });
@@ -914,8 +923,19 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                       Print
                     </button>
                   </div>
-                  <div ref={barcodeRef} className="flex justify-center">
-                    <Barcode value={formData.barcode} width={1.5} height={50} fontSize={12} />
+                  <div className="text-center space-y-1" ref={barcodeRef}>
+                    <div className="text-sm font-semibold text-slate-800">
+                      {formData.name || 'Item'}
+                    </div>
+                    <div className="text-xs text-slate-600">
+                      {formData.mrp && formData.mrp > 0 ? `MRP: ₹${formData.mrp}` : ''}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-900">
+                      {formData.sellingPrice && formData.sellingPrice > 0 ? `Selling Price: ₹${formData.sellingPrice}` : ''}
+                    </div>
+                    <div className="flex justify-center">
+                      <Barcode value={formData.barcode} width={1.5} height={50} fontSize={12} />
+                    </div>
                   </div>
                 </div>
               )}
