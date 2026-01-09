@@ -222,12 +222,16 @@ const Layout: React.FC<LayoutProps> = ({
       <div className="flex-1 flex flex-col h-full w-full relative">
         {/* Mobile Header */}
         <header className="md:hidden bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 z-20">
-          <div className="flex items-center space-x-3">
+          <button
+            type="button"
+            onClick={() => go("DASHBOARD")}
+            className="flex items-center space-x-3 focus:outline-none"
+          >
             <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold">
               Q
             </div>
             <span className="font-bold text-slate-800">QuickBill</span>
-          </div>
+          </button>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="text-slate-600"

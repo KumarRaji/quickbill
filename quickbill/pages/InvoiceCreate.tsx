@@ -415,7 +415,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0 flex-wrap justify-end text-[11px] sm:text-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-3 gap-2 sm:gap-3 flex-shrink-0 w-full sm:w-auto text-[11px] sm:text-sm">
           <select
             className="px-2 sm:px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500 whitespace-nowrap"
             value={transactionType}
@@ -432,7 +432,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
           </select>
           <div className="text-slate-600 font-medium text-xs sm:text-base">#{invoiceNumber}</div>
 
-          <div className="flex items-center space-x-2 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-xs ml-2 mt-2 sm:mt-0">
+          <div className="flex items-center space-x-2 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-xs sm:ml-2 sm:mt-0 w-full sm:w-auto">
             <span className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">Tax Mode</span>
             <div className="flex items-center bg-slate-100 rounded-md overflow-hidden">
               <button
@@ -456,7 +456,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-xs ml-2 mt-2 sm:mt-0">
+          <div className="flex items-center space-x-2 bg-white border border-slate-300 rounded-lg px-2 py-1.5 shadow-xs sm:ml-2 sm:mt-0 w-full sm:w-auto">
             <span className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">GST Type</span>
             <div className="flex items-center bg-slate-100 rounded-md overflow-hidden">
               <button
