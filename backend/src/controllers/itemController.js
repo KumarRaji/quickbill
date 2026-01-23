@@ -150,39 +150,55 @@ exports.updateItem = (req, res) => {
 exports.deleteItem = (req, res) => {
   const { id } = req.params;
 
-  const checkSql = "SELECT COUNT(*) AS cnt FROM sale_invoice_items WHERE item_id = ?";
-  pool.query(checkSql, [id], (checkErr, rows) => {
-    if (checkErr) {
-      console.error("Error checking item usage:", checkErr);
+  // Check both sale and purchase invoice items
+  const checkSaleSql = "SELECT COUNT(*) AS cnt FROM sale_invoice_items WHERE item_id = ?";
+  const checkPurchaseSql = "SELECT COUNT(*) AS cnt FROM purchase_invoice_items WHERE item_id = ?";
+  
+  pool.query(checkSaleSql, [id], (saleErr, saleRows) => {
+    if (saleErr) {
+      console.error("Error checking sale item usage:", saleErr);
       return res.status(500).json({
-        message: "Failed to delete item",
-        error: checkErr.message,
+        message: "⚠️ Delete failed. Item is linked with existing purchase invoices.",
+        error: saleErr.message,
       });
     }
 
-    const usedCount = Number(rows?.[0]?.cnt || 0);
-    if (usedCount > 0) {
-      return res.status(400).json({
-        message: `Cannot delete item. This item is used in ${usedCount} invoice item(s).`,
-        hint: "Instead of deleting, you can disable the item (soft delete) and hide it from UI.",
-      });
-    }
-
-    const delSql = "DELETE FROM items WHERE id = ?";
-    pool.query(delSql, [id], (delErr, result) => {
-      if (delErr) {
-        console.error("Error deleting item:", delErr);
+    const saleUsedCount = Number(saleRows?.[0]?.cnt || 0);
+    
+    pool.query(checkPurchaseSql, [id], (purchaseErr, purchaseRows) => {
+      if (purchaseErr) {
+        console.error("Error checking purchase item usage:", purchaseErr);
         return res.status(500).json({
-          message: "Failed to delete item",
-          error: delErr.message,
+          message: "⚠️ Delete failed. Item is linked with existing purchase invoices.",
+          error: purchaseErr.message,
         });
       }
 
-      if (!result || result.affectedRows === 0) {
-        return res.status(404).json({ message: "Item not found" });
+      const purchaseUsedCount = Number(purchaseRows?.[0]?.cnt || 0);
+      const totalUsed = saleUsedCount + purchaseUsedCount;
+      
+      if (totalUsed > 0) {
+        return res.status(400).json({
+          message: "⚠️ Delete failed. Item is linked with existing purchase invoices.",
+        });
       }
 
-      return res.json({ message: "Item deleted successfully" });
+      const delSql = "DELETE FROM items WHERE id = ?";
+      pool.query(delSql, [id], (delErr, result) => {
+        if (delErr) {
+          console.error("Error deleting item:", delErr);
+          return res.status(500).json({
+            message: "⚠️ Delete failed. Item is linked with existing purchase invoices.",
+            error: delErr.message,
+          });
+        }
+
+        if (!result || result.affectedRows === 0) {
+          return res.status(404).json({ message: "Item not found" });
+        }
+
+        return res.json({ message: "Item deleted successfully" });
+      });
     });
   });
 };
