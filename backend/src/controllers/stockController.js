@@ -183,64 +183,80 @@ exports.moveToItems = (req, res) => {
 
         const stock = stockRows[0];
 
-        // Insert into items
-        const insertSql = `
-          INSERT INTO items (name, category, code, barcode, supplier_id, selling_price, purchase_price, mrp, stock, unit, tax_rate)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+        // Check if barcode already exists in items table
+        const checkBarcodeSql = 'SELECT id FROM items WHERE barcode = ? AND barcode IS NOT NULL';
+        conn.query(checkBarcodeSql, [stock.barcode], (barcodeErr, barcodeRows) => {
+          if (barcodeErr) {
+            return conn.rollback(() => {
+              conn.release();
+              console.error('Error checking barcode:', barcodeErr);
+              res.status(500).json({ message: 'Failed to move to items', error: barcodeErr.message });
+            });
+          }
 
-        conn.query(
-          insertSql,
-          [
-            stock.name,
-            stock.category || null,
-            stock.code,
-            stock.barcode,
-            stock.supplier_id,
-            selling_price,
-            stock.purchase_price,
-            mrp || stock.mrp || 0,
-            stock.quantity,
-            stock.unit,
-            tax_rate
-          ],
-          (insertErr, insertResult) => {
-            if (insertErr) {
-              return conn.rollback(() => {
-                conn.release();
-                console.error('Error inserting item:', insertErr);
-                res.status(500).json({ message: 'Failed to move to items', error: insertErr.message });
-              });
-            }
+          // Use null for barcode if it already exists
+          const barcodeToUse = (barcodeRows && barcodeRows.length > 0) ? null : stock.barcode;
 
-            // Delete from stock
-            conn.query('DELETE FROM stock WHERE id = ?', [id], (delErr) => {
-              if (delErr) {
+          // Insert into items
+          const insertSql = `
+            INSERT INTO items (name, category, code, barcode, supplier_id, selling_price, purchase_price, mrp, stock, unit, tax_rate)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `;
+
+          conn.query(
+            insertSql,
+            [
+              stock.name,
+              stock.category || null,
+              stock.code,
+              barcodeToUse,
+              stock.supplier_id,
+              selling_price,
+              stock.purchase_price,
+              mrp || stock.mrp || 0,
+              stock.quantity,
+              stock.unit,
+              tax_rate
+            ],
+            (insertErr, insertResult) => {
+              if (insertErr) {
                 return conn.rollback(() => {
                   conn.release();
-                  console.error('Error deleting stock:', delErr);
-                  res.status(500).json({ message: 'Failed to move to items', error: delErr.message });
+                  console.error('Error inserting item:', insertErr);
+                  res.status(500).json({ message: 'Failed to move to items', error: insertErr.message });
                 });
               }
 
-              conn.commit((commitErr) => {
-                if (commitErr) {
+              // Delete from stock
+              conn.query('DELETE FROM stock WHERE id = ?', [id], (delErr) => {
+                if (delErr) {
                   return conn.rollback(() => {
                     conn.release();
-                    console.error('Commit error:', commitErr);
-                    res.status(500).json({ message: 'Failed to move to items', error: commitErr.message });
+                    console.error('Error deleting stock:', delErr);
+                    res.status(500).json({ message: 'Failed to move to items', error: delErr.message });
                   });
                 }
 
-                conn.release();
-                res.json({ 
-                  message: 'Stock moved to items successfully',
-                  itemId: insertResult.insertId 
+                conn.commit((commitErr) => {
+                  if (commitErr) {
+                    return conn.rollback(() => {
+                      conn.release();
+                      console.error('Commit error:', commitErr);
+                      res.status(500).json({ message: 'Failed to move to items', error: commitErr.message });
+                    });
+                  }
+
+                  conn.release();
+                  const message = barcodeToUse ? 'Stock moved to items successfully' : 'Stock moved to items successfully (barcode removed due to duplicate)';
+                  res.json({ 
+                    message,
+                    itemId: insertResult.insertId 
+                  });
                 });
               });
-            });
-          }
-        );
+            }
+          );
+        });
       });
     });
   });

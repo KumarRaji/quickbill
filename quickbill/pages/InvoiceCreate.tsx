@@ -162,9 +162,10 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
       const filtered = items
         .filter(
           (i) =>
-            i.name.toLowerCase().includes(value.toLowerCase()) ||
+            i.stock > 0 &&
+            (i.name.toLowerCase().includes(value.toLowerCase()) ||
             (i.code && i.code.toLowerCase().includes(value.toLowerCase())) ||
-            (i.barcode && i.barcode.includes(value))
+            (i.barcode && i.barcode.includes(value)))
         )
         .slice(0, 10);
 
@@ -237,9 +238,10 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
 
       const foundItem = items.find(
         (i) =>
-          i.barcode === searchTerm ||
+          i.stock > 0 &&
+          (i.barcode === searchTerm ||
           (i.code && i.code === searchTerm) ||
-          i.name.toLowerCase().includes(searchTerm.toLowerCase())
+          i.name.toLowerCase().includes(searchTerm.toLowerCase()))
       );
 
       if (foundItem) {
@@ -651,7 +653,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
                         onChange={(e) => updateRow(index, "itemId", e.target.value)}
                       >
                         <option value="">Select Item</option>
-                        {items.map((i) => (
+                        {items.filter(i => i.stock > 0).map((i) => (
                           <option key={i.id} value={i.id}>
                             {i.name} (Stock: {i.stock})
                           </option>
@@ -752,7 +754,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
                       onChange={(e) => updateRow(index, "itemId", e.target.value)}
                     >
                       <option value="">Select Item</option>
-                      {items.map((i) => (
+                      {items.filter(i => i.stock > 0).map((i) => (
                         <option key={i.id} value={i.id}>
                           {i.name} (Stock: {i.stock})
                         </option>
