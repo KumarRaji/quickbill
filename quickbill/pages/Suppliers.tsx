@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, Phone, Edit2, Trash2 } from 'lucide-react';
+import { Search, Plus, Phone, Edit, Trash2 } from 'lucide-react';
 import { SupplierService, Supplier } from '../services/api';
 
 interface SuppliersProps {
@@ -166,10 +166,10 @@ const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onRefresh }) => {
                     </td>
                     <td className="px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-right">
                       <div className="flex justify-end gap-1 sm:gap-2">
-                        <button onClick={() => handleEdit(supplier)} className="text-blue-600 hover:text-blue-800 p-1" title="Edit">
-                          <Edit2 size={16} />
+                        <button onClick={() => handleEdit(supplier)} className="text-blue-600 hover:text-blue-700 p-1" title="Edit">
+                          <Edit size={16} />
                         </button>
-                        <button onClick={() => handleDelete(supplier)} className="text-red-600 hover:text-red-800 p-1" title="Delete">
+                        <button onClick={() => handleDelete(supplier)} className="text-red-600 hover:text-red-700 p-1" title="Delete">
                           <Trash2 size={16} />
                         </button>
                       </div>

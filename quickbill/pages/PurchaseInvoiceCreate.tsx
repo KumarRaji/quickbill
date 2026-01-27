@@ -445,14 +445,14 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   const billNumberDisplay = invoiceNumber.trim() ? `#${invoiceNumber.trim()}` : "Enter Bill No.";
 
   const columnWidths = {
-    item: "20%",
-    category: "12%",
-    code: "12%",
+    item: "18%",
+    category: "11%",
+    code: "11%",
     barcode: "10%",
     qty: "10%",
     mrp: "10%",
     price: "10%",
-    tax: "5%",
+    tax: "8%",
     amount: "8%",
     actions: "4%",
   };
@@ -831,6 +831,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                         min="1"
                         className="w-full h-10 px-2 border border-slate-300 rounded text-right text-sm"
                         value={row.quantity}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => updateRow(index, "quantity", parseFloat(e.target.value) || 0)}
                       />
                     </td>
@@ -840,6 +841,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                         type="number"
                         className="w-full h-10 px-2 border border-slate-300 rounded text-right text-sm"
                         value={row.mrp || ""}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => updateRow(index, "mrp", parseFloat(e.target.value) || 0)}
                         placeholder="MRP"
                       />
@@ -850,6 +852,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                         type="number"
                         className="w-full h-10 px-2 border border-slate-300 rounded text-right text-sm"
                         value={row.price}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => updateRow(index, "price", parseFloat(e.target.value) || 0)}
                       />
                     </td>
@@ -940,6 +943,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                       min="1"
                       className="w-full p-2 border border-slate-300 rounded text-right text-xs"
                       value={row.quantity}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => updateRow(index, "quantity", parseFloat(e.target.value) || 0)}
                     />
                   </div>
@@ -949,6 +953,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                       type="number"
                       className="w-full p-2 border border-slate-300 rounded text-right text-xs"
                       value={row.mrp || ""}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => updateRow(index, "mrp", parseFloat(e.target.value) || 0)}
                     />
                   </div>
@@ -1000,6 +1005,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                     type="number"
                     className="w-full p-2 border border-slate-300 rounded text-right text-xs"
                     value={row.price}
+                    onFocus={(e) => e.target.select()}
                     onChange={(e) => updateRow(index, "price", parseFloat(e.target.value) || 0)}
                   />
                 </div>

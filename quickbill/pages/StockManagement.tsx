@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StockService, StockItem, SupplierService, Supplier } from '../services/api';
-import { Plus, Search, Package, ArrowRight, Edit2, Trash2, X, Barcode, Upload, Sparkles } from 'lucide-react';
+import { Plus, Search, Package, ArrowRight, Edit, Trash2, X, Barcode, Upload, Sparkles } from 'lucide-react';
 
 interface StockManagementProps {
   onRefresh: () => void;
@@ -334,7 +334,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                           className="text-blue-600 hover:text-blue-700"
                           title="Edit"
                         >
-                          <Edit2 size={16} />
+                          <Edit size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}

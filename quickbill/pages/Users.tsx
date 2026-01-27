@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { UserService } from '../services/api';
-import { Plus, Search, ShieldCheck, Trash2, User as UserIcon, Eye } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, User as UserIcon, Eye } from 'lucide-react';
 import { X } from 'lucide-react';
 
 const UsersPage: React.FC = () => {
@@ -146,22 +146,22 @@ const UsersPage: React.FC = () => {
                     <div className="flex justify-end items-center space-x-2">
                       <button
                         onClick={() => handleView(u)}
-                        className="text-slate-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="text-blue-600 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors"
                         title="View User"
                       >
                         <Eye size={18} />
                       </button>
                       <button
                         onClick={() => handleEdit(u)}
-                        className="text-slate-400 hover:text-amber-600 p-2 hover:bg-amber-50 rounded-lg transition-colors"
+                        className="text-blue-600 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Edit User"
                       >
-                        <ShieldCheck size={18} />
+                        <Edit size={18} />
                       </button>
                       {u.role !== 'SUPER_ADMIN' && (
                         <button 
                           onClick={() => handleDelete(u.id)}
-                          className="text-slate-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                          className="text-red-600 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors"
                           title="Delete User"
                         >
                           <Trash2 size={18} />

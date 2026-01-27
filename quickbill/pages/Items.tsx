@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Item, UserRole } from '../types';
-import { Search, Plus, Edit2, Trash2, ScanBarcode, X, Upload, Sparkles, Printer } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, ScanBarcode, X, Upload, Sparkles, Printer } from 'lucide-react';
 import { ItemService } from '../services/api';
 import Barcode from 'react-barcode';
 import JsBarcode from 'jsbarcode';
@@ -561,16 +561,16 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                       <div className="flex justify-end space-x-1 sm:space-x-2">
                       <button
                         onClick={() => handleEdit(item)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                        className="p-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
                         title="Edit"
                       >
-                        <Edit2 size={16} />
+                        <Edit size={16} />
                       </button>
 
                       {canDelete && (
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                          className="p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
                           title="Delete"
                         >
                           <Trash2 size={16} />

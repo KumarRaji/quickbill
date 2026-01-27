@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Party } from '../types';
-import { Search, Plus, Phone, MapPin, Edit2, Trash2 } from 'lucide-react';
+import { Search, Plus, Phone, MapPin, Edit, Trash2 } from 'lucide-react';
 import { PartyService } from '../services/api';
 
 interface PartiesProps {
@@ -202,14 +202,14 @@ const Parties: React.FC<PartiesProps> = ({ parties, onRefresh }) => {
                       <div className="flex justify-end gap-1 sm:gap-2">
                         <button
                           onClick={() => handleEdit(party)}
-                          className="text-blue-600 hover:text-blue-800 p-1"
+                          className="text-blue-600 hover:text-blue-700 p-1"
                           title="Edit"
                         >
-                          <Edit2 size={16} />
+                          <Edit size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(party)}
-                          className="text-red-600 hover:text-red-800 p-1"
+                          className="text-red-600 hover:text-red-700 p-1"
                           title="Delete"
                         >
                           <Trash2 size={16} />
