@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Invoice, TransactionType } from '../types';
-import { FileText, Eye, Undo2, ShoppingCart, Printer, Plus, Edit, Trash2, Search } from 'lucide-react';
+import { FileText, Eye, Undo2, ShoppingCart, Printer, Plus, Edit, Trash2, Search, Download, FileSpreadsheet } from 'lucide-react';
 
 interface InvoiceListProps {
   invoices: Invoice[];
@@ -101,6 +101,62 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
 
   const handlePrevious = () => setPage((prev) => Math.max(1, prev - 1));
   const handleNext = () => setPage((prev) => Math.min(totalPages, prev + 1));
+
+  // Export functions
+  const exportToCSV = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).map(v => `"${v}"`).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToExcel = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]).join('\t');
+    const rows = data.map(row => Object.values(row).join('\t')).join('\n');
+    const excel = `${headers}\n${rows}`;
+    const blob = new Blob([excel], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const printTable = (title: string, tableHTML: string) => {
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f8f9fa; }
+            @media print { body { padding: 10px; } }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
 
   const getTitle = () => {
     switch (type) {
@@ -254,13 +310,58 @@ const InvoiceList: React.FC<InvoiceListProps> = ({ invoices, onView, onPrint, on
               </select>
             </div>
           </div>
+          
+          {/* Export Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 flex-wrap mt-3 pt-3 border-t border-slate-200">
+            <button 
+              onClick={() => exportToCSV(filteredInvoices.map(i => ({ 
+                Date: new Date(i.date).toLocaleDateString(), 
+                InvoiceNumber: i.invoiceNumber, 
+                PartyName: i.partyName, 
+                Type: i.type,
+                TotalAmount: i.totalAmount, 
+                AmountPaid: i.amountPaid || 0, 
+                AmountDue: getRemainingDue(i), 
+                Status: getDueStatus(i),
+                Items: i.items.map(item => `${item.itemName} (x${item.quantity})`).join('; ')
+              })), `${type.toLowerCase()}-invoices`)} 
+              className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+            >
+              <Download size={14} />
+              <span className="hidden sm:inline">CSV</span>
+            </button>
+            <button 
+              onClick={() => exportToExcel(filteredInvoices.map(i => ({ 
+                Date: new Date(i.date).toLocaleDateString(), 
+                InvoiceNumber: i.invoiceNumber, 
+                PartyName: i.partyName, 
+                Type: i.type,
+                TotalAmount: i.totalAmount, 
+                AmountPaid: i.amountPaid || 0, 
+                AmountDue: getRemainingDue(i), 
+                Status: getDueStatus(i),
+                Items: i.items.map(item => `${item.itemName} (x${item.quantity})`).join('; ')
+              })), `${type.toLowerCase()}-invoices`)} 
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+            >
+              <FileSpreadsheet size={14} />
+              <span className="hidden sm:inline">Excel</span>
+            </button>
+            <button 
+              onClick={() => printTable(`${getTitle()} Report`, document.querySelector('.invoices-table')?.outerHTML || '')} 
+              className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+            >
+              <Printer size={14} />
+              <span className="hidden sm:inline">Print</span>
+            </button>
+          </div>
         </div>
 
         {/* Table Container */}
         <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           {/* Table - Desktop Only */}
           <div className="hidden sm:block">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse invoices-table">
             <thead className="bg-slate-50">
               <tr>
                 <th className="px-4 lg:px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b">

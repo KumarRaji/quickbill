@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Search, Eye, Edit, Trash2, Printer } from "lucide-react";
+import { Plus, Search, Eye, Edit, Trash2, Printer, Download, FileSpreadsheet } from "lucide-react";
 import { Invoice } from "../types";
 import { InvoiceService } from "../services/api";
 
@@ -135,6 +135,62 @@ export default function PurchaseBills({
   const handlePrevious = () => setPage((p) => Math.max(1, p - 1));
   const handleNext = () => setPage((p) => Math.min(totalPages, p + 1));
 
+  // Export functions
+  const exportToCSV = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).map(v => `"${v}"`).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToExcel = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]).join('\t');
+    const rows = data.map(row => Object.values(row).join('\t')).join('\n');
+    const excel = `${headers}\n${rows}`;
+    const blob = new Blob([excel], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const printTable = (title: string, tableHTML: string) => {
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f8f9fa; }
+            @media print { body { padding: 10px; } }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
@@ -239,7 +295,7 @@ export default function PurchaseBills({
           </div>
 
           {/* Clear filters */}
-          <div className="mt-3 flex justify-end">
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <button
               type="button"
               onClick={() => {
@@ -249,10 +305,51 @@ export default function PurchaseBills({
                 setToDate("");
                 setPage(1);
               }}
-              className="text-xs font-medium text-slate-600 hover:text-slate-800"
+              className="text-xs font-medium text-slate-600 hover:text-slate-800 order-2 sm:order-1"
             >
               Clear filters
             </button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap order-1 sm:order-2">
+              <button 
+                onClick={() => exportToCSV(filteredBills.map(b => ({ 
+                  BillNumber: b.invoiceNumber || '', 
+                  Date: b.date ? new Date(b.date).toLocaleDateString() : '', 
+                  Supplier: b.partyName || '', 
+                  TotalAmount: b.totalAmount, 
+                  AmountPaid: b.amountPaid || 0, 
+                  AmountDue: getRemainingDue(b), 
+                  Status: getDueStatus(b),
+                  Items: Array.isArray(b.items) ? b.items.map(item => `${item.itemName} (x${item.quantity})`).join('; ') : ''
+                })), 'purchase-bills')} 
+                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+              >
+                <Download size={14} />
+                <span className="hidden sm:inline">CSV</span>
+              </button>
+              <button 
+                onClick={() => exportToExcel(filteredBills.map(b => ({ 
+                  BillNumber: b.invoiceNumber || '', 
+                  Date: b.date ? new Date(b.date).toLocaleDateString() : '', 
+                  Supplier: b.partyName || '', 
+                  TotalAmount: b.totalAmount, 
+                  AmountPaid: b.amountPaid || 0, 
+                  AmountDue: getRemainingDue(b), 
+                  Status: getDueStatus(b),
+                  Items: Array.isArray(b.items) ? b.items.map(item => `${item.itemName} (x${item.quantity})`).join('; ') : ''
+                })), 'purchase-bills')} 
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+              >
+                <FileSpreadsheet size={14} />
+                <span className="hidden sm:inline">Excel</span>
+              </button>
+              <button 
+                onClick={() => printTable('Purchase Bills Report', document.querySelector('.purchase-bills-table')?.outerHTML || '')} 
+                className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+              >
+                <Printer size={14} />
+                <span className="hidden sm:inline">Print</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -267,7 +364,7 @@ export default function PurchaseBills({
           <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             {/* Desktop Table View */}
             <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full purchase-bills-table">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Bill No.</th>

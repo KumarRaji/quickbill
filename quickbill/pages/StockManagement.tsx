@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StockService, StockItem, SupplierService, Supplier } from '../services/api';
-import { Plus, Search, Package, ArrowRight, Edit, Trash2, X, Barcode, Upload, Sparkles } from 'lucide-react';
+import { Plus, Search, Package, ArrowRight, Edit, Trash2, X, Barcode, Upload, Sparkles, Download, FileSpreadsheet, Printer } from 'lucide-react';
 
 interface StockManagementProps {
   onRefresh: () => void;
@@ -167,6 +167,62 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
     lowStock: stock.filter((s) => s.quantity <= 5).length,
   };
 
+  // Export functions
+  const exportToCSV = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).map(v => `"${v}"`).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToExcel = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]).join('\t');
+    const rows = data.map(row => Object.values(row).join('\t')).join('\n');
+    const excel = `${headers}\n${rows}`;
+    const blob = new Blob([excel], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const printTable = (title: string, tableHTML: string) => {
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f8f9fa; }
+            @media print { body { padding: 10px; } }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-3 sm:p-6 pb-6">
       <div className="max-w-7xl mx-auto h-full flex flex-col">
@@ -249,7 +305,50 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 }}
               />
             </div>
-            <div className="flex items-center gap-2 justify-end">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap">
+              <button 
+                onClick={() => exportToCSV(filteredStock.map(s => ({ 
+                  Name: s.name, 
+                  Category: s.category || '', 
+                  Code: s.code || '', 
+                  Barcode: s.barcode || '', 
+                  Supplier: s.supplier_name || '', 
+                  PurchasePrice: s.purchase_price, 
+                  MRP: s.mrp || '', 
+                  Quantity: s.quantity, 
+                  Unit: s.unit, 
+                  StockValue: s.quantity * s.purchase_price 
+                })), 'stock-management')} 
+                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+              >
+                <Download size={14} />
+                <span className="hidden sm:inline">CSV</span>
+              </button>
+              <button 
+                onClick={() => exportToExcel(filteredStock.map(s => ({ 
+                  Name: s.name, 
+                  Category: s.category || '', 
+                  Code: s.code || '', 
+                  Barcode: s.barcode || '', 
+                  Supplier: s.supplier_name || '', 
+                  PurchasePrice: s.purchase_price, 
+                  MRP: s.mrp || '', 
+                  Quantity: s.quantity, 
+                  Unit: s.unit, 
+                  StockValue: s.quantity * s.purchase_price 
+                })), 'stock-management')} 
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+              >
+                <FileSpreadsheet size={14} />
+                <span className="hidden sm:inline">Excel</span>
+              </button>
+              <button 
+                onClick={() => printTable('Stock Management Report', document.querySelector('.stock-table')?.outerHTML || '')} 
+                className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+              >
+                <Printer size={14} />
+                <span className="hidden sm:inline">Print</span>
+              </button>
               <span className="text-xs font-medium text-slate-600">Rows:</span>
               <select
                 value={pageSize}
@@ -272,7 +371,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
         {/* Desktop View */}
         <div className="hidden sm:flex flex-col flex-1 min-h-0">
           <div className="overflow-auto flex-1 min-h-0">
-            <table className="w-full text-left">
+            <table className="w-full text-left stock-table">
               <thead className="bg-slate-50 sticky top-0">
                 <tr>
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase">ITEM Info</th>

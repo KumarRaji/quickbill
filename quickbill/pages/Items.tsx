@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Item, UserRole } from '../types';
-import { Search, Plus, Edit, Trash2, ScanBarcode, X, Upload, Sparkles, Printer } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, ScanBarcode, X, Upload, Sparkles, Printer, Download, FileSpreadsheet } from 'lucide-react';
 import { ItemService } from '../services/api';
 import Barcode from 'react-barcode';
 import JsBarcode from 'jsbarcode';
@@ -270,6 +270,62 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
   const handlePrevious = () => setPage((prev) => Math.max(1, prev - 1));
   const handleNext = () => setPage((prev) => Math.min(totalPages, prev + 1));
 
+  // Export functions
+  const exportToCSV = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).map(v => `"${v}"`).join(',')).join('\n');
+    const csv = `${headers}\n${rows}`;
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToExcel = (data: any[], filename: string) => {
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]).join('\t');
+    const rows = data.map(row => Object.values(row).join('\t')).join('\n');
+    const excel = `${headers}\n${rows}`;
+    const blob = new Blob([excel], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const printTable = (title: string, tableHTML: string) => {
+    const printWindow = window.open('', '', 'width=800,height=600');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            body { font-family: Arial; padding: 20px; }
+            h1 { text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f8f9fa; }
+            @media print { body { padding: 10px; } }
+          </style>
+        </head>
+        <body>
+          <h1>${title}</h1>
+          ${tableHTML}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
   const handleEdit = (item: Item) => {
     setEditingId(item.id);
     // Ensure category shows even if backend returns null/undefined
@@ -442,7 +498,50 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               </div>
 
               {/* Rows dropdown */}
-              <div className="flex items-center gap-2 justify-end">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap">
+                <button 
+                  onClick={() => exportToCSV(filteredItems.map(i => ({ 
+                    Name: i.name, 
+                    Category: i.category || '', 
+                    Code: i.code || '', 
+                    Barcode: i.barcode || '', 
+                    MRP: i.mrp || '', 
+                    SellingPrice: i.sellingPrice, 
+                    PurchasePrice: i.purchasePrice, 
+                    TaxRate: i.taxRate, 
+                    Stock: i.stock, 
+                    Unit: i.unit 
+                  })), 'items-report')} 
+                  className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+                >
+                  <Download size={14} />
+                  <span className="hidden sm:inline">CSV</span>
+                </button>
+                <button 
+                  onClick={() => exportToExcel(filteredItems.map(i => ({ 
+                    Name: i.name, 
+                    Category: i.category || '', 
+                    Code: i.code || '', 
+                    Barcode: i.barcode || '', 
+                    MRP: i.mrp || '', 
+                    SellingPrice: i.sellingPrice, 
+                    PurchasePrice: i.purchasePrice, 
+                    TaxRate: i.taxRate, 
+                    Stock: i.stock, 
+                    Unit: i.unit 
+                  })), 'items-report')} 
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+                >
+                  <FileSpreadsheet size={14} />
+                  <span className="hidden sm:inline">Excel</span>
+                </button>
+                <button 
+                  onClick={() => printTable('Items Report', document.querySelector('.items-table')?.outerHTML || '')} 
+                  className="px-3 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
+                >
+                  <Printer size={14} />
+                  <span className="hidden sm:inline">Print</span>
+                </button>
                 <span className="text-xs font-medium text-slate-600">Rows:</span>
                 <select
                   value={pageSize}
@@ -464,7 +563,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
 
           {/* Desktop Table View */}
           <div className="hidden sm:block overflow-auto flex-1">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left border-collapse items-table">
               <thead className="bg-slate-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-4 lg:px-6 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200 w-12">
