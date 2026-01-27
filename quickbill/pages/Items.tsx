@@ -979,7 +979,7 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                   </select>
                 </div>
 
-                <div className="hidden sm:block">
+                <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                     Tax Rate (%)
                   </label>
@@ -995,21 +995,6 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
                     }}
                   />
                 </div>
-              </div>
-
-              <div className="sm:hidden">
-                <label className="block text-xs font-medium text-slate-700 mb-1">Tax Rate (%)</label>
-                <input
-                  type="number"
-                  step="1"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                  value={formData.taxRate ?? ''}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value);
-                    setFormData({ ...formData, taxRate: !isNaN(value) ? value : undefined });
-                  }}
-                />
               </div>
 
               {showBarcodePreview && formData.barcode && formData.barcode.length >= 8 && (
