@@ -276,7 +276,7 @@ const Layout: React.FC<LayoutProps> = ({
               <NavItem active={currentView === "PARTIES"} onClick={() => go("PARTIES")} icon={Users} label="Customers" />
               <NavItem active={currentView === "SUPPLIERS"} onClick={() => go("SUPPLIERS")} icon={Building2} label="Suppliers" />
               <NavItem active={currentView === "ITEMS"} onClick={() => go("ITEMS")} icon={Package} label="Items" />
-              <NavItem active={currentView === "STOCK"} onClick={() => go("STOCK")} icon={Boxes} label="Stock" />
+              <NavItem active={currentView === "STOCK_MANAGEMENT"} onClick={() => go("STOCK_MANAGEMENT")} icon={Boxes} label="Stock" />
               {/* <NavItem active={currentView === "STOCK_MANAGEMENT"} onClick={() => go("STOCK_MANAGEMENT")} icon={Package} label="Stock Management" /> */}
               {canManageData && (
                 <NavItem active={currentView === "REPORTS"} onClick={() => go("REPORTS")} icon={BarChart3} label="Reports" />
@@ -289,7 +289,7 @@ const Layout: React.FC<LayoutProps> = ({
                 Sales
               </div>
               <NavItem active={currentView === "SALES_INVOICES"} onClick={() => go("SALES_INVOICES")} icon={FileText} label="Sale Invoices" />
-              <NavItem active={currentView === "PAYMENT_IN"} onClick={() => go("PAYMENT_IN")} icon={TrendingDown} label="Payment In" />
+              {/* <NavItem active={currentView === "PAYMENT_IN"} onClick={() => go("PAYMENT_IN")} icon={TrendingDown} label="Payment In" /> */}
               <NavItem active={currentView === "SALE_RETURN_NEW"} onClick={() => go("SALE_RETURN_NEW")} icon={Undo2} label="Sale Return" />
 
               <div className="border-t border-slate-800 my-2 pt-2 text-xs text-slate-500 uppercase">
@@ -297,7 +297,7 @@ const Layout: React.FC<LayoutProps> = ({
               </div>
               <NavItem active={currentView === "PURCHASE_INVOICES"} onClick={() => go("PURCHASE_INVOICES")} icon={ShoppingCart} label="Purchase Bills" />
               <NavItem active={currentView === "PURCHASE_RETURNS"} onClick={() => go("PURCHASE_RETURNS")} icon={Undo2} label="Purchase Return" />
-              <NavItem active={currentView === "PAYMENT_OUT"} onClick={() => go("PAYMENT_OUT")} icon={TrendingUp} label="Payment Out" />
+              {/* <NavItem active={currentView === "PAYMENT_OUT"} onClick={() => go("PAYMENT_OUT")} icon={TrendingUp} label="Payment Out" /> */}
 
               {isSuperAdmin && (
                 <>
