@@ -371,7 +371,10 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
     <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto h-full flex flex-col">
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Items</h1>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Items</h1>
+            <p className="text-sm text-slate-600 mt-1">Items available for sales (moved from Stock Management)</p>
+          </div>
 
           {/* ✅ Buttons */}
           <div className="flex flex-col sm:flex-row gap-2">

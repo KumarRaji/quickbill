@@ -47,7 +47,7 @@ exports.getPurchaseBills = (req, res) => {
       (items || []).forEach((it) => {
         if (!map[it.invoice_id]) map[it.invoice_id] = [];
         map[it.invoice_id].push({
-          itemId: String(it.item_id),
+          itemId: null,
           itemName: it.name,
           quantity: Number(it.quantity),
           mrp: Number(it.mrp || 0),
@@ -103,7 +103,7 @@ exports.createPurchaseBill = (req, res) => {
   for (const it of items) {
     const qty = Number(it.quantity);
     const price = Number(it.price);
-    if (!it.itemId || isNaN(qty) || qty <= 0 || isNaN(price) || price < 0) {
+    if (!it.itemName || isNaN(qty) || qty <= 0 || isNaN(price) || price < 0) {
       return res.status(400).json({ message: "Invalid items payload" });
     }
   }
@@ -232,7 +232,7 @@ exports.createPurchaseBill = (req, res) => {
                             dueStatus: dueStatusVal,
                             roundOff,
                             items: (itemsRows || []).map((it) => ({
-                              itemId: String(it.item_id),
+                              itemId: null,
                               itemName: it.name,
                               quantity: Number(it.quantity),
                               mrp: Number(it.mrp),
@@ -263,7 +263,7 @@ exports.createPurchaseBill = (req, res) => {
                 itemSql,
                 [
                   purchaseInvoiceId,
-                  Number(it.itemId),
+                  null,
                   it.itemName || it.name || null,
                   qty,
                   Number(it.mrp || 0),
@@ -280,7 +280,7 @@ exports.createPurchaseBill = (req, res) => {
                   }
 
                   const stockPayload = [
-                    it.itemName || it.name || `Item-${it.itemId}`,
+                    it.itemName || it.name || `Item-${idx}`,
                     it.category || null,
                     it.code || null,
                     it.barcode || null,
@@ -290,7 +290,7 @@ exports.createPurchaseBill = (req, res) => {
                     qty,
                     it.unit || "PCS",
                     purchaseInvoiceId,
-                    Number(it.itemId),
+                    null,
                   ];
 
                   conn.query(insertStockSql, stockPayload, (stockErr) => {
@@ -333,7 +333,7 @@ exports.updatePurchaseBill = (req, res) => {
   for (const it of items) {
     const qty = Number(it.quantity);
     const price = Number(it.price);
-    if (!it.itemId || isNaN(qty) || qty <= 0 || isNaN(price) || price < 0) {
+    if (!it.itemName || isNaN(qty) || qty <= 0 || isNaN(price) || price < 0) {
       return res.status(400).json({ message: "Invalid items payload" });
     }
   }
@@ -441,74 +441,7 @@ exports.updatePurchaseBill = (req, res) => {
                           });
                         }
                         conn.release();
-
-                        pool.query(
-                          `SELECT 
-                            i.id,
-                            i.invoice_no,
-                            i.total_amount,
-                            i.invoice_date,
-                            i.notes,
-                            i.payment_mode,
-                            i.supplier_id,
-                            s.name as supplier_name
-                          FROM purchase_invoices i
-                          LEFT JOIN suppliers s ON i.supplier_id = s.id
-                          WHERE i.id = ?`,
-                          [id],
-                          (invErr, invRows) => {
-                            if (invErr || !invRows || invRows.length === 0) {
-                              return res.status(500).json({ message: "Failed to fetch updated invoice" });
-                            }
-
-                            const inv = invRows[0];
-
-                            pool.query(
-                              `SELECT invoice_id, item_id, name, quantity, mrp, price, tax_rate, total
-                              FROM purchase_invoice_items
-                              WHERE invoice_id = ?`,
-                              [id],
-                              (itemsErr2, itemsRows) => {
-                                if (itemsErr2) itemsRows = [];
-
-                                const paid = Number(req.body.amountPaid || 0);
-                                const due = Number(req.body.amountDue != null ? req.body.amountDue : Math.max(0, total - paid));
-                                const dueStatusValLatest = req.body.dueStatus || (due <= 0 ? "PAID" : paid > 0 ? "PARTIAL" : "PENDING");
-                                const lineSum = (itemsRows || []).reduce((s, it) => s + Number(it.total || 0), 0);
-                                const roundOff = Number((Number(inv.total_amount || 0) - lineSum).toFixed(2));
-
-                                const invoice = {
-                                  id: String(inv.id),
-                                  invoiceNumber: inv.invoice_no,
-                                  type: "PURCHASE",
-                                  partyId: String(inv.supplier_id),
-                                  partyName: inv.supplier_name || "Unknown Supplier",
-                                  date: inv.invoice_date,
-                                  totalAmount: Number(inv.total_amount),
-                                  totalTax: 0,
-                                  status: "UNPAID",
-                                  paymentMode: inv.payment_mode || "CASH",
-                                  notes: inv.notes || "",
-                                  amountPaid: paid,
-                                  amountDue: due,
-                                  dueStatus: dueStatusValLatest,
-                                  roundOff,
-                                  items: (itemsRows || []).map((it) => ({
-                                    itemId: String(it.item_id),
-                                    itemName: it.name,
-                                    quantity: Number(it.quantity),
-                                    mrp: Number(it.mrp),
-                                    price: Number(it.price),
-                                    taxRate: Number(it.tax_rate),
-                                    amount: Number(it.total),
-                                  })),
-                                };
-
-                                res.json(invoice);
-                              }
-                            );
-                          }
-                        );
+                        res.json({ message: "Purchase bill updated successfully" });
                       });
                     }
 
@@ -525,7 +458,7 @@ exports.updatePurchaseBill = (req, res) => {
                       itemSql,
                       [
                         id,
-                        Number(it.itemId),
+                        null,
                         it.itemName || it.name || null,
                         qty,
                         Number(it.mrp || 0),
@@ -542,7 +475,7 @@ exports.updatePurchaseBill = (req, res) => {
                         }
 
                         const stockPayload = [
-                          it.itemName || it.name || `Item-${it.itemId}`,
+                          it.itemName || it.name || `Item-${idxInsert}`,
                           it.category || null,
                           it.code || null,
                           it.barcode || null,
@@ -552,7 +485,7 @@ exports.updatePurchaseBill = (req, res) => {
                           qty,
                           it.unit || "PCS",
                           id,
-                          Number(it.itemId),
+                          null,
                         ];
 
                         conn.query(insertStockSql, stockPayload, (stockErr) => {

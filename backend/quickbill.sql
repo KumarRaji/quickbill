@@ -286,7 +286,7 @@ CREATE TABLE IF NOT EXISTS sale_invoice_items (
 CREATE TABLE IF NOT EXISTS purchase_invoice_items (
   id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   invoice_id INT UNSIGNED NOT NULL,
-  item_id INT UNSIGNED NOT NULL,
+  item_id INT UNSIGNED NULL,
   name VARCHAR(150),
   quantity DECIMAL(12,2) NOT NULL,
   mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -303,7 +303,7 @@ CREATE TABLE IF NOT EXISTS purchase_invoice_items (
   CONSTRAINT fk_purchase_invoice_items_item
     FOREIGN KEY (item_id) REFERENCES items(id)
     ON UPDATE CASCADE
-    ON DELETE RESTRICT
+    ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 
@@ -360,3 +360,12 @@ ALTER TABLE stock
   
 
  ALTER TABLE stock ADD COLUMN category VARCHAR(100) NULL;
+
+-- Fix purchase_invoice_items to allow NULL item_id (Purchase Bills independent of Items)
+ALTER TABLE purchase_invoice_items 
+  MODIFY COLUMN item_id INT UNSIGNED NULL,
+  DROP FOREIGN KEY fk_purchase_invoice_items_item,
+  ADD CONSTRAINT fk_purchase_invoice_items_item 
+    FOREIGN KEY (item_id) REFERENCES items(id) 
+    ON UPDATE CASCADE 
+    ON DELETE SET NULL;

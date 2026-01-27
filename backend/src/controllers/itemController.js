@@ -23,6 +23,9 @@ const normalizeBarcode = (v) => {
 };
 
 /* ----------------------------- GET /api/items ----------------------------- */
+// ✅ IMPORTANT: This endpoint ONLY returns data from 'items' table
+// Purchase invoice data is stored separately in 'purchase_invoices' and 'stock' tables
+// Items are only populated when moved from Stock Management using "Move to Items" action
 exports.getItems = (req, res) => {
   const sql =
     "SELECT id, name, category, code, barcode, supplier_id, selling_price, purchase_price, stock, mrp, unit, tax_rate FROM items ORDER BY id DESC";
@@ -143,62 +146,48 @@ exports.updateItem = (req, res) => {
 /* ----------------------------- DELETE /api/items/:id ----------------------------- */
 /**
  * ✅ FIXED:
- * - Check correct table: sale_invoice_items (your DB error shows this)
- * - If used -> block delete with clear message
- * - If not used -> delete item
+ * - Only check sale_invoice_items (Items page is separate from Purchase Bills)
+ * - Purchase Bills use separate tables: purchase_invoices + purchase_invoice_items + stock
+ * - Items table is only populated from Stock Management via "Move to Items" action
  */
 exports.deleteItem = (req, res) => {
   const { id } = req.params;
 
-  // Check both sale and purchase invoice items
+  // Only check sale invoice items (Purchase Bills are separate)
   const checkSaleSql = "SELECT COUNT(*) AS cnt FROM sale_invoice_items WHERE item_id = ?";
-  const checkPurchaseSql = "SELECT COUNT(*) AS cnt FROM purchase_invoice_items WHERE item_id = ?";
   
   pool.query(checkSaleSql, [id], (saleErr, saleRows) => {
     if (saleErr) {
       console.error("Error checking sale item usage:", saleErr);
       return res.status(500).json({
-        message: "⚠️ Delete failed. Item is linked with existing purchase invoices.",
+        message: "Failed to delete item",
         error: saleErr.message,
       });
     }
 
     const saleUsedCount = Number(saleRows?.[0]?.cnt || 0);
     
-    pool.query(checkPurchaseSql, [id], (purchaseErr, purchaseRows) => {
-      if (purchaseErr) {
-        console.error("Error checking purchase item usage:", purchaseErr);
-        return res.status(500).json({
-          message: "⚠️ Delete failed. Item is linked with existing purchase invoices.",
-          error: purchaseErr.message,
-        });
-      }
-
-      const purchaseUsedCount = Number(purchaseRows?.[0]?.cnt || 0);
-      const totalUsed = saleUsedCount + purchaseUsedCount;
-      
-      if (totalUsed > 0) {
-        return res.status(400).json({
-          message: "⚠️ Delete failed. Item is linked with existing purchase invoices.",
-        });
-      }
-
-      const delSql = "DELETE FROM items WHERE id = ?";
-      pool.query(delSql, [id], (delErr, result) => {
-        if (delErr) {
-          console.error("Error deleting item:", delErr);
-          return res.status(500).json({
-            message: "⚠️ Delete failed. Item is linked with existing purchase invoices.",
-            error: delErr.message,
-          });
-        }
-
-        if (!result || result.affectedRows === 0) {
-          return res.status(404).json({ message: "Item not found" });
-        }
-
-        return res.json({ message: "Item deleted successfully" });
+    if (saleUsedCount > 0) {
+      return res.status(400).json({
+        message: "⚠️ Delete failed. Item is linked with existing sale invoices.",
       });
+    }
+
+    const delSql = "DELETE FROM items WHERE id = ?";
+    pool.query(delSql, [id], (delErr, result) => {
+      if (delErr) {
+        console.error("Error deleting item:", delErr);
+        return res.status(500).json({
+          message: "Failed to delete item",
+          error: delErr.message,
+        });
+      }
+
+      if (!result || result.affectedRows === 0) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      return res.json({ message: "Item deleted successfully" });
     });
   });
 };

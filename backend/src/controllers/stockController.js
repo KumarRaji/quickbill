@@ -185,7 +185,7 @@ exports.moveToItems = (req, res) => {
 
         // Insert into items
         const insertSql = `
-          INSERT INTO items (name, category, code, barcode, supplier_id, mrp, selling_price, purchase_price, stock, unit, tax_rate)
+          INSERT INTO items (name, category, code, barcode, supplier_id, selling_price, purchase_price, mrp, stock, unit, tax_rate)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
@@ -193,16 +193,16 @@ exports.moveToItems = (req, res) => {
           insertSql,
           [
             stock.name,
-              stock.category || null,
+            stock.category || null,
             stock.code,
             stock.barcode,
             stock.supplier_id,
-            mrp || stock.purchase_price,
             selling_price,
             stock.purchase_price,
+            mrp || stock.mrp || 0,
             stock.quantity,
             stock.unit,
-              tax_rate
+            tax_rate
           ],
           (insertErr, insertResult) => {
             if (insertErr) {

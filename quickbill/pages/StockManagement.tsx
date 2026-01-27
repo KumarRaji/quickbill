@@ -120,7 +120,14 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
 
   const handleMoveToItems = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStock || !moveData.selling_price || moveData.tax_rate === undefined || moveData.tax_rate === null) return;
+    if (!selectedStock || !moveData.selling_price || moveData.selling_price <= 0) {
+      alert('Please enter a valid selling price');
+      return;
+    }
+    if (moveData.tax_rate === undefined || moveData.tax_rate === null || moveData.tax_rate < 0) {
+      alert('Please enter a valid tax rate (0 or higher)');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -131,9 +138,9 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
       await fetchStock();
       onRefresh();
       alert('Stock moved to Items successfully!');
-    } catch (error) {
-      console.error(error);
-      alert('Failed to move stock to items');
+    } catch (error: any) {
+      console.error('Move to items error:', error);
+      alert(`Failed to move stock to items: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -164,7 +171,10 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
     <div className="min-h-screen bg-slate-50 p-3 sm:p-6 pb-6">
       <div className="max-w-7xl mx-auto h-full flex flex-col">
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Stock Management</h1>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Stock Management</h1>
+          <p className="text-sm text-slate-600 mt-1">Manage your inventory and move items to Items Master for sales</p>
+        </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={() => setIsBulkModalOpen(true)}

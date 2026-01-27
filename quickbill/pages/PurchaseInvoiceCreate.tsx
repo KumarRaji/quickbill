@@ -458,7 +458,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   };
 
   const handleSave = async (shouldPrint: boolean = false) => {
-    if (!rows.some((r) => r.itemId || (r.manualMode && r.itemName?.trim()))) return;
+    if (!rows.some((r) => r.itemName?.trim())) return;
     if (!selectedPartyId) {
       alert('Please select a supplier');
       return;
@@ -472,35 +472,8 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     setLoading(true);
     const supplier = suppliers.find((s) => String(s.id) === selectedPartyId);
 
-    // Ensure manual rows have a persisted itemId by creating items on the fly
+    // Purchase bills now only create stock entries, not items directly
     const rowsWithItems: PurchaseRow[] = [...rows];
-    for (let i = 0; i < rowsWithItems.length; i++) {
-      const r = rowsWithItems[i];
-      if (r.manualMode && r.itemName?.trim() && !r.itemId) {
-        const newItemPayload: Partial<Item> = {
-          name: r.itemName.trim(),
-          category: r.category?.trim() || undefined,
-              code: r.code?.trim() || undefined,
-              barcode: r.barcode?.trim() || undefined,
-          sellingPrice: Number(r.price || 0),
-          purchasePrice: Number(r.price || 0),
-          mrp: Number(r.mrp || 0),
-          stock: Number(r.quantity || 0),
-          unit: 'pcs',
-          taxRate: Number(r.taxRate || 0),
-        };
-        const created = await ItemService.create(newItemPayload as Item);
-        r.itemId = created.id;
-        r.itemName = created.name;
-        r.manualMode = false;
-        // Normalize price/tax from created item if available
-        r.price = Number(created.purchasePrice || r.price || 0);
-        r.taxRate = Number(created.taxRate || r.taxRate || 0);
-        rowsWithItems[i] = recalcRow(r);
-      }
-    }
-    // Update UI state with any newly created items
-    setRows(rowsWithItems);
 
     const invoiceDueStatus = dueStatus;
     const invoiceStatus: "PAID" | "UNPAID" | "PENDING" =
@@ -513,7 +486,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
       date: invoiceDate,
       partyId: selectedPartyId || "CASH",
       partyName: supplier?.name || "Cash Purchase",
-      items: rowsWithItems.filter((r) => r.itemId),
+      items: rowsWithItems.filter((r) => r.itemName?.trim()),
       totalAmount: payableTotal,
       totalTax: totals.tax,
       status: invoiceStatus,
@@ -1158,7 +1131,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
           <button
             onClick={() => handleSave(false)}
-            disabled={loading || !rows.some((r) => r.itemId || (r.manualMode && r.itemName?.trim()))}
+            disabled={loading || !rows.some((r) => r.itemName?.trim())}
             type="button"
             className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
@@ -1168,7 +1141,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
           <button
             onClick={() => handleSave(true)}
-            disabled={loading || !rows.some((r) => r.itemId || (r.manualMode && r.itemName?.trim()))}
+            disabled={loading || !rows.some((r) => r.itemName?.trim())}
             type="button"
             className="px-4 py-2 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >

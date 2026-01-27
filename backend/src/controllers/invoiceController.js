@@ -29,13 +29,13 @@ function assertValidType(type, res) {
 function getStockDelta(type, qty) {
   switch (type) {
     case "SALE":
-      return -qty;
+      return -qty;  // Sale reduces stock
     case "RETURN":
-      return qty;
+      return qty;   // Return adds stock back
     case "PURCHASE":
-      return qty;
+      return qty;   // Purchase adds stock
     case "PURCHASE_RETURN":
-      return -qty;
+      return -qty;  // Purchase return reduces stock
     default:
       return 0;
   }
