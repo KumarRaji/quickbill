@@ -79,7 +79,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         const rate = Number(item.price || item.rate || 0);
         const taxRate = Number(item.taxRate || 0);
 
-        const gross = Number(item.amount ?? item.total ?? (rate * qty));
+        const gross = rate * qty;
         const frac = taxRate / 100;
 
         let taxable = gross;
@@ -191,7 +191,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
                   ₹{formatMoney(item.price)}
                 </td>
                 <td className="px-4 py-3 text-right text-slate-800 font-bold">
-                  ₹{formatMoney(item.amount ?? item.total)}
+                  ₹{formatMoney(Number(item.price || item.rate || 0) * Number(item.quantity || 0))}
                 </td>
               </tr>
             ))}
@@ -306,7 +306,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         const rate = Number(item.price || item.rate || 0);
         const taxRate = Number(item.taxRate || 0);
 
-        const gross = Number(item.amount ?? item.total ?? (rate * qty));
+        const gross = rate * qty;
         const frac = taxRate / 100;
 
         let taxable = gross;
@@ -413,7 +413,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
                   ₹{formatMoney(item.price)}
                 </div>
                 <div className="w-1/6 text-right text-black">
-                  ₹{formatMoney(item.amount ?? item.total)}
+                  ₹{formatMoney(Number(item.price || item.rate || 0) * Number(item.quantity || 0))}
                 </div>
               </div>
             </div>

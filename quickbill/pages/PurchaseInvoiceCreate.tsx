@@ -202,7 +202,9 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
   const removeRow = (index: number) => setRows((prev) => prev.filter((_, i) => i !== index));
 
   const recalcRow = (row: PurchaseRow) => {
-    row.amount = Number(row.price || 0) * Number(row.quantity || 0);
+    const qty = Number(row.quantity || 0);
+    const rate = Number(row.price || 0);
+    row.amount = rate * qty;
     return row;
   };
 
@@ -257,7 +259,9 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
         (row as any)[field] = value;
       }
 
-      newRows[index] = recalcRow(row);
+      // Simple amount calculation: price × quantity
+      row.amount = Number(row.price || 0) * Number(row.quantity || 0);
+      newRows[index] = row;
       return newRows;
     });
   };
@@ -297,20 +301,21 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
         const row = { ...copy[idx] };
         row.quantity = Number(row.quantity || 0) + 1;
         row.price = Number(row.price || price);
-        copy[idx] = recalcRow(row);
+        row.amount = Number(row.price || 0) * Number(row.quantity || 0);
+        copy[idx] = row;
         return copy;
       }
 
-      const newRow: PurchaseRow = recalcRow({
+      const newRow: PurchaseRow = {
         itemId: item.id,
         itemName: item.name,
         quantity: 1,
         mrp: item.mrp || 0,
         price,
         taxRate: Number(item.taxRate || 0),
-        amount: 0,
+        amount: price * 1,
         manualMode: false,
-      });
+      };
 
       return [...prev, newRow];
     });
@@ -388,24 +393,26 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
         const rate = Number(row.price || 0);
         const taxRate = Number(row.taxRate || 0);
 
-        const gross = rate * qty;
+        const gross = rate * qty; // entered rate × qty
         const rateFraction = taxRate / 100;
 
         let taxable = gross;
         let taxAmount = 0;
         if (taxMode === "IN_TAX" && rateFraction > 0) {
           taxable = gross / (1 + rateFraction);
-          taxAmount = gross - taxable; // peel out GST from inclusive rate
+          taxAmount = gross - taxable; // peel out GST from inclusive price
         } else {
           taxAmount = taxable * rateFraction; // add GST on top
         }
 
         const lineTotal = taxMode === "IN_TAX" ? gross : taxable + taxAmount;
+        const saving = Math.max(0, (Number(row.mrp || 0) - rate) * qty);
 
         acc.subtotal += taxable;
         acc.taxable += taxable;
         acc.tax += taxAmount;
         acc.total += lineTotal;
+        acc.savings += saving;
 
         if (gstType === "IN_TAX") {
           acc.cgst += taxAmount / 2;
@@ -416,7 +423,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
         return acc;
       },
-      { subtotal: 0, taxable: 0, tax: 0, total: 0, cgst: 0, sgst: 0, igst: 0 }
+      { subtotal: 0, taxable: 0, tax: 0, total: 0, savings: 0, cgst: 0, sgst: 0, igst: 0 }
     );
   }, [rows, gstType, taxMode]);
 
@@ -869,7 +876,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                     </td>
 
                     <td className="py-3 px-2 text-right font-medium text-slate-700 text-sm" style={{ width: columnWidths.amount }}>
-                      ₹{Number(row.amount || 0).toFixed(2)}
+                      ₹{(Number(row.price || 0) * Number(row.quantity || 0)).toFixed(2)}
                     </td>
 
                     <td className="py-3 pl-2 text-right" style={{ width: columnWidths.actions }}>
@@ -1023,7 +1030,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
 
                 <div className="bg-slate-100 p-2 rounded text-right">
                   <span className="text-xs text-slate-500">Amount: </span>
-                  <span className="font-semibold text-slate-800 text-sm">₹{Number(row.amount || 0).toFixed(2)}</span>
+                  <span className="font-semibold text-slate-800 text-sm">₹{(Number(row.price || 0) * Number(row.quantity || 0)).toFixed(2)}</span>
                 </div>
               </div>
             ))}
@@ -1044,16 +1051,12 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
           <div className="space-y-4">
             <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-4 shadow-sm">
               <div className="flex justify-between text-slate-600 text-sm">
-                <span>Taxable Amount</span>
+                <span>Subtotal</span>
                 <span>₹{totals.taxable.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-slate-600 text-sm">
                 <span>GST ({gstType === "IN_TAX" ? "CGST/SGST" : "IGST"})</span>
                 <span>₹{totals.tax.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-slate-600 text-sm">
-                <span>Entered Amount</span>
-                <span>₹{totals.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-lg sm:text-xl font-bold text-slate-800 border-t border-slate-300 pt-2 sm:pt-3">
                 <span>Total</span>
@@ -1061,12 +1064,21 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
               </div>
               <div className="flex justify-between text-slate-600 text-sm border-t border-slate-200 pt-2">
                 <span>Round Off</span>
-                <span>{roundOffAmount >= 0 ? "+" : "-"}₹{Math.abs(roundOffAmount).toFixed(2)}</span>
+                <span>
+                  {roundOffAmount >= 0 ? "+" : "-"}₹{Math.abs(roundOffAmount).toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between text-lg sm:text-xl font-bold text-slate-800">
                 <span>Payable Total</span>
                 <span>₹{payableTotal.toFixed(2)}</span>
               </div>
+              {totals.savings > 0 && (
+                <div className="text-center mt-2">
+                  <div className="inline-block bg-green-100 text-green-800 font-semibold px-3 py-1 rounded text-sm">
+                    You Have Saved : ₹{totals.savings.toFixed(2)}
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>
