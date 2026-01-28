@@ -71,7 +71,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
     }, 0);
 
     const gstType = (invoice as any).gstType || 'IN_TAX';
-    const taxMode = (invoice as any).taxMode || 'OUT_TAX';
+    const taxMode = (invoice as any).taxMode || 'IN_TAX';
 
     const gstTotals = items.reduce(
       (acc, item: any) => {
@@ -79,7 +79,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         const rate = Number(item.price || item.rate || 0);
         const taxRate = Number(item.taxRate || 0);
 
-        const gross = rate * qty;
+        const gross = Number(item.amount ?? item.total ?? (rate * qty));
         const frac = taxRate / 100;
 
         let taxable = gross;
@@ -213,11 +213,11 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
           <div className="w-64">
             <div className="flex justify-between py-2 text-slate-600 border-b border-slate-100">
               <span>Subtotal</span>
-              <span>₹{formatMoney(subTotal)}</span>
+              <span>₹{formatMoney(gstTotals.taxable)}</span>
             </div>
             <div className="flex justify-between py-2 text-slate-600 border-b border-slate-100">
               <span>Tax Total</span>
-              <span>₹{formatMoney((invoice as any).totalTax)}</span>
+              <span>₹{formatMoney(gstTotals.tax)}</span>
             </div>
             <div className="flex justify-between py-2 text-slate-600 border-b border-slate-100">
               <span>Round Off</span>
@@ -299,14 +299,14 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
     }, 0);
 
     const gstType = (invoice as any).gstType || 'IN_TAX';
-    const taxMode = (invoice as any).taxMode || 'OUT_TAX';
+    const taxMode = (invoice as any).taxMode || 'IN_TAX';
     const gstTotals = items.reduce(
       (acc, item: any) => {
         const qty = Number(item.quantity || 0);
         const rate = Number(item.price || item.rate || 0);
         const taxRate = Number(item.taxRate || 0);
 
-        const gross = rate * qty;
+        const gross = Number(item.amount ?? item.total ?? (rate * qty));
         const frac = taxRate / 100;
 
         let taxable = gross;
@@ -433,8 +433,12 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         )}
 
         <div className="flex justify-between text-xs mb-1">
+          <span>Subtotal</span>
+          <span>₹{formatMoney(gstTotals.taxable)}</span>
+        </div>
+        <div className="flex justify-between text-xs mb-1">
           <span>Tax Total</span>
-          <span>₹{formatMoney((invoice as any).totalTax ?? gstTotals.tax)}</span>
+          <span>₹{formatMoney(gstTotals.tax)}</span>
         </div>
         <div className="flex justify-between text-xs mb-1">
           <span>Round Off</span>

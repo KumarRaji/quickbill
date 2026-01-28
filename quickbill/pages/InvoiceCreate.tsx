@@ -94,7 +94,7 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
 
   useEffect(() => {
     if (editInvoice) {
-      setTaxMode(editInvoice.taxMode || "OUT_TAX");
+      setTaxMode(editInvoice.taxMode || "IN_TAX");
       setGstType(editInvoice.gstType || "IN_TAX");
       setAmountPaid(Number(editInvoice.amountPaid || 0));
     }
@@ -857,16 +857,12 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
           <div className="space-y-4">
             <div className="bg-white rounded-lg border border-slate-200 p-3 sm:p-4 shadow-sm">
               <div className="flex justify-between text-slate-600 text-sm">
-                <span>Taxable Amount</span>
+                <span>Subtotal</span>
                 <span>₹{totals.taxable.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-slate-600 text-sm">
                 <span>GST ({gstType === "IN_TAX" ? "CGST/SGST" : "IGST"})</span>
                 <span>₹{totals.tax.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-slate-600 text-sm">
-                <span>Entered Amount</span>
-                <span>₹{totals.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-lg sm:text-xl font-bold text-slate-800 border-t border-slate-300 pt-2 sm:pt-3">
                 <span>Total</span>
