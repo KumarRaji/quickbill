@@ -436,6 +436,7 @@ export interface StockItem {
   mrp?: number;
   quantity: number;
   unit: string;
+  tax_rate?: number;
   created_at?: string;
   updated_at?: string;
 }

@@ -29,6 +29,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
     mrp: 0,
     quantity: 0,
     unit: 'PCS',
+    tax_rate: 0,
   });
 
   const [moveData, setMoveData] = useState({
@@ -63,6 +64,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
       mrp: 0,
       quantity: 0,
       unit: 'PCS',
+      tax_rate: 0,
     });
     setSelectedStock(null);
   };
@@ -73,10 +75,20 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
 
     setLoading(true);
     try {
+      // Ensure tax_rate is properly set to 0 if undefined or null
+      const submitData = {
+        ...formData,
+        tax_rate: formData.tax_rate || 0
+      };
+      
+      // Debug: Log the data being sent
+      console.log('Submitting stock data:', submitData);
+      console.log('Tax rate value:', submitData.tax_rate, 'Type:', typeof submitData.tax_rate);
+      
       if (selectedStock) {
-        await StockService.update(selectedStock.id, formData);
+        await StockService.update(selectedStock.id, submitData);
       } else {
-        await StockService.create(formData as Omit<StockItem, 'id'>);
+        await StockService.create(submitData as Omit<StockItem, 'id'>);
       }
       resetForm();
       setIsModalOpen(false);
@@ -102,6 +114,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
       mrp: item.mrp || 0,
       quantity: item.quantity,
       unit: item.unit,
+      tax_rate: item.tax_rate || 0,
     });
     setIsModalOpen(true);
   };
@@ -116,6 +129,19 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
       console.error(error);
       alert('Failed to delete stock');
     }
+  };
+
+  const fetchTaxRateFromPurchaseBill = async (stockId: string) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/stock/${stockId}/tax-rate`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.tax_rate || 0;
+      }
+    } catch (error) {
+      console.error('Error fetching tax rate:', error);
+    }
+    return 0;
   };
 
   const handleMoveToItems = async (e: React.FormEvent) => {
@@ -315,6 +341,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                   Supplier: s.supplier_name || '', 
                   PurchasePrice: s.purchase_price, 
                   MRP: s.mrp || '', 
+                  TaxRate: s.tax_rate || 0,
                   Quantity: s.quantity, 
                   Unit: s.unit, 
                   StockValue: s.quantity * s.purchase_price 
@@ -333,6 +360,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                   Supplier: s.supplier_name || '', 
                   PurchasePrice: s.purchase_price, 
                   MRP: s.mrp || '', 
+                  TaxRate: s.tax_rate || 0,
                   Quantity: s.quantity, 
                   Unit: s.unit, 
                   StockValue: s.quantity * s.purchase_price 
@@ -379,6 +407,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase">Supplier</th>
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-right">Purchase Price</th>
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-right">MRP</th>
+                  <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-right">Tax Rate (%)</th>
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-right">Quantity</th>
                   <th className="px-4 lg:px-6 py-3 sm:py-4 text-xs font-semibold text-slate-500 uppercase text-center">Actions</th>
                 </tr>
@@ -403,6 +432,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     <td className="px-4 lg:px-6 py-3 sm:py-4 text-sm text-slate-600">{item.supplier_name || '-'}</td>
                     <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-sm text-slate-600">₹{Number(item.purchase_price).toFixed(2)}</td>
                     <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-sm text-slate-600">{item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}</td>
+                    <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-sm text-slate-600">{item.tax_rate || 0}%</td>
                     <td className="px-4 lg:px-6 py-3 sm:py-4 text-center">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-bold ${item.quantity <= 5 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
@@ -414,12 +444,12 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     <td className="px-4 lg:px-6 py-3 sm:py-4">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedStock(item);
                             setMoveData({
                               selling_price: 0,
                               mrp: item.mrp || 0,
-                              tax_rate: 0,
+                              tax_rate: item.tax_rate || 0,
                             });
                             setIsMoveModalOpen(true);
                           }}
@@ -448,7 +478,7 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 ))}
                 {filteredStock.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 lg:px-6 py-12 text-center text-slate-400">
+                    <td colSpan={8} className="px-4 lg:px-6 py-12 text-center text-slate-400">
                       <Package size={48} className="mx-auto mb-2 opacity-20" />
                       No stock items found
                     </td>
@@ -523,6 +553,10 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     <div className="font-medium text-slate-900">{item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}</div>
                   </div>
                   <div>
+                    <span className="text-slate-500">Tax Rate</span>
+                    <div className="font-medium text-slate-900">{item.tax_rate || 0}%</div>
+                  </div>
+                  <div>
                     <span className="text-slate-500">Quantity</span>
                     <div className={`font-medium text-sm ${item.quantity <= 5 ? 'text-red-700' : 'text-green-700'}`}>
                       {item.quantity} {item.unit}
@@ -531,12 +565,12 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 </div>
                 <div className="flex gap-2 pt-2 border-t border-slate-200">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       setSelectedStock(item);
                       setMoveData({
                         selling_price: 0,
                         mrp: item.mrp || 0,
-                        tax_rate: 0,
+                        tax_rate: item.tax_rate || 0,
                       });
                       setIsMoveModalOpen(true);
                     }}
@@ -609,15 +643,15 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md sm:max-w-2xl overflow-hidden">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden">
             <div className="px-4 sm:px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h2 className="text-base sm:text-lg font-bold text-slate-800">{selectedStock ? 'Edit Stock' : 'Add Stock'}</h2>
               <button onClick={() => { setIsModalOpen(false); resetForm(); }} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 max-h-[calc(95vh-120px)] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Item Name *</label>
@@ -759,6 +793,24 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                     <option value="mtr">Meter</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.tax_rate || ''}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const value = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0;
+                      setFormData({
+                        ...formData,
+                        tax_rate: value,
+                      });
+                    }}
+                  />
+                </div>
               </div>
               <div className="pt-4 flex justify-end space-x-3">
                 <button
@@ -823,15 +875,20 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
-                <input
-                  type="number"
-                  step="1"
-                  min="0"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={moveData.tax_rate}
-                  onChange={(e) => setMoveData({ ...moveData, tax_rate: parseFloat(e.target.value) || 0 })}
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%) *</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={moveData.tax_rate}
+                    onChange={(e) => setMoveData({ ...moveData, tax_rate: parseFloat(e.target.value) || 0 })}
+                  />
+                  <div className="text-xs text-slate-500 mt-1">
+                    From Stock Management
+                  </div>
+                </div>
               </div>
               <div className="pt-4 flex justify-end space-x-3">
                 <button type="button" onClick={() => { setIsMoveModalOpen(false); setSelectedStock(null); }} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>

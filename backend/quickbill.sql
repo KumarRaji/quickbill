@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS stock (
   mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
   quantity INT NOT NULL DEFAULT 0,
   unit VARCHAR(50) NULL DEFAULT 'PCS',
+  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -275,3 +276,7 @@ CREATE TABLE IF NOT EXISTS purchase_return_audit (
   KEY idx_return_invoice (return_invoice_id),
   KEY idx_item (item_id)
 ) ENGINE=InnoDB;
+
+
+-- Add tax_rate column to stock table
+ALTER TABLE stock ADD COLUMN tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0;

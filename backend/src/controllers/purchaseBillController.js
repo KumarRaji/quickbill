@@ -61,7 +61,17 @@ exports.getPurchaseBills = (req, res) => {
         const paid = Number(b.amountPaid || 0);
         const due = b.amountDue != null ? Number(b.amountDue) : Math.max(0, Number(b.amount || 0) - paid);
         const dueStatus = b.dueStatus || (due <= 0 ? "PAID" : paid > 0 ? "PARTIAL" : "PENDING");
-        const lineSum = (map[b.id] || []).reduce((sum, it) => sum + Number(it.amount || 0), 0);
+        
+        const billItems = (map[b.id] || []);
+        const lineSum = billItems.reduce((sum, it) => sum + Number(it.amount || 0), 0);
+        
+        // Calculate total tax from items
+        const totalTax = billItems.reduce((sum, item) => {
+          const base = item.quantity * item.price;
+          const tax = (base * item.taxRate) / 100;
+          return sum + tax;
+        }, 0);
+        
         const roundOff = Number((Number(b.amount || 0) - lineSum).toFixed(2));
 
         return {
@@ -71,12 +81,13 @@ exports.getPurchaseBills = (req, res) => {
           supplierId: String(b.supplierId),
           supplier: b.supplier,
           totalAmount: Number(b.amount),
+          totalTax: Number(totalTax.toFixed(2)),
           roundOff,
           paymentMode: b.paymentMode,
           amountPaid: paid,
           amountDue: due,
           dueStatus,
-          items: map[b.id] || [],
+          items: billItems,
         };
       });
 
@@ -167,8 +178,8 @@ exports.createPurchaseBill = (req, res) => {
             `;
             const insertStockSql = `
               INSERT INTO stock
-                (name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit, purchase_invoice_id, item_id)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit, tax_rate, purchase_invoice_id, item_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
 
             let idx = 0;
@@ -212,7 +223,25 @@ exports.createPurchaseBill = (req, res) => {
                         (itemsErr, itemsRows) => {
                           if (itemsErr) itemsRows = [];
 
-                          const lineSum = (itemsRows || []).reduce((s, it) => s + Number(it.total || 0), 0);
+                          // Calculate tax total and round off properly
+                          const itemsWithTax = (itemsRows || []).map((it) => ({
+                            itemId: null,
+                            itemName: it.name,
+                            quantity: Number(it.quantity),
+                            mrp: Number(it.mrp),
+                            price: Number(it.price),
+                            taxRate: Number(it.tax_rate),
+                            amount: Number(it.total),
+                          }));
+
+                          // Calculate total tax from items
+                          const totalTax = itemsWithTax.reduce((sum, item) => {
+                            const base = item.quantity * item.price;
+                            const tax = (base * item.taxRate) / 100;
+                            return sum + tax;
+                          }, 0);
+
+                          const lineSum = itemsWithTax.reduce((s, it) => s + it.amount, 0);
                           const roundOff = Number((Number(inv.total_amount || 0) - lineSum).toFixed(2));
 
                           const invoice = {
@@ -223,7 +252,7 @@ exports.createPurchaseBill = (req, res) => {
                             partyName: inv.supplier_name || "Unknown Supplier",
                             date: inv.invoice_date,
                             totalAmount: Number(inv.total_amount),
-                            totalTax: 0,
+                            totalTax: Number(totalTax.toFixed(2)),
                             status: "UNPAID",
                             paymentMode: inv.payment_mode || "CASH",
                             notes: inv.notes || "",
@@ -231,15 +260,7 @@ exports.createPurchaseBill = (req, res) => {
                             amountDue: amountDueNum,
                             dueStatus: dueStatusVal,
                             roundOff,
-                            items: (itemsRows || []).map((it) => ({
-                              itemId: null,
-                              itemName: it.name,
-                              quantity: Number(it.quantity),
-                              mrp: Number(it.mrp),
-                              price: Number(it.price),
-                              taxRate: Number(it.tax_rate),
-                              amount: Number(it.total),
-                            })),
+                            items: itemsWithTax,
                           };
 
                           res.status(201).json(invoice);
@@ -289,6 +310,7 @@ exports.createPurchaseBill = (req, res) => {
                     Number(it.mrp || 0),
                     qty,
                     it.unit || "PCS",
+                    taxRate,
                     purchaseInvoiceId,
                     null,
                   ];
@@ -426,8 +448,8 @@ exports.updatePurchaseBill = (req, res) => {
                   `;
                   const insertStockSql = `
                     INSERT INTO stock
-                      (name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit, purchase_invoice_id, item_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      (name, category, code, barcode, supplier_id, purchase_price, mrp, quantity, unit, tax_rate, purchase_invoice_id, item_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   `;
 
                   let idxInsert = 0;
@@ -484,6 +506,7 @@ exports.updatePurchaseBill = (req, res) => {
                           Number(it.mrp || 0),
                           qty,
                           it.unit || "PCS",
+                          taxRate,
                           id,
                           null,
                         ];
