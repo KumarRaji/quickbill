@@ -58,10 +58,6 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
   const StandardLayout: React.FC = () => {
     const items = invoice.items || [];
 
-    const roundOff = Number((invoice as any).roundOff || 0);
-    const payableTotal = Number(invoice.totalAmount || 0);
-    const grossBeforeRound = payableTotal - roundOff;
-
     const savings = items.reduce((acc: number, item: any) => {
       const mrp = Number(item.mrp || 0);
       const price = Number(item.price || item.rate || 0);
@@ -104,8 +100,13 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
       { taxable: 0, cgst: 0, sgst: 0, igst: 0, tax: 0 }
     );
 
+    // Recalculate round-off to match new invoice logic
+    const calculatedTotal = gstTotals.taxable + gstTotals.tax;
+    const roundedTotal = Math.round(calculatedTotal);
+    const roundOff = Number((roundedTotal - calculatedTotal).toFixed(2));
+    const payableTotal = Number((calculatedTotal + roundOff).toFixed(2));
+
     const totalTaxNum = Number((invoice as any).totalTax ?? gstTotals.tax);
-    const subTotal = Math.max(0, grossBeforeRound - totalTaxNum);
     const paidAmount = Number((invoice as any).amountPaid ?? (invoice as any).paidAmount ?? 0);
     const balanceDue = Number((invoice as any).amountDue ?? (invoice as any).dueAmount ?? Math.max(0, payableTotal - paidAmount));
     const showGstBreakup = (gstTotals.tax || 0) > 0.0001;
@@ -221,7 +222,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
             </div>
             <div className="flex justify-between py-2 text-slate-600 border-b border-slate-100">
               <span>Round Off</span>
-              <span>{roundOff >= 0 ? '+' : '-'}₹{formatMoney(Math.abs(roundOff))}</span>
+              <span>{roundOff >= 0 ? '+' : ''}₹{formatMoney(roundOff)}</span>
             </div>
             <div className="flex justify-between items-center py-2 text-lg font-bold text-slate-800 border-y-2 border-slate-400 mt-1">
               <span>Payable Total</span>
@@ -286,10 +287,6 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
   const ThermalLayout: React.FC = () => {
     const items = invoice.items || [];
 
-    const roundOff = Number((invoice as any).roundOff || 0);
-    const payableTotal = Number(invoice.totalAmount || 0);
-    const grossBeforeRound = payableTotal - roundOff;
-
     const savings = items.reduce((acc: number, item: any) => {
       const mrp = Number(item.mrp || 0);
       const price = Number(item.price || item.rate || 0);
@@ -330,6 +327,12 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
       },
       { taxable: 0, cgst: 0, sgst: 0, igst: 0, tax: 0 }
     );
+
+    // Recalculate round-off to match new invoice logic
+    const calculatedTotal = gstTotals.taxable + gstTotals.tax;
+    const roundedTotal = Math.round(calculatedTotal);
+    const roundOff = Number((roundedTotal - calculatedTotal).toFixed(2));
+    const payableTotal = Number((calculatedTotal + roundOff).toFixed(2));
 
     const showGstBreakup = (gstTotals.tax || 0) > 0.0001;
     const paidAmount = Number((invoice as any).amountPaid ?? (invoice as any).paidAmount ?? 0);
@@ -442,7 +445,7 @@ const InvoiceView: React.FC<InvoiceViewProps> = ({ invoice, onBack, autoPrint = 
         </div>
         <div className="flex justify-between text-xs mb-1">
           <span>Round Off</span>
-          <span>{roundOff >= 0 ? '+' : '-'}₹{formatMoney(Math.abs(roundOff))}</span>
+          <span>{roundOff >= 0 ? '+' : ''}₹{formatMoney(roundOff)}</span>
         </div>
         <div className="flex justify-between items-center font-bold text-sm mb-2 border-y-2 border-black py-1">
           <span>Payable</span>
