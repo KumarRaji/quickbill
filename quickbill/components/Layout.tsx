@@ -323,14 +323,14 @@ const Layout: React.FC<LayoutProps> = ({
 const NavItem = ({ active, onClick, icon: Icon, label }: any) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+    className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-left ${
       active
         ? "bg-slate-800 text-blue-400 border-l-4 border-blue-400"
         : "text-slate-400 hover:bg-slate-800 hover:text-white"
     }`}
   >
-    <Icon size={20} />
-    <span>{label}</span>
+    <Icon size={20} className="flex-shrink-0" />
+    <span className="whitespace-nowrap overflow-hidden text-ellipsis">{label}</span>
   </button>
 );
 

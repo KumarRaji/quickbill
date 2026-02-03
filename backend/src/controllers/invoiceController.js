@@ -319,7 +319,13 @@ exports.getInvoiceById = (req, res) => {
   const { id } = req.params;
 
   // ✅ Try to fetch from sale_invoices first
-  pool.query("SELECT * FROM sale_invoices WHERE id = ? LIMIT 1", [id], (err, saleRows) => {
+  pool.query(
+    `SELECT si.*, p.name as party_name 
+     FROM sale_invoices si 
+     LEFT JOIN parties p ON si.party_id = p.id 
+     WHERE si.id = ? LIMIT 1`,
+    [id],
+    (err, saleRows) => {
     if (err) {
       console.error("Error fetching invoice:", err);
       return res
@@ -342,6 +348,7 @@ exports.getInvoiceById = (req, res) => {
         const response = {
           id: String(inv.id),
           partyId: String(inv.party_id),
+          partyName: inv.party_name || "Cash Customer", // Add party name to response
           invoiceNumber: inv.invoice_no,
           type: inv.type,
           totalAmount: Number(inv.total_amount),
@@ -349,6 +356,8 @@ exports.getInvoiceById = (req, res) => {
           date: inv.invoice_date,
           notes: inv.notes,
           paymentMode: inv.payment_mode,
+          taxMode: inv.tax_mode || "IN_TAX", // Add tax mode
+          gstType: inv.gst_type || "IN_TAX", // Add GST type
           amountPaid: Number(inv.amount_paid || 0),
           amountDue: inv.amount_due != null ? Number(inv.amount_due) : Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0)),
           dueStatus: inv.due_status || (Number(inv.amount_due || Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0))) <= 0
@@ -361,6 +370,7 @@ exports.getInvoiceById = (req, res) => {
             itemId: String(it.item_id),
             itemName: it.name || "Unknown",
             quantity: Number(it.quantity),
+            mrp: Number(it.mrp || 0), // Add MRP
             price: Number(it.price),
             taxRate: Number(it.tax_rate || 0),
             amount: Number(it.total),
@@ -373,7 +383,13 @@ exports.getInvoiceById = (req, res) => {
     }
 
     // Otherwise, try to fetch from purchase_invoices
-    pool.query("SELECT * FROM purchase_invoices WHERE id = ? LIMIT 1", [id], (err, purchaseRows) => {
+    pool.query(
+      `SELECT pi.*, s.name as supplier_name 
+       FROM purchase_invoices pi 
+       LEFT JOIN suppliers s ON pi.supplier_id = s.id 
+       WHERE pi.id = ? LIMIT 1`,
+      [id],
+      (err, purchaseRows) => {
       if (err) {
         console.error("Error fetching purchase invoice:", err);
         return res
@@ -410,6 +426,7 @@ exports.getInvoiceById = (req, res) => {
         const response = {
           id: String(inv.id),
           partyId: String(inv.supplier_id),
+          partyName: inv.supplier_name || "Cash Supplier", // Add supplier name
           invoiceNumber: inv.invoice_no,
           type: "PURCHASE",
           totalAmount: Number(inv.total_amount),
@@ -417,6 +434,8 @@ exports.getInvoiceById = (req, res) => {
           date: inv.invoice_date,
           notes: inv.notes,
           paymentMode: inv.payment_mode,
+          taxMode: inv.tax_mode || "IN_TAX", // Add tax mode
+          gstType: inv.gst_type || "IN_TAX", // Add GST type
           amountPaid: Number(inv.amount_paid || 0),
           amountDue: inv.amount_due != null ? Number(inv.amount_due) : Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0)),
           dueStatus: inv.due_status || (Number(inv.amount_due || Math.max(0, Number(inv.total_amount || 0) - Number(inv.amount_paid || 0))) <= 0
@@ -429,6 +448,7 @@ exports.getInvoiceById = (req, res) => {
             itemId: String(it.item_id || it.id),
             itemName: it.name || "Unknown",
             quantity: Number(it.quantity),
+            mrp: Number(it.mrp || 0), // Add MRP
             price: Number(it.price),
             taxRate: Number(it.tax_rate || 0),
             amount: Number(it.total),
@@ -448,7 +468,7 @@ exports.getInvoiceById = (req, res) => {
 // POST /api/invoices
 // ==============================
 exports.createInvoice = (req, res) => {
-  let { partyId, type, date, items, totalAmount, invoiceNo, notes, paymentMode, originalRefNumber } =
+  let { partyId, type, date, items, totalAmount, invoiceNo, notes, paymentMode, originalRefNumber, taxMode, gstType } =
     req.body;
 
   // ✅ normalize + validate type (CREATE has no oldInv)
@@ -572,16 +592,16 @@ exports.createInvoice = (req, res) => {
         if (isPurchaseType) {
           invSql = `
             INSERT INTO purchase_invoices
-            (supplier_id, invoice_no, total_amount, invoice_date, notes, payment_mode, original_purchase_invoice_id, amount_paid, amount_due, due_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (supplier_id, invoice_no, total_amount, invoice_date, notes, payment_mode, tax_mode, gst_type, original_purchase_invoice_id, amount_paid, amount_due, due_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
           tableName = "purchase_invoices";
           itemsTableName = "purchase_invoice_items";
         } else {
           invSql = `
             INSERT INTO sale_invoices
-            (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, original_invoice_id, amount_paid, amount_due, due_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (party_id, invoice_no, type, total_amount, invoice_date, notes, payment_mode, tax_mode, gst_type, original_invoice_id, amount_paid, amount_due, due_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
           tableName = "sale_invoices";
           itemsTableName = "sale_invoice_items";
@@ -589,6 +609,9 @@ exports.createInvoice = (req, res) => {
 
         // Prepare values based on table type
         let invValues;
+        const normalizedTaxMode = taxMode || "IN_TAX";
+        const normalizedGstType = gstType || "IN_TAX";
+        
         if (isPurchaseType) {
           // For purchase, need to fetch original invoice ID if provided
           let originalRefId = null;
@@ -601,6 +624,8 @@ exports.createInvoice = (req, res) => {
               date ? new Date(date) : new Date(),
               notes || null,
               paymentMode || "CASH",
+              normalizedTaxMode,
+              normalizedGstType,
               null,
               amountPaidNum,
               amountDueNum,
@@ -614,6 +639,8 @@ exports.createInvoice = (req, res) => {
               date ? new Date(date) : new Date(),
               notes || null,
               paymentMode || "CASH",
+              normalizedTaxMode,
+              normalizedGstType,
               null,
               amountPaidNum,
               amountDueNum,
@@ -630,6 +657,8 @@ exports.createInvoice = (req, res) => {
             date ? new Date(date) : new Date(),
             notes || null,
             paymentMode || "CASH",
+            normalizedTaxMode,
+            normalizedGstType,
             null,
             amountPaidNum,
             amountDueNum,
@@ -848,7 +877,7 @@ exports.createInvoice = (req, res) => {
 // ==============================
 exports.updateInvoice = (req, res) => {
   const { id } = req.params;
-  let { partyId, type, date, items, totalAmount, invoiceNo, notes, paymentMode } =
+  let { partyId, type, date, items, totalAmount, invoiceNo, notes, paymentMode, taxMode, gstType } =
     req.body;
 
   pool.getConnection((connErr, conn) => {
@@ -1022,7 +1051,7 @@ exports.updateInvoice = (req, res) => {
 
                           const updateSql = `
                             UPDATE sale_invoices
-                            SET party_id = ?, invoice_no = ?, type = ?, total_amount = ?, invoice_date = ?, notes = ?, payment_mode = ?, amount_paid = ?, amount_due = ?, due_status = ?
+                            SET party_id = ?, invoice_no = ?, type = ?, total_amount = ?, invoice_date = ?, notes = ?, payment_mode = ?, tax_mode = ?, gst_type = ?, amount_paid = ?, amount_due = ?, due_status = ?
                             WHERE id = ?
                           `;
 
@@ -1036,6 +1065,8 @@ exports.updateInvoice = (req, res) => {
                               date ? new Date(date) : oldInv.invoice_date,
                               notes !== undefined ? notes : oldInv.notes,
                               paymentMode || oldInv.payment_mode,
+                              taxMode || oldInv.tax_mode || "IN_TAX",
+                              gstType || oldInv.gst_type || "IN_TAX",
                               amountPaidNum,
                               amountDueNum,
                               dueStatusVal,

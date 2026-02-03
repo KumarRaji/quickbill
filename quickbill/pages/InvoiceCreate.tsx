@@ -71,7 +71,17 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
 
-  const [rows, setRows] = useState<InvoiceItem[]>(editInvoice?.items || []);
+  const [rows, setRows] = useState<InvoiceItem[]>(
+    editInvoice?.items?.map(item => ({
+      itemId: item.itemId || "",
+      itemName: item.itemName || "",
+      quantity: item.quantity || 1,
+      mrp: item.mrp || 0,
+      price: item.price || 0,
+      taxRate: item.taxRate || 0,
+      amount: item.amount || 0,
+    })) || []
+  );
   const [loading, setLoading] = useState(false);
 
   // Add New Item Modal State
@@ -97,6 +107,20 @@ const InvoiceCreate: React.FC<InvoiceCreateProps> = ({
       setTaxMode(editInvoice.taxMode || "IN_TAX");
       setGstType(editInvoice.gstType || "IN_TAX");
       setAmountPaid(Number(editInvoice.amountPaid || 0));
+      
+      // Properly populate rows when editInvoice changes
+      if (editInvoice.items && editInvoice.items.length > 0) {
+        const mappedRows = editInvoice.items.map(item => ({
+          itemId: item.itemId || "",
+          itemName: item.itemName || "",
+          quantity: item.quantity || 1,
+          mrp: item.mrp || 0,
+          price: item.price || 0,
+          taxRate: item.taxRate || 0,
+          amount: item.amount || 0,
+        }));
+        setRows(mappedRows);
+      }
     }
   }, [editInvoice]);
 
