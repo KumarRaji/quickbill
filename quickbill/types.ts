@@ -32,6 +32,9 @@ export interface InvoiceItem {
   price: number;
   taxRate: number;
   amount: number;          // line total (your backend uses `total`)
+  category?: string;       // ✅ Add category field
+  code?: string;           // ✅ Add code field
+  barcode?: string;        // ✅ Add barcode field
 }
 
 export type TransactionType = "SALE" | "RETURN" | "PURCHASE" | "PURCHASE_RETURN";

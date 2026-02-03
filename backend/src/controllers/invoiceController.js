@@ -192,7 +192,18 @@ exports.getInvoices = (req, res) => {
         return;
       }
 
-      const purchaseItemsSql = "SELECT * FROM purchase_invoice_items WHERE invoice_id IN (?) ORDER BY id ASC";
+      const purchaseItemsSql = `
+        SELECT 
+          pii.*,
+          COALESCE(i.category, s.category, '') as category,
+          COALESCE(i.code, s.code, '') as code,
+          COALESCE(i.barcode, s.barcode, '') as barcode
+        FROM purchase_invoice_items pii
+        LEFT JOIN items i ON pii.item_id = i.id
+        LEFT JOIN stock s ON s.purchase_invoice_id = pii.invoice_id
+        WHERE pii.invoice_id IN (?) 
+        ORDER BY pii.id ASC
+      `;
       pool.query(purchaseItemsSql, [purchaseInvoiceIds], (itemsErr, items) => {
         if (itemsErr) {
           console.error("Error fetching purchase invoice items:", itemsErr);
@@ -203,13 +214,16 @@ exports.getInvoices = (req, res) => {
           if (!grouped[it.invoice_id]) grouped[it.invoice_id] = [];
           grouped[it.invoice_id].push({
             id: String(it.id),
-            itemId: String(it.item_id),
+            itemId: String(it.item_id || it.id),
             itemName: it.name,
             quantity: Number(it.quantity),
             mrp: Number(it.mrp || 0),
             price: Number(it.price),
             taxRate: Number(it.tax_rate || 0),
             amount: Number(it.total),
+            category: it.category || "",
+            code: it.code || "",
+            barcode: it.barcode || "",
           });
         });
 
@@ -372,7 +386,19 @@ exports.getInvoiceById = (req, res) => {
       }
 
       const inv = purchaseRows[0];
-      pool.query("SELECT * FROM purchase_invoice_items WHERE invoice_id = ?", [id], (itemsErr, items) => {
+      const purchaseItemsSql = `
+        SELECT 
+          pii.*,
+          COALESCE(i.category, s.category, '') as category,
+          COALESCE(i.code, s.code, '') as code,
+          COALESCE(i.barcode, s.barcode, '') as barcode
+        FROM purchase_invoice_items pii
+        LEFT JOIN items i ON pii.item_id = i.id
+        LEFT JOIN stock s ON s.purchase_invoice_id = pii.invoice_id
+        WHERE pii.invoice_id = ?
+        ORDER BY pii.id ASC
+      `;
+      pool.query(purchaseItemsSql, [id], (itemsErr, items) => {
         if (itemsErr) {
           console.error("Error fetching purchase invoice items:", itemsErr);
           return res.status(500).json({
@@ -400,12 +426,15 @@ exports.getInvoiceById = (req, res) => {
             : "PENDING"),
           items: (items || []).map((it) => ({
             id: String(it.id),
-            itemId: String(it.item_id),
+            itemId: String(it.item_id || it.id),
             itemName: it.name || "Unknown",
             quantity: Number(it.quantity),
             price: Number(it.price),
             taxRate: Number(it.tax_rate || 0),
             amount: Number(it.total),
+            category: it.category || "",
+            code: it.code || "",
+            barcode: it.barcode || "",
           })),
         };
 
@@ -1443,8 +1472,19 @@ exports.deleteInvoice = (req, res) => {
           }
 
           function deletePurchaseInvoice(inv) {
+            const purchaseItemsSql = `
+              SELECT 
+                pii.*,
+                i.category,
+                i.code,
+                i.barcode
+              FROM purchase_invoice_items pii
+              LEFT JOIN items i ON pii.item_id = i.id
+              WHERE pii.invoice_id = ?
+              ORDER BY pii.id ASC
+            `;
             conn.query(
-              "SELECT * FROM purchase_invoice_items WHERE invoice_id = ?",
+              purchaseItemsSql,
               [id],
               (itemsErr, itemRows) => {
                 if (itemsErr) {
@@ -1634,10 +1674,24 @@ exports.applySaleReturn = (req, res) => {
               lines.forEach((r) => (lineMap[String(r.item_id)] = r));
 
               // 3) Normalize + validate return payload
-              const normalized = items.map((it) => ({
-                itemId: String(it.itemId),
-                quantity: Number(it.quantity),
-              }));
+              let normalized;
+              try {
+                normalized = items.map((it) => {
+                  const itemIdNum = Number(it.itemId);
+                  
+                  // ✅ Validate BEFORE SQL
+                  if (!Number.isInteger(itemIdNum)) {
+                    throw new Error(`Invalid itemId: ${it.itemId}`);
+                  }
+                  
+                  return {
+                    itemId: String(itemIdNum),
+                    quantity: Number(it.quantity),
+                  };
+                });
+              } catch (validationErr) {
+                return rollback(400, { message: validationErr.message });
+              }
 
               for (const it of normalized) {
                 const row = lineMap[it.itemId];
@@ -1653,8 +1707,9 @@ exports.applySaleReturn = (req, res) => {
                 }
               }
 
-              // 4) Compute return totals (base + tax)
-              let returnGrand = 0;
+              // 4) Compute return totals (base only, tax excluded from return amount)
+              let returnSubtotal = 0;
+              let returnTax = 0;
               const computedItems = normalized.map((it) => {
                 const row = lineMap[it.itemId];
                 const price = Number(row.price || 0);
@@ -1664,7 +1719,9 @@ exports.applySaleReturn = (req, res) => {
                 const tax = (sub * taxRate) / 100;
                 const total = Number((sub + tax).toFixed(2));
 
-                returnGrand += total;
+                // Return amount should be subtotal only (excluding tax)
+                returnSubtotal += sub;
+                returnTax += tax;
 
                 return {
                   item_id: Number(it.itemId),
@@ -1679,7 +1736,8 @@ exports.applySaleReturn = (req, res) => {
                 };
               });
 
-              returnGrand = Number(returnGrand.toFixed(2));
+              // Return amount is subtotal only (excluding tax)
+              const returnGrand = Number(returnSubtotal.toFixed(2));
 
               // 5) Insert RETURN invoice
               const returnInvoiceNo = `CN-${Date.now().toString().slice(-8)}`;
@@ -1874,8 +1932,19 @@ exports.applyPurchaseReturn = (req, res) => {
           }
 
           // 2) Load original items from purchase_invoice_items table
+          const purchaseItemsSql = `
+            SELECT 
+              pii.*,
+              i.category,
+              i.code,
+              i.barcode
+            FROM purchase_invoice_items pii
+            LEFT JOIN items i ON pii.item_id = i.id
+            WHERE pii.invoice_id = ?
+            ORDER BY pii.id ASC
+          `;
           conn.query(
-            "SELECT * FROM purchase_invoice_items WHERE invoice_id = ?",
+            purchaseItemsSql,
             [originalId],
             (itemsErr, origItems) => {
               if (itemsErr) return rollback(500, { message: "Failed to load invoice items", error: itemsErr.message });
@@ -1884,13 +1953,31 @@ exports.applyPurchaseReturn = (req, res) => {
               if (lines.length === 0) return rollback(400, { message: "No items found in original invoice" });
 
               const lineMap = {};
-              lines.forEach((r) => (lineMap[String(r.item_id)] = r));
+              lines.forEach((r) => {
+                // Use item_id if available, otherwise use purchase_invoice_items.id
+                const key = String(r.item_id || r.id);
+                lineMap[key] = r;
+              });
 
               // 3) Normalize + validate
-              const normalized = items.map((it) => ({
-                itemId: String(it.itemId),
-                quantity: Number(it.quantity),
-              }));
+              let normalized;
+              try {
+                normalized = items.map((it) => {
+                  const itemIdNum = Number(it.itemId);
+                  
+                  // ✅ Validate BEFORE SQL
+                  if (!Number.isInteger(itemIdNum)) {
+                    throw new Error(`Invalid itemId: ${it.itemId}`);
+                  }
+                  
+                  return {
+                    itemId: String(itemIdNum),
+                    quantity: Number(it.quantity),
+                  };
+                });
+              } catch (validationErr) {
+                return rollback(400, { message: validationErr.message });
+              }
 
               for (const it of normalized) {
                 const row = lineMap[it.itemId];
@@ -1906,8 +1993,9 @@ exports.applyPurchaseReturn = (req, res) => {
                 }
               }
 
-              // 4) Compute totals (base + tax)
-              let returnGrand = 0;
+              // 4) Compute totals (base only, tax excluded from return amount)
+              let returnSubtotal = 0;
+              let returnTax = 0;
               const computedItems = normalized.map((it) => {
                 const row = lineMap[it.itemId];
                 const price = Number(row.price || 0);
@@ -1917,10 +2005,12 @@ exports.applyPurchaseReturn = (req, res) => {
                 const tax = (sub * taxRate) / 100;
                 const total = Number((sub + tax).toFixed(2));
 
-                returnGrand += total;
+                // Return amount should be subtotal only (excluding tax)
+                returnSubtotal += sub;
+                returnTax += tax;
 
                 return {
-                  item_id: Number(it.itemId),
+                  item_id: row.item_id || row.id,  // Use actual item_id or line item id
                   name: row.name && String(row.name).trim() ? row.name : "Unknown",
                   mrp: Number(row.mrp || 0),
                   price,
@@ -1932,7 +2022,8 @@ exports.applyPurchaseReturn = (req, res) => {
                 };
               });
 
-              returnGrand = Number(returnGrand.toFixed(2));
+              // Return amount is subtotal only (excluding tax)
+              const returnGrand = Number(returnSubtotal.toFixed(2));
 
               // 5) Insert PURCHASE_RETURN invoice into purchase_invoices table
               // Store with NEGATIVE amount so it subtracts from Dashboard totals

@@ -172,7 +172,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
     setGstType(editInvoice.gstType || "IN_TAX");
     setAmountPaid(Number(editInvoice.amountPaid || 0));
 
-    const editRows: InvoiceItem[] = (editInvoice.items ?? []).map((it) => ({
+    const editRows: PurchaseRow[] = (editInvoice.items ?? []).map((it) => ({
       itemId: String(it.itemId ?? ""),
       itemName: it.itemName ?? "",
       quantity: Number(it.quantity ?? 1),
@@ -180,6 +180,9 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
       price: Number(it.price ?? 0),
       taxRate: Number(it.taxRate ?? 0),
       amount: Number(it.amount ?? 0),
+      category: (it as any).category ?? "",
+      code: (it as any).code ?? "",
+      barcode: (it as any).barcode ?? "",
     }));
 
     setRows(editRows.map((r) => ({ ...r, amount: Number(r.price || 0) * Number(r.quantity || 0) })));
@@ -315,6 +318,9 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
         taxRate: Number(item.taxRate || 0),
         amount: price * 1,
         manualMode: false,
+        category: item.category || "",
+        code: item.code || "",
+        barcode: item.barcode || "",
       };
 
       return [...prev, newRow];
@@ -781,7 +787,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                             updateRow(index, "itemId", val);
                           }}
                         >
-                          <option value="">Select Item</option>
+                          <option value="">{row.itemName || "Select Item"}</option>
                           <option value="__manual__">+ Add Item (manual)</option>
                           {items.map((i) => (
                             <option key={i.id} value={i.id}>
@@ -927,7 +933,7 @@ const PurchaseInvoiceCreate: React.FC<PurchaseInvoiceCreateProps> = ({
                           updateRow(index, "itemId", val);
                         }}
                       >
-                        <option value="">Select Item</option>
+                        <option value="">{row.itemName || "Select Item"}</option>
                         <option value="__manual__">+ Add Item (manual)</option>
                         {items.map((i) => (
                           <option key={i.id} value={i.id}>

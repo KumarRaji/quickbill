@@ -198,14 +198,14 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
   }, [stock, items]);
 
   const salesSummary = useMemo(() => {
-    const relevantInvoices = invoices.filter((i) => i.type === 'SALE' || i.type === 'RETURN');
+    const relevantInvoices = invoices.filter((i) => i.type === 'SALE');
 
     const totalSales = relevantInvoices.reduce((sum, i) => {
-      return i.type === 'SALE' ? sum + i.totalAmount : sum - i.totalAmount;
+      return sum + i.totalAmount;
     }, 0);
 
     const totalTax = relevantInvoices.reduce((sum, i) => {
-      return i.type === 'SALE' ? sum + i.totalTax : sum - i.totalTax;
+      return sum + i.totalTax;
     }, 0);
 
     return { totalSales, totalTax, invoices: relevantInvoices };
@@ -458,18 +458,18 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
         <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border border-slate-200">
-          <div className="text-xs sm:text-sm text-slate-500 mb-1">Net Revenue (Sales - Returns)</div>
+          <div className="text-xs sm:text-sm text-slate-500 mb-1">Total Sales</div>
           <div className="text-lg sm:text-2xl font-bold text-green-600">₹{salesSummary.totalSales.toLocaleString()}</div>
         </div>
         <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border border-slate-200">
-          <div className="text-xs sm:text-sm text-slate-500 mb-1">Net Tax Collected</div>
+          <div className="text-xs sm:text-sm text-slate-500 mb-1">Total Tax Collected</div>
           <div className="text-lg sm:text-2xl font-bold text-slate-800">₹{salesSummary.totalTax.toLocaleString()}</div>
         </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-3 sm:px-6 py-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="font-bold text-slate-700 text-sm sm:text-base">Transaction History (Sales & Returns)</div>
+          <div className="font-bold text-slate-700 text-sm sm:text-base">Sales History</div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap">
             <button onClick={() => exportToCSV(salesList.map(i => ({ Date: new Date(i.date).toLocaleDateString(), Type: i.type, InvoiceNumber: i.invoiceNumber, PartyName: i.partyName, Tax: i.totalTax, TotalAmount: i.totalAmount })), 'sales-report')} className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"><Download size={14} /><span className="hidden sm:inline">CSV</span></button>
@@ -512,11 +512,8 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                 <tr key={inv.id} className="hover:bg-slate-50">
                   <td className="px-4 lg:px-6 py-3 sm:py-4 text-slate-600 text-sm">{new Date(inv.date).toLocaleDateString()}</td>
                   <td className="px-4 lg:px-6 py-3 sm:py-4">
-                    <span
-                      className={`text-xs font-bold px-2 py-1 rounded-full ${inv.type === 'RETURN' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                        }`}
-                    >
-                      {inv.type === 'RETURN' ? 'CREDIT NOTE' : 'INVOICE'}
+                    <span className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">
+                      INVOICE
                     </span>
                   </td>
                   <td className="px-4 lg:px-6 py-3 sm:py-4 font-medium text-slate-800 text-sm">
@@ -527,13 +524,10 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                   </td>
                   <td className="px-4 lg:px-6 py-3 sm:py-4 text-slate-600 text-sm">{inv.partyName}</td>
                   <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-600 text-sm">
-                    {inv.type === 'RETURN' ? '-' : ''}₹{inv.totalTax.toFixed(2)}
+                    ₹{inv.totalTax.toFixed(2)}
                   </td>
-                  <td
-                    className={`px-4 lg:px-6 py-3 sm:py-4 text-right font-bold text-sm ${inv.type === 'RETURN' ? 'text-red-600' : 'text-green-600'
-                      }`}
-                  >
-                    {inv.type === 'RETURN' ? '-' : ''}₹{inv.totalAmount.toLocaleString()}
+                  <td className="px-4 lg:px-6 py-3 sm:py-4 text-right font-bold text-green-600 text-sm">
+                    ₹{inv.totalAmount.toLocaleString()}
                   </td>
                 </tr>
               ))}
@@ -557,8 +551,8 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                   <div className="font-medium text-slate-900 text-sm">{inv.invoiceNumber}</div>
                   <div className="text-xs text-slate-500 mt-1">{new Date(inv.date).toLocaleDateString()}</div>
                 </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${inv.type === 'RETURN' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                  {inv.type === 'RETURN' ? 'CREDIT' : 'INVOICE'}
+                <span className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">
+                  INVOICE
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs py-2">
@@ -573,7 +567,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
               </div>
               <div className="pt-2 border-t border-slate-200">
                 <div className="text-xs text-slate-500">Total</div>
-                <div className={`font-bold text-sm ${inv.type === 'RETURN' ? 'text-red-600' : 'text-green-600'}`}>₹{inv.totalAmount.toLocaleString()}</div>
+                <div className="font-bold text-sm text-green-600">₹{inv.totalAmount.toLocaleString()}</div>
               </div>
             </div>
           ))}
@@ -604,7 +598,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
         <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border border-slate-200">
           <div className="text-xs sm:text-sm text-slate-500 mb-1">Total Returns Amount</div>
-          <div className="text-lg sm:text-2xl font-bold text-red-600">₹{returnSummary.totalReturns.toLocaleString()}</div>
+          <div className="text-lg sm:text-2xl font-bold text-red-600">₹-{Math.round(Math.abs(returnSummary.totalReturns))}</div>
         </div>
         <div className="bg-white p-3 sm:p-6 rounded-xl shadow-sm border border-slate-200">
           <div className="text-xs sm:text-sm text-slate-500 mb-1">Total Return Tax</div>
@@ -674,7 +668,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
                   </td>
                   <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-600 text-sm">₹{inv.totalTax.toFixed(2)}</td>
                   <td className="px-4 lg:px-6 py-3 sm:py-4 text-right font-bold text-red-600 text-sm">
-                    ₹{inv.totalAmount.toLocaleString()}
+                    ₹-{Math.round(Math.abs(inv.totalAmount))}
                   </td>
                 </tr>
               ))}
@@ -719,7 +713,7 @@ const Reports: React.FC<ReportsProps> = ({ invoices, parties, items, stock }) =>
               </div>
               <div className="pt-2 border-t border-slate-200">
                 <div className="text-xs text-slate-500">Return Amount</div>
-                <div className="font-bold text-sm text-red-600">₹{inv.totalAmount.toLocaleString()}</div>
+                <div className="font-bold text-sm text-red-600">₹-{Math.round(Math.abs(inv.totalAmount))}</div>
               </div>
             </div>
           ))}

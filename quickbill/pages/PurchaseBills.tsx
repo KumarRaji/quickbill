@@ -319,7 +319,10 @@ export default function PurchaseBills({
                   AmountPaid: b.amountPaid || 0, 
                   AmountDue: getRemainingDue(b), 
                   Status: getDueStatus(b),
-                  Items: Array.isArray(b.items) ? b.items.map(item => `${item.itemName} (x${item.quantity})`).join('; ') : ''
+                  Items: Array.isArray(b.items) ? b.items.map(item => `${item.itemName} (x${item.quantity})`).join('; ') : '',
+                  Categories: Array.isArray(b.items) ? b.items.map(item => item.category || '-').join('; ') : '',
+                  ItemCodes: Array.isArray(b.items) ? b.items.map(item => item.code || '-').join('; ') : '',
+                  Barcodes: Array.isArray(b.items) ? b.items.map(item => item.barcode || '-').join('; ') : ''
                 })), 'purchase-bills')} 
                 className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
               >
@@ -335,7 +338,10 @@ export default function PurchaseBills({
                   AmountPaid: b.amountPaid || 0, 
                   AmountDue: getRemainingDue(b), 
                   Status: getDueStatus(b),
-                  Items: Array.isArray(b.items) ? b.items.map(item => `${item.itemName} (x${item.quantity})`).join('; ') : ''
+                  Items: Array.isArray(b.items) ? b.items.map(item => `${item.itemName} (x${item.quantity})`).join('; ') : '',
+                  Categories: Array.isArray(b.items) ? b.items.map(item => item.category || '-').join('; ') : '',
+                  ItemCodes: Array.isArray(b.items) ? b.items.map(item => item.code || '-').join('; ') : '',
+                  Barcodes: Array.isArray(b.items) ? b.items.map(item => item.barcode || '-').join('; ') : ''
                 })), 'purchase-bills')} 
                 className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs flex items-center justify-center gap-1"
               >
@@ -370,7 +376,10 @@ export default function PurchaseBills({
                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Bill No.</th>
                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Date</th>
                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Supplier</th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Items</th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Item</th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Category</th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Item Code</th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Barcode</th>
                     <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Tax Rate (%)</th>
                     <th className="px-4 lg:px-6 py-3 text-right text-xs font-semibold text-slate-600 uppercase">Amount</th>
                     <th className="px-4 lg:px-6 py-3 text-center text-xs font-semibold text-slate-600 uppercase">Due Status</th>
@@ -400,6 +409,39 @@ export default function PurchaseBills({
                             {items.slice(0, 2).map((item, idx) => (
                               <div key={idx} className="text-xs">
                                 {item.itemName} (x{item.quantity})
+                              </div>
+                            ))}
+                            {items.length > 2 && <div className="text-xs text-slate-400">+{items.length - 2} more</div>}
+                          </div>
+                        </td>
+
+                        <td className="px-4 lg:px-6 py-4 text-sm text-slate-600">
+                          <div className="max-w-xs">
+                            {items.slice(0, 2).map((item, idx) => (
+                              <div key={idx} className="text-xs">
+                                {item.category || "-"}
+                              </div>
+                            ))}
+                            {items.length > 2 && <div className="text-xs text-slate-400">+{items.length - 2} more</div>}
+                          </div>
+                        </td>
+
+                        <td className="px-4 lg:px-6 py-4 text-sm text-slate-600">
+                          <div className="max-w-xs">
+                            {items.slice(0, 2).map((item, idx) => (
+                              <div key={idx} className="text-xs">
+                                {item.code || "-"}
+                              </div>
+                            ))}
+                            {items.length > 2 && <div className="text-xs text-slate-400">+{items.length - 2} more</div>}
+                          </div>
+                        </td>
+
+                        <td className="px-4 lg:px-6 py-4 text-sm text-slate-600">
+                          <div className="max-w-xs">
+                            {items.slice(0, 2).map((item, idx) => (
+                              <div key={idx} className="text-xs">
+                                {item.barcode || "-"}
                               </div>
                             ))}
                             {items.length > 2 && <div className="text-xs text-slate-400">+{items.length - 2} more</div>}
@@ -526,8 +568,12 @@ export default function PurchaseBills({
                     <div className="bg-slate-100 p-2 rounded text-xs space-y-1">
                       <div className="font-semibold text-slate-600">Items ({items.length})</div>
                       {items.slice(0, 2).map((item, idx) => (
-                        <div key={idx} className="text-slate-700">
-                          {item.itemName} (x{item.quantity}) - Tax: {item.taxRate || 0}%
+                        <div key={idx} className="text-slate-700 space-y-1">
+                          <div><strong>Item:</strong> {item.itemName} (x{item.quantity})</div>
+                          <div><strong>Category:</strong> {item.category || "-"}</div>
+                          <div><strong>Item Code:</strong> {item.code || "-"}</div>
+                          <div><strong>Barcode:</strong> {item.barcode || "-"}</div>
+                          <div><strong>Tax:</strong> {item.taxRate || 0}%</div>
                         </div>
                       ))}
                       {items.length > 2 && <div className="text-slate-500">+{items.length - 2} more items</div>}

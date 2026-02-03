@@ -41,15 +41,24 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
   const returnRows: ReturnRow[] = useMemo(() => {
     if (!selectedInvoice) return [];
 
-    return (selectedInvoice.items || []).map((it, idx) => ({
-      rowId: `${it.itemId || "item"}-${idx}`,
-      itemId: it.itemId,
-      itemName: it.itemName,
-      purchasedQty: Number(it.quantity || 0),
-      price: Number(it.price || 0),
-      taxRate: Number(it.taxRate || 0),
-      returnQty: 0,
-    }));
+    return (selectedInvoice.items || []).map((it, idx) => {
+      // Handle both null item_id and string "null"
+      const itemId = it.itemId && it.itemId !== "null" ? it.itemId : it.id;
+      
+      if (!itemId) {
+        console.error("Missing itemId in purchase invoice item", it);
+      }
+      
+      return {
+        rowId: `${itemId}-${idx}`,
+        itemId: String(itemId),
+        itemName: it.itemName,
+        purchasedQty: Number.isFinite(Number(it.quantity)) ? Number(it.quantity) : 0,
+        price: Number.isFinite(Number(it.price)) ? Number(it.price) : 0,
+        taxRate: Number.isFinite(Number(it.taxRate)) ? Number(it.taxRate) : 0,
+        returnQty: 0,
+      };
+    });
   }, [selectedInvoice]);
 
   const [rows, setRows] = useState<ReturnRow[]>([]);
@@ -72,9 +81,11 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
 
   const updateQty = (rowId: string, qty: number) => {
     setRows((prev) =>
-      prev.map((r) =>
-        r.rowId === rowId ? { ...r, returnQty: Number.isFinite(qty) ? qty : 0 } : r
-      )
+      prev.map((r) => {
+        if (r.rowId !== rowId) return r;
+        const validQty = Number.isFinite(qty) && qty >= 0 ? qty : 0;
+        return { ...r, returnQty: validQty };
+      })
     );
   };
 
@@ -84,32 +95,74 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
 
     for (const r of rows) {
       if (!r.returnQty || r.returnQty <= 0) continue;
-      const sub = r.price * r.returnQty;
-      const t = (sub * r.taxRate) / 100;
-      subtotal += sub;
-      tax += t;
+      const price = Number.isFinite(r.price) ? r.price : 0;
+      const qty = Number.isFinite(r.returnQty) ? r.returnQty : 0;
+      const taxRate = Number.isFinite(r.taxRate) ? r.taxRate : 0;
+      
+      const lineSubtotal = price * qty;
+      const lineTax = (lineSubtotal * taxRate) / 100;
+      
+      if (Number.isFinite(lineSubtotal)) {
+        subtotal += lineSubtotal;
+      }
+      if (Number.isFinite(lineTax)) {
+        tax += lineTax;
+      }
     }
 
-    const grand = subtotal + tax;
+    // Return Amount should be subtotal only (excluding tax)
+    const grand = subtotal;
     return {
-      subtotal: Number(subtotal.toFixed(2)),
-      tax: Number(tax.toFixed(2)),
-      grand: Number(grand.toFixed(2)),
+      subtotal: Number.isFinite(subtotal) ? Number(subtotal.toFixed(2)) : 0,
+      tax: Number.isFinite(tax) ? Number(tax.toFixed(2)) : 0,
+      grand: Number.isFinite(grand) ? Number(grand.toFixed(2)) : 0,
     };
   }, [rows]);
 
   const handleSubmit = async () => {
     if (!selectedInvoice) return;
 
+    // First check if any items have return quantity > 0
+    const itemsWithReturnQty = rows.filter((r) => r.returnQty > 0);
+    
+    if (itemsWithReturnQty.length === 0) {
+      alert("Please enter return quantity for at least one item.");
+      return;
+    }
+
+    console.log('Selected invoice items:', selectedInvoice?.items);
+    console.log('Items with return qty:', itemsWithReturnQty);
+    
     const items = rows
       .filter((r) => r.returnQty > 0)
-      .map((r) => ({
-        itemId: r.itemId,
-        quantity: r.returnQty,
-      }));
+      .map((r) => {
+        const quantity = Number.isFinite(r.returnQty) && r.returnQty > 0 ? r.returnQty : 0;
+        const price = Number.isFinite(r.price) ? r.price : 0;
+        const itemIdNum = Number(r.itemId);
+        
+        // Validate itemId before sending
+        if (!Number.isFinite(itemIdNum)) {
+          throw new Error(`Invalid itemId for ${r.itemName}`);
+        }
+        
+        console.log('Processing item:', {
+          itemId: itemIdNum,
+          itemName: r.itemName,
+          quantity: r.returnQty,
+          price: r.price
+        });
+        
+        return {
+          itemId: itemIdNum,        // ✅ force number
+          itemName: r.itemName,
+          quantity: quantity,
+          price: price,
+        };
+      });
 
     if (items.length === 0) {
-      alert("Please enter return quantity for at least one item.");
+      console.error('No valid items after processing:', itemsWithReturnQty);
+      alert("Unable to process return - invalid item data. Please try again.");
       return;
     }
 
@@ -122,15 +175,19 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
     }
 
     try {
-      const resp = await InvoiceService.applyPurchaseReturnToOriginal(selectedInvoice.id, {
+      const payload = {
         items,
-        reason,
-        processedBy: currentUser?.name || currentUser?.username || "Unknown",
-      });
+        reason: String(reason || ''),
+        processedBy: String(currentUser?.name || currentUser?.username || "Unknown"),
+      };
+      
+      console.log('Purchase return payload:', payload); // Debug log
+      
+      const resp = await InvoiceService.applyPurchaseReturnToOriginal(selectedInvoice.id, payload);
       onSuccess(resp.returnInvoiceId);
     } catch (e: any) {
-      console.error(e);
-      alert(e?.message || "Failed to process purchase return");
+      console.error('Purchase return error:', e);
+      alert(e?.response?.data?.message || e?.message || "Failed to process purchase return");
     }
   };
 
@@ -254,15 +311,18 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                       <tr key={r.rowId} className="hover:bg-slate-50">
                         <td className="px-4 lg:px-6 py-3 sm:py-4 font-medium text-slate-800 text-sm">{r.itemName}</td>
                         <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-700 text-sm">{r.purchasedQty}</td>
-                        <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-700 text-sm">₹{r.price.toFixed(2)}</td>
-                        <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-600 text-sm">{r.taxRate.toFixed(2)}%</td>
+                        <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-700 text-sm">₹{Number.isFinite(r.price) ? r.price.toFixed(2) : '0.00'}</td>
+                        <td className="px-4 lg:px-6 py-3 sm:py-4 text-right text-slate-600 text-sm">{Number.isFinite(r.taxRate) ? r.taxRate.toFixed(2) : '0.00'}%</td>
                         <td className="px-4 lg:px-6 py-3 sm:py-4 text-right">
                           <input
                             type="number"
                             min={0}
                             max={r.purchasedQty}
                             value={r.returnQty}
-                            onChange={(e) => updateQty(r.rowId, Number(e.target.value))}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              updateQty(r.rowId, Number.isFinite(val) ? val : 0);
+                            }}
                             onFocus={(e) => e.target.select()}
                             className="w-20 sm:w-24 rounded-lg border border-slate-300 px-2 sm:px-3 py-2 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
                           />
@@ -290,11 +350,11 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                     </div>
                     <div>
                       <span className="text-slate-500">Price</span>
-                      <div className="font-medium text-slate-900">₹{r.price.toFixed(2)}</div>
+                      <div className="font-medium text-slate-900">₹{Number.isFinite(r.price) ? r.price.toFixed(2) : '0.00'}</div>
                     </div>
                     <div>
                       <span className="text-slate-500">Tax %</span>
-                      <div className="font-medium text-slate-900">{r.taxRate.toFixed(2)}%</div>
+                      <div className="font-medium text-slate-900">{Number.isFinite(r.taxRate) ? r.taxRate.toFixed(2) : '0.00'}%</div>
                     </div>
                     <div>
                       <span className="text-slate-500">Return Qty</span>
@@ -303,7 +363,10 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                         min={0}
                         max={r.purchasedQty}
                         value={r.returnQty}
-                        onChange={(e) => updateQty(r.rowId, Number(e.target.value))}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          updateQty(r.rowId, Number.isFinite(val) ? val : 0);
+                        }}
                         onFocus={(e) => e.target.select()}
                         className="w-full px-2 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs mt-1"
                       />
@@ -321,12 +384,12 @@ const PurchaseReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSu
                 <div className="text-xs text-slate-500 font-medium">Subtotal</div>
                 <div className="text-lg sm:text-2xl font-bold text-slate-800">₹{totals.subtotal.toFixed(2)}</div>
               </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4">
-                <div className="text-xs text-slate-500 font-medium">Tax</div>
-                <div className="text-lg sm:text-2xl font-bold text-slate-800">₹{totals.tax.toFixed(2)}</div>
+              <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 sm:p-4">
+                <div className="text-xs text-orange-600 font-medium">Tax (Not included in return)</div>
+                <div className="text-lg sm:text-2xl font-bold text-orange-600">₹{totals.tax.toFixed(2)}</div>
               </div>
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4">
-                <div className="text-xs text-blue-600 font-medium">Grand Total</div>
+                <div className="text-xs text-blue-600 font-medium">Return Amount</div>
                 <div className="text-lg sm:text-2xl font-bold text-blue-600">₹{totals.grand.toFixed(2)}</div>
               </div>
             </div>

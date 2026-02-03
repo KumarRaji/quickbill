@@ -124,22 +124,33 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
   }, [expenses, timeFilter]);
 
   const stats = useMemo(() => {
-    // Calculate Net Sales (Sales - Returns)
-    // RETURN invoices are stored with negative amounts, so just sum all sale-type invoices
-    const totalSales = filteredInvoices.reduce((sum, inv) => {
-      if (inv.type === 'SALE' || inv.type === 'RETURN') return sum + inv.totalAmount;
-      return sum;
-    }, 0);
+    // Use all invoices instead of filtered ones to debug
+    const allInvoices = invoices;
+    
+    // Calculate Net Sales (Sales - Returns) with rounding
+    const salesAmount = Math.round(allInvoices
+      .filter(inv => inv.type === 'SALE')
+      .reduce((sum, inv) => sum + inv.totalAmount, 0));
+    
+    const returnsAmount = Math.round(Math.abs(allInvoices
+      .filter(inv => inv.type === 'RETURN')
+      .reduce((sum, inv) => sum + inv.totalAmount, 0)));
+    
+    const totalSales = salesAmount - returnsAmount;
 
     // Calculate Net Purchases (Purchases - Purchase Returns)
-    // PURCHASE_RETURN invoices are stored with negative amounts, so just sum all purchase-type invoices
-    const totalPurchases = filteredInvoices.reduce((sum, inv) => {
-      if (inv.type === 'PURCHASE' || inv.type === 'PURCHASE_RETURN') return sum + inv.totalAmount;
-      return sum;
-    }, 0);
+    const purchasesAmount = allInvoices
+      .filter(inv => inv.type === 'PURCHASE')
+      .reduce((sum, inv) => sum + inv.totalAmount, 0);
+    
+    const purchaseReturnsAmount = allInvoices
+      .filter(inv => inv.type === 'PURCHASE_RETURN')
+      .reduce((sum, inv) => sum + Math.abs(inv.totalAmount), 0);
+    
+    const totalPurchases = purchasesAmount - purchaseReturnsAmount;
 
-    // Calculate Total Expenses
-    const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    // Calculate Total Expenses - use all expenses
+    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
     // Count only Sales invoices for "Invoices Created" metric
     const totalInvoices = filteredInvoices.filter((i) => i.type === 'SALE').length;
@@ -147,7 +158,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
     const lowStockItems = items.filter((i) => i.stock < 10).length;
 
     return { totalSales, totalPurchases, totalExpenses, totalInvoices, totalParties, lowStockItems };
-  }, [filteredInvoices, parties, items, filteredExpenses]);
+  }, [invoices, parties, items, expenses, filteredInvoices]);
 
   const lowStockItemsList = useMemo(() => 
     items.filter((i) => i.stock < 10).sort((a, b) => a.stock - b.stock),
@@ -270,7 +281,7 @@ const Dashboard: React.FC<DashboardProps> = ({ invoices, parties, items, expense
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
         <StatCard
           title="Net Sales"
-          value={`₹${stats.totalSales.toLocaleString()}`}
+          value={`₹${stats.totalSales}`}
           icon={TrendingUp}
           color="bg-green-500"
           subText="Sales - Returns"

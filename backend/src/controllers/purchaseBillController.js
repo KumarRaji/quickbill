@@ -31,10 +31,23 @@ exports.getPurchaseBills = (req, res) => {
     const billIds = bills.map((b) => b.id);
 
     const itemsSql = `
-      SELECT invoice_id, item_id, name, quantity, mrp, price, tax_rate, total
-      FROM purchase_invoice_items
-      WHERE invoice_id IN (?)
-      ORDER BY id ASC
+      SELECT 
+        pii.invoice_id, 
+        pii.id, 
+        pii.item_id, 
+        pii.name, 
+        pii.quantity, 
+        pii.mrp, 
+        pii.price, 
+        pii.tax_rate, 
+        pii.total,
+        s.category,
+        s.code,
+        s.barcode
+      FROM purchase_invoice_items pii
+      LEFT JOIN stock s ON s.purchase_invoice_id = pii.invoice_id
+      WHERE pii.invoice_id IN (?)
+      ORDER BY pii.id ASC
     `;
 
     pool.query(itemsSql, [billIds], (itemsErr, items) => {
@@ -47,13 +60,16 @@ exports.getPurchaseBills = (req, res) => {
       (items || []).forEach((it) => {
         if (!map[it.invoice_id]) map[it.invoice_id] = [];
         map[it.invoice_id].push({
-          itemId: null,
+          itemId: it.item_id || it.id,
           itemName: it.name,
           quantity: Number(it.quantity),
           mrp: Number(it.mrp || 0),
           price: Number(it.price || 0),
           taxRate: Number(it.tax_rate || 0),
           amount: Number(it.total || 0),
+          category: it.category || "",
+          code: it.code || "",
+          barcode: it.barcode || "",
         });
       });
 
@@ -216,7 +232,7 @@ exports.createPurchaseBill = (req, res) => {
                       const inv = invRows[0];
 
                       pool.query(
-                        `SELECT invoice_id, item_id, name, quantity, mrp, price, tax_rate, total
+                        `SELECT invoice_id, id, item_id, name, quantity, mrp, price, tax_rate, total
                         FROM purchase_invoice_items
                         WHERE invoice_id = ?`,
                         [purchaseInvoiceId],
@@ -225,7 +241,7 @@ exports.createPurchaseBill = (req, res) => {
 
                           // Calculate tax total and round off properly
                           const itemsWithTax = (itemsRows || []).map((it) => ({
-                            itemId: null,
+                            itemId: it.item_id || it.id,   // ✅ Use line item ID if no item_id
                             itemName: it.name,
                             quantity: Number(it.quantity),
                             mrp: Number(it.mrp),

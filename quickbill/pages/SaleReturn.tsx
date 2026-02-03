@@ -105,11 +105,8 @@ const SaleReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSucces
 
   const totals = useMemo(() => {
     const subtotal = selectedReturnItems.reduce((sum, r) => sum + r.price * r.returnQty, 0);
-    const tax = selectedReturnItems.reduce(
-      (sum, r) => sum + (r.price * r.returnQty * r.taxRate) / 100,
-      0
-    );
-    return { subtotal, tax, grand: subtotal + tax };
+    const tax = 0;
+    return { subtotal, tax, grand: subtotal };
   }, [selectedReturnItems]);
 
   const setQty = (itemId: string, qty: number) => {
@@ -396,14 +393,10 @@ const SaleReturn: React.FC<Props> = ({ invoices, currentUser, onCancel, onSucces
       {/* Totals and Reason */}
       {selectedInvoice && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-6 space-y-4 sm:space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4">
               <div className="text-xs text-slate-500 font-medium">Return Subtotal</div>
               <div className="text-lg sm:text-2xl font-bold text-slate-800">₹{totals.subtotal.toFixed(2)}</div>
-            </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4">
-              <div className="text-xs text-slate-500 font-medium">Return Tax</div>
-              <div className="text-lg sm:text-2xl font-bold text-slate-800">₹{totals.tax.toFixed(2)}</div>
             </div>
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 sm:p-4">
               <div className="text-xs text-orange-600 font-medium">Credit Note Total</div>
