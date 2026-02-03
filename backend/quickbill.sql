@@ -30,8 +30,12 @@ CREATE TABLE IF NOT EXISTS parties (
   gstin VARCHAR(20),
   balance DECIMAL(18,2) NOT NULL DEFAULT 0,
   address VARCHAR(255),
+  email VARCHAR(100),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (id)
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_parties_name (name),
+  KEY idx_parties_phone (phone)
 ) ENGINE=InnoDB;
 
 -- 3) SUPPLIERS TABLE
@@ -106,7 +110,7 @@ CREATE TABLE IF NOT EXISTS items (
 
 -- 6) STOCK TABLE
 CREATE TABLE IF NOT EXISTS stock (
-  id INT NOT NULL AUTO_INCREMENT,
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
   category VARCHAR(100) NULL,
   code VARCHAR(100) NULL,
@@ -114,17 +118,21 @@ CREATE TABLE IF NOT EXISTS stock (
   supplier_id INT UNSIGNED NULL,
   purchase_invoice_id INT UNSIGNED NULL,
   item_id INT UNSIGNED NULL,
-  purchase_price DECIMAL(10,2) NOT NULL DEFAULT 0,
-  mrp DECIMAL(10,2) NOT NULL DEFAULT 0,
-  quantity INT NOT NULL DEFAULT 0,
-  unit VARCHAR(50) NULL DEFAULT 'PCS',
-  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+  purchase_price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  mrp DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  quantity DECIMAL(10,2) NOT NULL DEFAULT 0,
+  unit VARCHAR(50) NOT NULL DEFAULT 'PCS',
+  tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  expiry_date DATE NULL,
+  batch_no VARCHAR(50) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_stock_supplier (supplier_id),
   KEY idx_stock_purchase_invoice (purchase_invoice_id),
   KEY idx_stock_item (item_id),
+  KEY idx_stock_barcode (barcode),
+  KEY idx_stock_quantity (quantity),
   CONSTRAINT fk_stock_supplier
     FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
     ON UPDATE CASCADE
@@ -138,6 +146,7 @@ CREATE TABLE IF NOT EXISTS stock (
     ON UPDATE CASCADE
     ON DELETE SET NULL
 ) ENGINE=InnoDB;
+
 
 -- 7) SALE INVOICES TABLE
 CREATE TABLE IF NOT EXISTS sale_invoices (
@@ -277,6 +286,45 @@ CREATE TABLE IF NOT EXISTS purchase_return_audit (
   KEY idx_item (item_id)
 ) ENGINE=InnoDB;
 
+-- 14) STOCK MOVEMENTS TABLE (For tracking stock changes)
+CREATE TABLE IF NOT EXISTS stock_movements (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  item_id INT UNSIGNED NOT NULL,
+  movement_type ENUM('IN','OUT','ADJUSTMENT') NOT NULL,
+  quantity DECIMAL(10,2) NOT NULL,
+  reference_type ENUM('PURCHASE','SALE','RETURN','ADJUSTMENT') NOT NULL,
+  reference_id INT UNSIGNED NULL,
+  notes TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_stock_movements_item (item_id),
+  KEY idx_stock_movements_type (movement_type),
+  KEY idx_stock_movements_date (created_at),
+  CONSTRAINT fk_stock_movements_item
+    FOREIGN KEY (item_id) REFERENCES items(id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
+) ENGINE=InnoDB;
 
--- Add tax_rate column to stock table
-ALTER TABLE stock ADD COLUMN tax_rate DECIMAL(5,2) NOT NULL DEFAULT 0;
+-- 15) SETTINGS TABLE (For application configuration)
+CREATE TABLE IF NOT EXISTS settings (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  setting_key VARCHAR(100) NOT NULL UNIQUE,
+  setting_value TEXT,
+  description VARCHAR(255),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_setting_key (setting_key)
+) ENGINE=InnoDB;
+
+-- Insert default settings
+INSERT INTO settings (setting_key, setting_value, description) VALUES
+('company_name', 'QuickBill Store', 'Company name for invoices'),
+('company_address', '', 'Company address'),
+('company_phone', '', 'Company phone number'),
+('company_email', '', 'Company email'),
+('tax_rate_default', '18.00', 'Default tax rate percentage'),
+('invoice_prefix_sale', 'INV-', 'Prefix for sale invoice numbers'),
+('invoice_prefix_purchase', 'PUR-', 'Prefix for purchase invoice numbers')
+ON DUPLICATE KEY UPDATE setting_key = setting_key;
