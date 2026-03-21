@@ -818,7 +818,15 @@ const Items: React.FC<ItemsProps> = ({ items, onRefresh, userRole }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-3 sm:space-y-4 max-h-[80vh] overflow-y-auto">
+            <form 
+              onSubmit={handleSubmit} 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+                  e.preventDefault();
+                }
+              }}
+              className="p-4 sm:p-6 space-y-3 sm:space-y-4 max-h-[80vh] overflow-y-auto"
+            >
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                   Item Name *

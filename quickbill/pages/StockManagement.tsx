@@ -651,7 +651,15 @@ const StockManagement: React.FC<StockManagementProps> = ({ onRefresh }) => {
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 max-h-[calc(95vh-120px)] overflow-y-auto">
+            <form 
+              onSubmit={handleSubmit} 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+                  e.preventDefault();
+                }
+              }}
+              className="p-4 sm:p-6 space-y-4 max-h-[calc(95vh-120px)] overflow-y-auto"
+            >
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Item Name *</label>
